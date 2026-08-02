@@ -157,39 +157,43 @@ export function Dashboard() {
         </div>
       ) : (
         <>
-          {/* Top Gradient Cards Grid */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {/* Active Wallet Balance Card */}
-            <div className="rounded-3xl p-8 text-white relative overflow-hidden shadow-md dark:shadow-[0_8px_32px_rgba(0,0,0,0.3)] backdrop-blur-xl border border-white/40 dark:border-white/10" style={{ backgroundImage: `linear-gradient(135deg, ${activeWallet?.color}dd, ${activeWallet?.color}88)` }}>
-              <div className="absolute right-0 top-0 w-48 h-48 bg-white opacity-20 dark:opacity-10 rounded-full translate-x-12 -translate-y-12 blur-2xl" />
-              <div className="flex justify-between items-start mb-1 relative z-10">
-                <p className="text-white/90 dark:text-white/70 text-sm font-bold uppercase tracking-wider mt-1">{activeWallet?.name} Balance</p>
+          {/* Separated Financial Stats Header (3 Cards) */}
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
+            {/* Total Budget Card */}
+            <div className="bg-white/60 dark:bg-white/5 backdrop-blur-xl border border-gray-200 dark:border-white/10 p-5 rounded-3xl shadow-sm relative overflow-hidden">
+              <div className="flex justify-between items-start mb-1">
+                <p className="text-xs font-bold text-gray-500 dark:text-white/50 uppercase tracking-wider">Total Budget</p>
                 <button
                   onClick={handleDeleteWallet}
                   disabled={isDeleting}
-                  className="p-2 bg-black/10 hover:bg-black/30 text-white/70 hover:text-white rounded-full transition-colors border border-transparent hover:border-white/20 shadow-[inset_0_1px_1px_rgba(255,255,255,0.2)] disabled:opacity-50"
+                  className="p-1.5 bg-black/5 dark:bg-white/5 hover:bg-red-500/20 text-gray-400 hover:text-red-500 rounded-full transition-colors disabled:opacity-50"
                   title="Delete Wallet"
                 >
-                  <FiTrash2 size={16} />
+                  <FiTrash2 size={14} />
                 </button>
               </div>
-              <div className="flex flex-col gap-1 mt-2 relative z-10">
-                <h2 className="text-4xl md:text-5xl font-black tracking-tight drop-shadow-md">
-                  {new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 }).format(balance)}
-                </h2>
-                <p className="text-sm text-white/80 dark:text-white/60 font-medium">from ₹{initialBudget.toLocaleString()} initial pool</p>
-              </div>
+              <p className="text-2xl md:text-3xl font-black text-gray-900 dark:text-white">
+                ₹{initialBudget.toLocaleString('en-IN')}
+              </p>
+              <p className="text-xs text-gray-400 dark:text-white/40 mt-1 font-medium truncate">{activeWallet?.name} pool</p>
             </div>
 
-            {/* Glowing Spend Card */}
-            <div className="rounded-3xl p-8 text-white relative overflow-hidden shadow-md dark:shadow-[0_8px_32px_rgba(0,0,0,0.3)] backdrop-blur-xl border border-white/40 dark:border-white/10 bg-gradient-to-br from-pink-500/80 to-orange-400/80 dark:from-brand-fuchsia/40 dark:to-brand-orange/40">
-              <div className="absolute right-0 top-0 w-32 h-32 bg-white opacity-20 rounded-full translate-x-8 -translate-y-8 blur-xl" />
-              <p className="text-white/90 dark:text-white/70 text-sm font-bold uppercase tracking-wider mb-1">Total Spend</p>
-              <div className="flex items-end gap-3 mt-4">
-                <h2 className="text-4xl md:text-5xl font-black drop-shadow-md">
-                  {new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 }).format(totalSpend)}
-                </h2>
-              </div>
+            {/* Total Spent Card */}
+            <div className="bg-white/60 dark:bg-white/5 backdrop-blur-xl border border-gray-200 dark:border-white/10 p-5 rounded-3xl shadow-sm">
+              <p className="text-xs font-bold text-pink-600 dark:text-brand-fuchsia uppercase tracking-wider mb-1">Total Spent</p>
+              <p className="text-2xl md:text-3xl font-black text-pink-600 dark:text-brand-fuchsia">
+                ₹{totalSpend.toLocaleString('en-IN')}
+              </p>
+              <p className="text-xs text-gray-400 dark:text-white/40 mt-1 font-medium">{activeExpenses.length} transaction{activeExpenses.length !== 1 ? 's' : ''}</p>
+            </div>
+
+            {/* Remaining Balance Card */}
+            <div className={`backdrop-blur-xl border p-5 rounded-3xl shadow-sm ${balance >= 0 ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-600 dark:text-emerald-400' : 'bg-red-500/10 border-red-500/30 text-red-600 dark:text-red-400'}`}>
+              <p className="text-xs font-bold uppercase tracking-wider mb-1">Remaining Balance</p>
+              <p className="text-2xl md:text-3xl font-black">
+                ₹{balance.toLocaleString('en-IN')}
+              </p>
+              <p className="text-xs opacity-75 mt-1 font-medium">{balance >= 0 ? 'Available funds' : 'Over budget'}</p>
             </div>
           </div>
 
