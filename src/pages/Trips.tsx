@@ -37,7 +37,7 @@ export function Trips() {
   // Filter expenses for this specific trip
   const tripExpenses = useMemo(() => {
     if (!selectedTrip) return [];
-    return expenses.filter(e => e.category === 'Travel' && (e as any).tripId === selectedTrip.id);
+    return expenses.filter(e => (e as any).tripId === selectedTrip.id);
   }, [expenses, selectedTrip]);
 
   // Generate raw debts dynamically from the selected trip's balances
@@ -129,9 +129,14 @@ export function Trips() {
             <div className="space-y-3 max-h-[300px] overflow-y-auto pr-2 scrollbar-hide">
               {tripExpenses.map(expense => (
                 <div key={expense.id} className="bg-white/60 dark:bg-white/5 rounded-2xl p-4 flex justify-between items-center border border-gray-200 dark:border-white/10 hover:border-gray-300 dark:hover:border-white/20 hover:bg-white/80 dark:hover:bg-white/10 transition-colors shadow-sm">
-                  <div>
-                    <p className="font-bold text-gray-900 dark:text-white group-hover:text-blue-600 dark:group-hover:text-brand-neon">{expense.note || 'Trip Expense'}</p>
-                    <p className="text-xs text-gray-500 dark:text-white/40 mt-1">{new Date(expense.date).toLocaleDateString()}</p>
+                  <div className="flex items-center gap-3">
+                    <span className="px-3 py-1 bg-brand-50 dark:bg-brand-neon/10 text-brand-600 dark:text-brand-neon text-xs font-bold rounded-full border border-brand-200 dark:border-brand-neon/30">
+                      {expense.category}
+                    </span>
+                    <div>
+                      <p className="font-bold text-gray-900 dark:text-white group-hover:text-blue-600 dark:group-hover:text-brand-neon">{expense.note || `${expense.category} Expense`}</p>
+                      <p className="text-xs text-gray-500 dark:text-white/40 mt-1">{new Date(expense.date).toLocaleDateString()}</p>
+                    </div>
                   </div>
                   <span className="font-black text-gray-900 dark:text-white text-lg drop-shadow-md">₹{expense.amount.toLocaleString('en-IN')}</span>
                 </div>

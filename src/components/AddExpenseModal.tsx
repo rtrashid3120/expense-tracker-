@@ -64,11 +64,15 @@ export function AddExpenseModal({
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!amount) return;
-    if (wallets.length > 0 && category !== 'Travel' && !walletId) {
+    
+    // Determine target trip
+    const targetTripId = initialTripId || (category === 'Travel' ? tripId : undefined);
+
+    if (wallets.length > 0 && !targetTripId && !walletId) {
       setErrorMsg('Please select a source wallet.');
       return;
     }
-    if (category === 'Travel' && !tripId) {
+    if (category === 'Travel' && !targetTripId) {
       setErrorMsg('Please select a trip.');
       return;
     }
@@ -83,15 +87,17 @@ export function AddExpenseModal({
       amount: parsedAmount,
       category,
       note,
-      walletId: category === 'Travel' ? undefined : walletId
+      walletId: targetTripId ? undefined : walletId
     };
 
     if (category === 'Fuel') {
-      expenseData = { ...expenseData, liters: parseFloat(liters), odometer: parseFloat(odometer) };
+      expenseData = { ...expenseData, liters: parseFloat(liters) || 0, odometer: parseFloat(odometer) || 0 };
     } else if (category === 'Medical') {
       expenseData = { ...expenseData, familyMember, claimStatus };
-    } else if (category === 'Travel') {
-      expenseData = { ...expenseData, tripId };
+    }
+    
+    if (targetTripId) {
+      expenseData.tripId = targetTripId;
     }
 
     try {
@@ -223,25 +229,35 @@ export function AddExpenseModal({
             </div>
 
             <form onSubmit={handleSubmit} className="flex flex-col gap-6 flex-1 pb-10">
-              {category !== 'Travel' && (
-                <div>
-                  <label className="text-sm font-bold text-gray-500 dark:text-white/60 block mb-2 uppercase tracking-wider">Source Wallet</label>
-                  <div className="flex gap-2">
-                    <select 
-                      value={walletId} 
-                      onChange={(e) => setWalletId(e.target.value)}
-                      className="flex-1 bg-gray-50 dark:bg-white/5 border border-gray-200 dark:border-white/10 rounded-2xl py-4 px-4 font-bold text-gray-900 dark:text-white outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-brand-neon transition-all appearance-none"
-                    >
-                      {wallets.length === 0 && <option value="" className="bg-white dark:bg-dark-surface">No wallets available</option>}
-                      {wallets.map(w => (
-                        <option key={w.id} value={w.id} className="bg-white dark:bg-dark-surface">{w.name} (₹{w.balance.toLocaleString()})</option>
-                      ))}
-                    </select>
-                    <button type="button" onClick={handleCreateWallet} className="px-4 bg-gray-50 dark:bg-white/5 border border-gray-200 dark:border-white/10 rounded-2xl flex items-center justify-center text-gray-500 dark:text-white/60 hover:bg-gray-100 dark:hover:bg-white/10 hover:text-gray-900 dark:hover:text-white transition-colors">
-                      <FiPlus size={24} />
-                    </button>
+              {initialTripId ? (
+                <div className="p-4 bg-brand-50 dark:bg-brand-neon/10 border border-brand-200 dark:border-brand-neon/30 rounded-2xl flex items-center justify-between">
+                  <div>
+                    <p className="text-xs font-bold text-brand-600 dark:text-brand-neon uppercase tracking-wider">Logging Expense For Trip</p>
+                    <p className="text-base font-black text-gray-900 dark:text-white mt-0.5">✈️ {trips.find(t => t.id === initialTripId)?.name || 'Current Trip'}</p>
                   </div>
+                  <span className="text-xs font-bold bg-brand-100 dark:bg-brand-neon/20 text-brand-700 dark:text-brand-neon px-3 py-1 rounded-full">Trip Mode</span>
                 </div>
+              ) : (
+                category !== 'Travel' && (
+                  <div>
+                    <label className="text-sm font-bold text-gray-500 dark:text-white/60 block mb-2 uppercase tracking-wider">Source Wallet</label>
+                    <div className="flex gap-2">
+                      <select 
+                        value={walletId} 
+                        onChange={(e) => setWalletId(e.target.value)}
+                        className="flex-1 bg-gray-50 dark:bg-white/5 border border-gray-200 dark:border-white/10 rounded-2xl py-4 px-4 font-bold text-gray-900 dark:text-white outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-brand-neon transition-all appearance-none"
+                      >
+                        {wallets.length === 0 && <option value="" className="bg-white dark:bg-dark-surface">No wallets available</option>}
+                        {wallets.map(w => (
+                          <option key={w.id} value={w.id} className="bg-white dark:bg-dark-surface">{w.name} (₹{w.balance.toLocaleString()})</option>
+                        ))}
+                      </select>
+                      <button type="button" onClick={handleCreateWallet} className="px-4 bg-gray-50 dark:bg-white/5 border border-gray-200 dark:border-white/10 rounded-2xl flex items-center justify-center text-gray-500 dark:text-white/60 hover:bg-gray-100 dark:hover:bg-white/10 hover:text-gray-900 dark:hover:text-white transition-colors">
+                        <FiPlus size={24} />
+                      </button>
+                    </div>
+                  </div>
+                )
               )}
 
               <div>
@@ -320,7 +336,7 @@ export function AddExpenseModal({
                   </motion.div>
                 )}
 
-                {category === 'Travel' && (
+                {category === 'Travel' && !initialTripId && (
                   <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }} className="space-y-4">
                     <div>
                       <label className="text-sm font-bold text-gray-500 dark:text-white/60 block mb-2">Select Trip</label>

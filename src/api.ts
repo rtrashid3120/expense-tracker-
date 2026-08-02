@@ -115,7 +115,7 @@ export const api = {
     }
     
     // If it's a Trip expense, deduct from trip budget
-    if (category === 'Travel' && details.tripId) {
+    if (details.tripId) {
       const trips = await api.getTrips();
       const trip = trips.find(t => t.id === details.tripId);
       if (trip) {

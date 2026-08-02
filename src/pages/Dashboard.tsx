@@ -23,9 +23,9 @@ export function Dashboard() {
   const [isWalletModalOpen, setIsWalletModalOpen] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
 
-  // Filter expenses by active wallet
+  // Filter expenses by active wallet (excluding trip expenses)
   const activeWallet = wallets.find(w => w.id === activeWalletId);
-  const activeExpenses = expenses.filter(e => e.walletId === activeWalletId);
+  const activeExpenses = expenses.filter(e => e.walletId === activeWalletId && !(e as any).tripId);
   const totalSpend = activeExpenses.reduce((sum, e) => sum + e.amount, 0);
 
   // Derived balance from wallet (or fallback to 0)

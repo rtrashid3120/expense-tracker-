@@ -160,7 +160,7 @@ export const useAppStore = create<AppState>((set, get) => ({
         api.getFriends()
       ]);
       
-      const totalSpent = expenses.reduce((sum, e) => sum + e.amount, 0);
+      const totalSpent = expenses.filter(e => !(e as any).tripId).reduce((sum, e) => sum + e.amount, 0);
       const balance = monthlyBudget - totalSpent;
       
       // Set active wallet to the first one if not set
@@ -229,7 +229,7 @@ export const useAppStore = create<AppState>((set, get) => ({
     try {
       await api.setUserBudget(budget);
       set((state) => {
-        const totalSpent = state.expenses.reduce((sum, e) => sum + e.amount, 0);
+        const totalSpent = state.expenses.filter(e => !(e as any).tripId).reduce((sum, e) => sum + e.amount, 0);
         return {
           monthlyBudget: budget,
           balance: budget - totalSpent
@@ -302,7 +302,7 @@ export const useAppStore = create<AppState>((set, get) => ({
       
       set((state) => {
         const newExpenses = [newExpense, ...state.expenses];
-        const totalSpent = newExpenses.reduce((sum, e) => sum + e.amount, 0);
+        const totalSpent = newExpenses.filter(e => !(e as any).tripId).reduce((sum, e) => sum + e.amount, 0);
         
         let newWallets = state.wallets;
         if (newExpense.walletId) {
@@ -312,8 +312,8 @@ export const useAppStore = create<AppState>((set, get) => ({
         }
         
         let newTrips = state.trips;
-        if (newExpense.category === 'Travel' && (newExpense as any).tripId) {
-          const tId = (newExpense as any).tripId;
+        const tId = (newExpense as any).tripId || (newExpense as any).details?.tripId;
+        if (tId) {
           newTrips = state.trips.map(t => 
             t.id === tId ? { ...t, spent: t.spent + newExpense.amount } : t
           );
@@ -338,7 +338,7 @@ export const useAppStore = create<AppState>((set, get) => ({
       
       set((state) => {
         const newExpenses = state.expenses.filter(e => e.id !== id);
-        const totalSpent = newExpenses.reduce((sum, e) => sum + e.amount, 0);
+        const totalSpent = newExpenses.filter(e => !(e as any).tripId).reduce((sum, e) => sum + e.amount, 0);
         
         // Also update the specific wallet balance
         const expense = state.expenses.find(e => e.id === id);
@@ -378,7 +378,7 @@ export const useAppStore = create<AppState>((set, get) => ({
       set((state) => {
         const newWallets = state.wallets.filter(w => w.id !== id);
         const newExpenses = state.expenses.filter(e => e.walletId !== id);
-        const totalSpent = newExpenses.reduce((sum, e) => sum + e.amount, 0);
+        const totalSpent = newExpenses.filter(e => !(e as any).tripId).reduce((sum, e) => sum + e.amount, 0);
         
         return {
           wallets: newWallets,
