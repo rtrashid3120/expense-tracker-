@@ -77,7 +77,12 @@ export const api = {
       };
 
       if (e.details) {
-        base = { ...base, ...e.details };
+        try {
+          const parsed = typeof e.details === 'string' ? JSON.parse(e.details) : e.details;
+          base = { ...base, ...parsed };
+        } catch (err) {
+          console.error("Failed to parse expense details", err);
+        }
       }
       
       return base as Expense;
@@ -118,7 +123,7 @@ export const api = {
       }
     }
 
-    let returnExp = {
+    let returnExp: any = {
       id: data.id,
       walletId: data.wallet_id || undefined,
       amount: Number(data.amount),
@@ -126,7 +131,14 @@ export const api = {
       date: data.date,
       note: data.note || undefined,
     };
-    if (data.details) returnExp = { ...returnExp, ...data.details };
+    if (data.details) {
+      try {
+        const parsed = typeof data.details === 'string' ? JSON.parse(data.details) : data.details;
+        returnExp = { ...returnExp, ...parsed };
+      } catch (err) {
+        console.error("Failed to parse return details", err);
+      }
+    }
     return returnExp as Expense;
   },
 
