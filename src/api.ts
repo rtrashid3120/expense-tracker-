@@ -304,14 +304,12 @@ export const api = {
     const q = query.toLowerCase();
     
     const { data, error } = await supabase.from('profiles')
-      .select('id, username, full_name, avatar_url, email')
-      .or(`username.ilike.%${q}%,email.ilike.%${q}%,id.eq.${q}`)
+      .select('id, username, full_name, avatar_url, email, short_id')
+      .or(`username.ilike.%${q}%,email.ilike.%${q}%,short_id.eq.${q}`)
       .limit(10);
       
     if (error) {
-      // Ignore invalid UUID error if they are searching by name
-      if (error.code !== '22P02') throw error;
-      
+      // Fallback if short_id isn't created yet or other error
       const { data: textData, error: textError } = await supabase.from('profiles')
         .select('id, username, full_name, avatar_url, email')
         .or(`username.ilike.%${q}%,email.ilike.%${q}%`)

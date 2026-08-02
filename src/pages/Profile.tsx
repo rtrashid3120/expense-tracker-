@@ -66,8 +66,8 @@ export function Profile() {
             <p className="text-brand-neon font-medium">{profile?.username}</p>
             <p className="text-xs text-gray-500 dark:text-white/50 mt-2 truncate px-4">{profile?.email}</p>
             <div className="mt-4 pt-4 border-t border-gray-200 dark:border-white/10">
-              <p className="text-[10px] text-gray-400 uppercase tracking-widest font-bold">User ID</p>
-              <p className="text-xs font-mono text-gray-500 dark:text-white/60 truncate">{profile?.id}</p>
+              <p className="text-[10px] text-gray-400 uppercase tracking-widest font-bold">Friend Code</p>
+              <p className="text-xl font-mono font-bold text-gray-900 dark:text-white tracking-[0.2em]">{profile?.short_id || profile?.id?.substring(0, 7)}</p>
             </div>
           </div>
 
@@ -124,7 +124,7 @@ export function Profile() {
               <FiSearch className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" />
               <input
                 type="text"
-                placeholder="Search by @username, email, or User ID"
+                placeholder="Search by @username, email, or Friend Code"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 className="w-full bg-white/50 dark:bg-black/20 border border-gray-200 dark:border-white/10 text-gray-900 dark:text-white rounded-2xl py-3 pl-10 pr-4 focus:ring-2 focus:ring-brand-neon outline-none"
