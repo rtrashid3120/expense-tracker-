@@ -251,86 +251,86 @@ export function Profile() {
             </div>
           )}
 
-          {/* Side-By-Side Grid for Find Friends & My Friends */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-start">
+          {/* Side-By-Side Grid for Find Friends & My Friends (Always 2 Columns Side by Side) */}
+          <div className="grid grid-cols-2 gap-3 md:gap-6 items-start">
             
             {/* Find Friends Card */}
-            <div className="glass-card p-6 flex flex-col min-h-[320px]">
-              <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-4">Find Friends</h3>
-              <div className="relative mb-4">
-                <FiSearch className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" />
+            <div className="glass-card p-3 md:p-6 flex flex-col min-h-[300px]">
+              <h3 className="text-sm md:text-lg font-bold text-gray-900 dark:text-white mb-3">Find Friends</h3>
+              <div className="relative mb-3">
+                <FiSearch className="absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-400" size={14} />
                 <input
                   type="text"
-                  placeholder="Search @username, email, or Code"
+                  placeholder="Search..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  className="w-full bg-white/50 dark:bg-black/20 border border-gray-200 dark:border-white/10 text-gray-900 dark:text-white rounded-2xl py-3 pl-10 pr-4 focus:ring-2 focus:ring-brand-neon outline-none text-sm"
+                  className="w-full bg-white/50 dark:bg-black/20 border border-gray-200 dark:border-white/10 text-gray-900 dark:text-white rounded-xl py-2 pl-8 pr-2 focus:ring-2 focus:ring-brand-neon outline-none text-xs"
                 />
               </div>
               
               {searchQuery.length > 0 ? (
-                <div className="bg-white/80 dark:bg-white/5 rounded-2xl border border-gray-200 dark:border-white/10 p-2 max-h-64 overflow-y-auto flex-1 scrollbar-hide">
+                <div className="bg-white/80 dark:bg-white/5 rounded-xl border border-gray-200 dark:border-white/10 p-1.5 max-h-64 overflow-y-auto flex-1 scrollbar-hide space-y-1">
                   {isSearching ? (
-                    <p className="text-sm text-center py-4 text-gray-500">Searching...</p>
+                    <p className="text-xs text-center py-4 text-gray-500">Searching...</p>
                   ) : searchResults.length > 0 ? (
                     searchResults.map(user => {
                       const isFriend = friends.some(f => f.id === user.id);
                       const isPending = outgoingRequests.some(r => r.id === user.id) || incomingRequests.some(r => r.id === user.id);
                       
                       return (
-                      <div key={user.id} className="flex items-center justify-between p-2.5 hover:bg-black/5 dark:hover:bg-white/5 rounded-xl transition-colors">
-                        <div onClick={() => setSelectedUser(user)} className="flex items-center gap-3 cursor-pointer">
-                          <div className="w-9 h-9 bg-gray-200 dark:bg-white/10 rounded-full flex items-center justify-center overflow-hidden">
-                            {user.avatar_url ? <img src={user.avatar_url} className="w-full h-full object-cover" /> : <FiUser size={14} />}
+                      <div key={user.id} className="flex items-center justify-between p-2 hover:bg-black/5 dark:hover:bg-white/5 rounded-lg transition-colors gap-1">
+                        <div onClick={() => setSelectedUser(user)} className="flex items-center gap-2 cursor-pointer overflow-hidden">
+                          <div className="w-7 h-7 bg-gray-200 dark:bg-white/10 rounded-full flex items-center justify-center overflow-hidden shrink-0">
+                            {user.avatar_url ? <img src={user.avatar_url} className="w-full h-full object-cover" /> : <FiUser size={12} />}
                           </div>
-                          <div>
-                            <p className="text-xs font-bold dark:text-white">{user.full_name || 'User'}</p>
-                            <p className="text-[10px] text-brand-neon">@{user.username?.replace(/^@/, '')}</p>
+                          <div className="overflow-hidden">
+                            <p className="text-[11px] font-bold dark:text-white truncate">{user.full_name || 'User'}</p>
+                            <p className="text-[9px] text-brand-neon truncate">@{user.username?.replace(/^@/, '')}</p>
                           </div>
                         </div>
                         {isFriend ? (
-                          <span className="text-[10px] font-bold text-green-500 bg-green-500/10 px-2 py-0.5 rounded-full">Friends</span>
+                          <span className="text-[9px] font-bold text-green-500 bg-green-500/10 px-1.5 py-0.5 rounded-full shrink-0">Added</span>
                         ) : isPending ? (
-                          <span className="text-[10px] font-bold text-yellow-500 bg-yellow-500/10 px-2 py-0.5 rounded-full">Pending</span>
+                          <span className="text-[9px] font-bold text-yellow-500 bg-yellow-500/10 px-1.5 py-0.5 rounded-full shrink-0">Wait</span>
                         ) : (
-                          <button onClick={() => handleSendRequest(user.id)} className="w-7 h-7 rounded-full bg-brand-neon/20 text-brand-neon flex items-center justify-center hover:bg-brand-neon hover:text-black transition-colors">
-                            <FiUserPlus size={14} />
+                          <button onClick={() => handleSendRequest(user.id)} className="w-6 h-6 rounded-full bg-brand-neon/20 text-brand-neon flex items-center justify-center hover:bg-brand-neon hover:text-black transition-colors shrink-0">
+                            <FiUserPlus size={12} />
                           </button>
                         )}
                       </div>
                     )})
                   ) : (
-                    <p className="text-sm text-center py-4 text-gray-500">No users found.</p>
+                    <p className="text-xs text-center py-4 text-gray-500">No users found.</p>
                   )}
                 </div>
               ) : (
                 <div className="flex-1 flex flex-col items-center justify-center py-6 text-center text-gray-400 dark:text-white/40">
-                  <FiSearch size={28} className="mb-2 opacity-50" />
-                  <p className="text-xs">Type a username, email, or Friend Code to search.</p>
+                  <FiSearch size={22} className="mb-2 opacity-50" />
+                  <p className="text-[10px] md:text-xs">Type username or email to search.</p>
                 </div>
               )}
             </div>
 
             {/* My Friends Card */}
-            <div className="glass-card p-6 flex flex-col min-h-[320px]">
-              <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-4">My Friends ({friends.length})</h3>
+            <div className="glass-card p-3 md:p-6 flex flex-col min-h-[300px]">
+              <h3 className="text-sm md:text-lg font-bold text-gray-900 dark:text-white mb-3">My Friends ({friends.length})</h3>
               {friends.length === 0 ? (
                 <div className="flex-1 flex flex-col items-center justify-center py-6 text-center text-gray-400 dark:text-white/40">
-                  <FiUsers size={28} className="mb-2 opacity-50" />
-                  <p className="text-xs">No friends added yet. Search on the left to add!</p>
+                  <FiUsers size={22} className="mb-2 opacity-50" />
+                  <p className="text-[10px] md:text-xs">No friends added yet.</p>
                 </div>
               ) : (
-                <div className="space-y-2.5 max-h-64 overflow-y-auto pr-1 flex-1 scrollbar-hide">
+                <div className="space-y-2 max-h-64 overflow-y-auto pr-1 flex-1 scrollbar-hide">
                   {friends.map(friend => (
-                    <div key={friend.id} onClick={() => setSelectedUser(friend)} className="flex items-center gap-3 p-3 bg-white/50 dark:bg-white/5 border border-white/20 rounded-xl cursor-pointer hover:bg-white/80 dark:hover:bg-white/10 transition-colors">
-                      <div className="w-10 h-10 bg-gradient-to-tr from-blue-500 to-purple-500 rounded-full p-[2px] shrink-0">
+                    <div key={friend.id} onClick={() => setSelectedUser(friend)} className="flex items-center gap-2 p-2 bg-white/50 dark:bg-white/5 border border-white/20 rounded-xl cursor-pointer hover:bg-white/80 dark:hover:bg-white/10 transition-colors">
+                      <div className="w-8 h-8 bg-gradient-to-tr from-blue-500 to-purple-500 rounded-full p-[1.5px] shrink-0">
                         <div className="w-full h-full bg-white dark:bg-gray-900 rounded-full flex items-center justify-center overflow-hidden">
-                          {friend.avatar_url ? <img src={friend.avatar_url} className="w-full h-full object-cover" /> : <FiUser className="text-gray-400" size={14} />}
+                          {friend.avatar_url ? <img src={friend.avatar_url} className="w-full h-full object-cover" /> : <FiUser className="text-gray-400" size={12} />}
                         </div>
                       </div>
                       <div className="overflow-hidden">
-                        <p className="text-xs font-bold text-gray-900 dark:text-white truncate">{friend.full_name || friend.username || 'User'}</p>
-                        <p className="text-[10px] text-brand-neon truncate">@{friend.username?.replace(/^@/, '')}</p>
+                        <p className="text-[11px] md:text-xs font-bold text-gray-900 dark:text-white truncate">{friend.full_name || friend.username || 'User'}</p>
+                        <p className="text-[9px] text-brand-neon truncate">@{friend.username?.replace(/^@/, '')}</p>
                       </div>
                     </div>
                   ))}
