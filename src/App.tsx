@@ -69,7 +69,16 @@ function Layout({ children, onAddClick }: { children: React.ReactNode; onAddClic
           </div>
         </header>
 
-        <main className="flex-1 overflow-y-auto p-4 md:p-8 pb-24 md:pb-8">
+        {/* Mobile Logout Button (Floating) */}
+        <button 
+          onClick={signOut}
+          className="md:hidden absolute top-4 right-4 z-50 w-10 h-10 rounded-full bg-red-500/10 border border-red-500/20 flex items-center justify-center text-red-600 dark:text-red-400 hover:bg-red-500/20 transition-all shadow-sm"
+          title="Log Out"
+        >
+          <FiLogOut size={18} />
+        </button>
+
+        <main className="flex-1 overflow-y-auto p-4 md:p-8 pb-24 md:pb-8 pt-16 md:pt-4">
           {children}
         </main>
         
