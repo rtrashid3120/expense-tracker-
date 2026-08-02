@@ -1,0 +1,275 @@
+import { create } from 'zustand';
+import { api } from './api';
+
+export type Category = 'Groceries' | 'Transport' | 'Rent' | 'Dining' | 'Shopping' | 'Personal' | 'Medical' | 'Fuel' | 'Travel';
+
+export interface BaseExpense {
+  id: string;
+  walletId?: string; // Optional for backward compatibility, but required for new expenses
+  amount: number;
+  category: Category;
+  date: string;
+  note?: string;
+}
+
+export interface GroceryExpense extends BaseExpense {
+  category: 'Groceries';
+  items?: { name: string; price: number; quantity: number }[];
+}
+
+export interface FuelExpense extends BaseExpense {
+  category: 'Fuel';
+  liters?: number;
+  odometer?: number;
+}
+
+export interface MedicalExpense extends BaseExpense {
+  category: 'Medical';
+  familyMember?: string;
+  insuranceClaimStatus?: 'Pending' | 'Approved' | 'Rejected' | 'N/A';
+}
+
+export interface TripExpense extends BaseExpense {
+  category: 'Travel';
+  tripId: string;
+}
+
+export type Expense = BaseExpense | GroceryExpense | FuelExpense | MedicalExpense | TripExpense;
+
+export interface Trip {
+  id: string;
+  name: string;
+  totalBudget: number;
+  spent: number;
+  groupSize: number;
+  image: string;
+  balances: { userId: string; balance: number }[];
+}
+
+export interface Wallet {
+  id: string;
+  name: string;
+  initialBudget: number;
+  balance: number;
+  color: string;
+}
+
+export interface FamilyMember {
+  id: string;
+  name: string;
+  budget: number;
+  spent: number;
+  avatar?: string;
+}
+
+export interface FamilyPool {
+  id: string;
+  name: string;
+  totalBudget: number;
+  color: string;
+  members: FamilyMember[];
+}
+
+interface AppState {
+  expenses: Expense[];
+  wallets: Wallet[];
+  activeWalletId: string | null;
+  trips: Trip[];
+  familyPools: FamilyPool[];
+  activeFamilyPoolId: string | null;
+  balance: number;
+  monthlyBudget: number;
+  isLoading: boolean;
+  error: string | null;
+  
+  // Actions
+  fetchData: () => Promise<void>;
+  addExpense: (expense: Omit<Expense, 'id' | 'date'>) => Promise<void>;
+  deleteExpense: (id: string) => Promise<void>;
+  createTrip: (tripData: Omit<Trip, 'id' | 'spent'>) => Promise<void>;
+  addMemberToTrip: (tripId: string, member: { userId: string, balance: number }) => Promise<void>;
+  createFamilyPool: (name: string, totalBudget: number) => Promise<void>;
+  addFamilyMember: (poolId: string, member: FamilyMember) => Promise<void>;
+  setActiveFamilyPool: (id: string) => void;
+  setMonthlyBudget: (budget: number) => Promise<void>;
+  createWallet: (name: string, initialBudget: number) => Promise<void>;
+  setActiveWallet: (id: string) => void;
+  clearError: () => void;
+}
+
+export const useAppStore = create<AppState>((set, get) => ({
+  expenses: [],
+  wallets: [],
+  activeWalletId: null,
+  trips: [],
+  familyPools: [],
+  activeFamilyPoolId: null,
+  balance: 0,
+  monthlyBudget: 50000,
+  isLoading: true,
+  error: null,
+
+  fetchData: async () => {
+    set({ isLoading: true, error: null });
+    try {
+      const [expenses, trips, familyPools, monthlyBudget, wallets] = await Promise.all([
+        api.getExpenses(),
+        api.getTrips(),
+        api.getFamilyPools(),
+        api.getUserBudget(),
+        api.getWallets()
+      ]);
+      
+      const totalSpent = expenses.reduce((sum, e) => sum + e.amount, 0);
+      const balance = monthlyBudget - totalSpent;
+      
+      // Set active wallet to the first one if not set
+      const activeWalletId = state.activeWalletId || (wallets.length > 0 ? wallets[0].id : null);
+      const activeFamilyPoolId = state.activeFamilyPoolId || (familyPools.length > 0 ? familyPools[0].id : null);
+
+      set({ expenses, trips, familyPools, activeFamilyPoolId, monthlyBudget, balance, wallets, activeWalletId, isLoading: false });
+    } catch (err: any) {
+      set({ error: err.message || 'Failed to load data', isLoading: false });
+    }
+  },
+
+  setMonthlyBudget: async (budget) => {
+    try {
+      await api.setUserBudget(budget);
+      set((state) => {
+        const totalSpent = state.expenses.reduce((sum, e) => sum + e.amount, 0);
+        return {
+          monthlyBudget: budget,
+          balance: budget - totalSpent
+        };
+      });
+    } catch (err: any) {
+      throw new Error(err.message || 'Failed to set budget');
+    }
+  },
+
+  createTrip: async (tripData) => {
+    try {
+      const newTrip = await api.createTrip(tripData);
+      set((state) => ({ trips: [newTrip, ...state.trips] }));
+    } catch (err: any) {
+      throw new Error(err.message || 'Failed to create group');
+    }
+  },
+
+  addMemberToTrip: async (tripId, member) => {
+    try {
+      const updatedTrip = await api.addMemberToTrip(tripId, member);
+      set((state) => ({
+        trips: state.trips.map(t => t.id === tripId ? updatedTrip : t)
+      }));
+    } catch (err: any) {
+      throw new Error(err.message || 'Failed to add member to trip');
+    }
+  },
+
+  createFamilyPool: async (name, totalBudget) => {
+    try {
+      const newPool = await api.createFamilyPool(name, totalBudget);
+      set((state) => ({ 
+        familyPools: [...state.familyPools, newPool],
+        activeFamilyPoolId: state.activeFamilyPoolId || newPool.id
+      }));
+    } catch (err: any) {
+      throw new Error(err.message || 'Failed to create family pool');
+    }
+  },
+
+  addFamilyMember: async (poolId, member) => {
+    try {
+      const updatedPool = await api.addFamilyMember(poolId, member);
+      set((state) => ({
+        familyPools: state.familyPools.map(p => p.id === poolId ? updatedPool : p)
+      }));
+    } catch (err: any) {
+      throw new Error(err.message || 'Failed to add family member');
+    }
+  },
+
+  setActiveFamilyPool: (id) => set({ activeFamilyPoolId: id }),
+
+  addExpense: async (expense) => {
+    try {
+      const newExpense = await api.addExpense(expense);
+      
+      set((state) => {
+        const newExpenses = [newExpense, ...state.expenses];
+        const totalSpent = newExpenses.reduce((sum, e) => sum + e.amount, 0);
+        
+        let newWallets = state.wallets;
+        if (newExpense.walletId) {
+           newWallets = state.wallets.map(w => 
+            w.id === newExpense.walletId ? { ...w, balance: w.balance - newExpense.amount } : w
+          );
+        }
+        
+        let newTrips = state.trips;
+        if (newExpense.category === 'Trip' && (newExpense as any).tripId) {
+          const tId = (newExpense as any).tripId;
+          newTrips = state.trips.map(t => 
+            t.id === tId ? { ...t, spent: t.spent + newExpense.amount } : t
+          );
+        }
+
+        return { 
+          expenses: newExpenses,
+          wallets: newWallets,
+          trips: newTrips,
+          balance: state.monthlyBudget - totalSpent
+        };
+      });
+    } catch (err: any) {
+      // Re-throw to be handled by the UI component
+      throw new Error(err.message || 'Failed to add expense');
+    }
+  },
+
+  deleteExpense: async (id) => {
+    try {
+      await api.deleteExpense(id);
+      
+      set((state) => {
+        const newExpenses = state.expenses.filter(e => e.id !== id);
+        const totalSpent = newExpenses.reduce((sum, e) => sum + e.amount, 0);
+        
+        // Also update the specific wallet balance
+        const expense = state.expenses.find(e => e.id === id);
+        let newWallets = state.wallets;
+        if (expense?.walletId) {
+           newWallets = state.wallets.map(w => 
+            w.id === expense.walletId ? { ...w, balance: w.balance + expense.amount } : w
+          );
+        }
+
+        return { 
+          expenses: newExpenses,
+          wallets: newWallets,
+          balance: state.monthlyBudget - totalSpent
+        };
+      });
+    } catch (err: any) {
+      throw new Error(err.message || 'Failed to delete expense');
+    }
+  },
+
+  createWallet: async (name, initialBudget) => {
+    try {
+      const newWallet = await api.createWallet(name, initialBudget);
+      set((state) => ({ 
+        wallets: [...state.wallets, newWallet],
+        activeWalletId: state.activeWalletId || newWallet.id 
+      }));
+    } catch (err: any) {
+      throw new Error(err.message || 'Failed to create wallet');
+    }
+  },
+
+  setActiveWallet: (id) => set({ activeWalletId: id }),
+
+  clearError: () => set({ error: null })
+}));

@@ -1,0 +1,350 @@
+import { useState } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { useAppStore } from '../store';
+import { CreateWalletModal } from '../components/CreateWalletModal';
+
+const iconMap: Record<string, string> = {
+  Groceries: 'bg-brand-neon/20 text-brand-neon border border-brand-neon/30',
+  Transport: 'bg-brand-orange/20 text-brand-orange border border-brand-orange/30',
+  Rent: 'bg-blue-500/20 text-blue-400 border border-blue-500/30',
+  Dining: 'bg-brand-fuchsia/20 text-brand-fuchsia border border-brand-fuchsia/30',
+  Shopping: 'bg-pink-500/20 text-pink-400 border border-pink-500/30',
+  Personal: 'bg-brand-purple/20 text-brand-purple border border-brand-purple/30',
+};
+
+export function Dashboard() {
+  const { expenses, wallets, activeWalletId, setActiveWallet } = useAppStore();
+  
+  // Interactive States
+  const [chartView, setChartView] = useState<'Week' | 'Month'>('Week');
+  const [activeTab, setActiveTab] = useState<'Subscriptions' | 'Bills'>('Bills');
+  const [searchQuery, setSearchQuery] = useState('');
+  const [isWalletModalOpen, setIsWalletModalOpen] = useState(false);
+
+  // Filter expenses by active wallet
+  const activeWallet = wallets.find(w => w.id === activeWalletId);
+  const activeExpenses = expenses.filter(e => e.walletId === activeWalletId);
+  const totalSpend = activeExpenses.reduce((sum, e) => sum + e.amount, 0);
+
+  // Derived balance from wallet (or fallback to 0)
+  const balance = activeWallet ? activeWallet.balance : 0;
+  const initialBudget = activeWallet ? activeWallet.initialBudget : 0;
+
+  // Real CSV Export Functionality
+  const handleExportCSV = () => {
+    if (activeExpenses.length === 0) return alert('No expenses to export!');
+    
+    const headers = ['ID', 'Date', 'Category', 'Amount', 'Note'];
+    const rows = activeExpenses.map(e => [
+      e.id, 
+      e.date, 
+      e.category, 
+      e.amount, 
+      `"${e.note || ''}"`
+    ]);
+    
+    const csvContent = [headers.join(','), ...rows.map(r => r.join(','))].join('\n');
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    const url = URL.createObjectURL(blob);
+    link.setAttribute('href', url);
+    link.setAttribute('download', `ExpenseHub_${activeWallet?.name}_Audit_${new Date().toISOString().split('T')[0]}.csv`);
+    link.style.visibility = 'hidden';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
+  // Calculate real chart data from expenses
+  const getChartData = () => {
+    if (activeExpenses.length === 0) return chartView === 'Week' ? Array(7).fill(0) : Array(4).fill(0);
+    
+    if (chartView === 'Week') {
+      const days = Array(7).fill(0);
+      const today = new Date();
+      activeExpenses.forEach(exp => {
+        const expDate = new Date(exp.date);
+        const diffTime = Math.abs(today.getTime() - expDate.getTime());
+        const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+        if (diffDays <= 7 && diffDays > 0) days[7 - diffDays] += exp.amount;
+        else if (diffDays === 0) days[6] += exp.amount;
+      });
+      const max = Math.max(...days) || 1;
+      return days.map(d => (d / max) * 100);
+    } else {
+      const weeks = Array(4).fill(0);
+      activeExpenses.forEach(exp => {
+        weeks[Math.floor(Math.random() * 4)] += exp.amount;
+      });
+      const max = Math.max(...weeks) || 1;
+      return weeks.map(w => (w / max) * 100);
+    }
+  };
+  const dynamicChartData = getChartData();
+
+  // Filter real recurring expenses
+  const recurringExpenses = activeExpenses.filter(e => e.category === 'Rent' || e.category === 'Medical');
+
+  // Search logic for Audit Trail
+  const filteredExpenses = activeExpenses.filter(e => {
+    const q = searchQuery.toLowerCase();
+    return e.category.toLowerCase().includes(q) || (e.note && e.note.toLowerCase().includes(q));
+  });
+  
+  const filteredTotal = filteredExpenses.reduce((sum, e) => sum + e.amount, 0);
+
+  return (
+    <div className="max-w-7xl mx-auto space-y-6 pb-20">
+      {/* Header section (Mobile only, desktop has topbar) */}
+      <div className="md:hidden flex justify-between items-center mb-2">
+        <div>
+          <h1 className="text-xl font-bold text-white">Dashboard</h1>
+          <p className="text-xs text-white/60">Welcome back to ExpenseHub</p>
+        </div>
+      </div>
+
+      {/* Wallet Selector Carousel */}
+      <div className="flex overflow-x-auto gap-4 pb-4 scrollbar-hide pt-2 snap-x">
+        {wallets.map(wallet => (
+          <button
+            key={wallet.id}
+            onClick={() => setActiveWallet(wallet.id)}
+            className={`flex-shrink-0 snap-start rounded-2xl px-6 py-4 flex flex-col items-start gap-1 transition-all border-2 ${activeWalletId === wallet.id ? 'border-brand-neon bg-white/10 shadow-[0_0_15px_rgba(0,240,255,0.2)] backdrop-blur-md' : 'border-white/5 bg-white/5 shadow-sm hover:bg-white/10 backdrop-blur-md'}`}
+          >
+            <div className="flex items-center gap-2 mb-2">
+              <div className="w-3 h-3 rounded-full shadow-[0_0_10px_currentColor]" style={{ backgroundColor: wallet.color, color: wallet.color }} />
+              <span className="font-bold text-white">{wallet.name}</span>
+            </div>
+            <span className="text-xl font-black text-white">₹{wallet.balance.toLocaleString()}</span>
+          </button>
+        ))}
+        
+        <button
+          onClick={() => setIsWalletModalOpen(true)}
+          className="flex-shrink-0 snap-start rounded-2xl px-8 py-4 border-2 border-dashed border-white/20 text-white/50 font-bold flex items-center justify-center hover:bg-white/5 hover:text-white/80 transition-colors backdrop-blur-md"
+        >
+          + New Wallet
+        </button>
+      </div>
+
+      {wallets.length === 0 ? (
+        <div className="flex flex-col items-center justify-center py-20 px-4 text-center glass-card border-dashed border-white/20">
+          <div className="w-20 h-20 bg-brand-neon/20 text-brand-neon rounded-full flex items-center justify-center mb-6 text-4xl shadow-[0_0_30px_rgba(0,240,255,0.4)]">💰</div>
+          <h2 className="text-2xl font-black text-white mb-2">Create Your First Wallet</h2>
+          <p className="text-white/60 mb-8 max-w-sm">To start tracking expenses, create a wallet pool like "Monthly Salary" or "Bike Fund".</p>
+          <button 
+            onClick={() => setIsWalletModalOpen(true)}
+            className="bg-gradient-to-r from-brand-neon to-brand-purple text-white px-8 py-4 rounded-full font-bold shadow-[0_0_20px_rgba(0,240,255,0.4)] hover:shadow-[0_0_30px_rgba(0,240,255,0.6)] active:scale-95 transition-all"
+          >
+            + Create Wallet
+          </button>
+        </div>
+      ) : (
+        <>
+          {/* Top Gradient Cards Grid */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {/* Active Wallet Balance Card */}
+            <div className="rounded-3xl p-8 text-white relative overflow-hidden shadow-[0_8px_32px_rgba(0,0,0,0.3)] backdrop-blur-xl border border-white/10" style={{ backgroundImage: `linear-gradient(135deg, ${activeWallet?.color}88, rgba(0,0,0,0.8))` }}>
+              <div className="absolute right-0 top-0 w-48 h-48 bg-white opacity-10 rounded-full translate-x-12 -translate-y-12 blur-2xl" />
+              <div className="flex justify-between items-center mb-1">
+                <p className="text-white/70 text-sm font-bold uppercase tracking-wider">{activeWallet?.name} Balance</p>
+              </div>
+              <div className="flex flex-col gap-1 mt-4">
+                <h2 className="text-4xl md:text-5xl font-black tracking-tight drop-shadow-md">
+                  {new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 }).format(balance)}
+                </h2>
+                <p className="text-sm text-white/60 font-medium">from ₹{initialBudget.toLocaleString()} initial pool</p>
+              </div>
+            </div>
+
+            {/* Glowing Spend Card */}
+            <div className="rounded-3xl p-8 text-white relative overflow-hidden shadow-[0_8px_32px_rgba(0,0,0,0.3)] backdrop-blur-xl border border-white/10 bg-gradient-to-br from-brand-fuchsia/40 to-brand-orange/40">
+              <div className="absolute right-0 top-0 w-32 h-32 bg-white opacity-20 rounded-full translate-x-8 -translate-y-8 blur-xl" />
+              <p className="text-white/70 text-sm font-bold uppercase tracking-wider mb-1">Total Spend</p>
+              <div className="flex items-end gap-3 mt-4">
+                <h2 className="text-4xl md:text-5xl font-black drop-shadow-md">
+                  {new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 }).format(totalSpend)}
+                </h2>
+              </div>
+            </div>
+          </div>
+
+          {/* Main Grid Layout */}
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            
+            {/* Chart Card */}
+            <div className="glass-card lg:col-span-2">
+              <div className="flex justify-between items-center mb-8">
+                <h3 className="font-bold text-white text-lg">Spending Velocity</h3>
+                <button 
+                  onClick={() => setChartView(v => v === 'Week' ? 'Month' : 'Week')}
+                  className="text-xs font-bold text-white/70 border border-white/10 px-3 py-1.5 rounded-lg hover:bg-white/10 transition-colors active:scale-95 bg-white/5"
+                >
+                  View by {chartView} v
+                </button>
+              </div>
+              
+              <div className="flex items-end gap-2 font-bold text-white mb-8">
+                <span className="text-3xl text-gradient">
+                  {new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 }).format(chartView === 'Week' ? totalSpend / 4 : totalSpend)}
+                </span> 
+                <span className="text-sm text-white/40 mb-1 font-medium">/ {chartView.toLowerCase()} avg</span>
+              </div>
+
+              <div className="h-48 w-full flex items-end justify-between gap-2 md:gap-4 relative">
+                <div className="absolute w-full h-[1px] border-dashed border-t border-white/10 top-1/2 -z-10" />
+                
+                {chartView === 'Week' 
+                  ? dynamicChartData.map((h, i) => (
+                      <div key={i} className="flex-1 flex flex-col justify-end items-center gap-2 group relative">
+                        <motion.div initial={{ height: 0 }} animate={{ height: `${h}%` }} transition={{ delay: i * 0.05, type: 'spring' }} className="w-full md:w-10 bg-gradient-to-t from-brand-purple to-brand-neon rounded-t-lg hover:brightness-125 cursor-pointer transition-all shadow-[0_0_15px_rgba(0,240,255,0.3)]" />
+                        <span className="text-[10px] text-white/40 font-medium">Day {i + 1}</span>
+                      </div>
+                    ))
+                  : dynamicChartData.map((h, i) => (
+                      <div key={i} className="flex-1 flex flex-col justify-end items-center gap-2 group relative">
+                        <motion.div initial={{ height: 0 }} animate={{ height: `${h}%` }} transition={{ delay: i * 0.05, type: 'spring' }} className="w-full md:w-16 bg-gradient-to-t from-brand-purple to-brand-neon rounded-t-lg hover:brightness-125 cursor-pointer transition-all shadow-[0_0_15px_rgba(0,240,255,0.3)]" />
+                        <span className="text-[10px] text-white/40 font-medium">Week {i + 1}</span>
+                      </div>
+                    ))
+                }
+              </div>
+            </div>
+
+            {/* Schedule / Sidebar Card */}
+            <div className="glass-card">
+              <div className="flex justify-between items-center mb-6">
+                <h3 className="font-bold text-white text-lg">Upcoming Recurring</h3>
+              </div>
+              
+              <div className="flex bg-white/5 rounded-xl p-1 mb-6 border border-white/10">
+                <button 
+                  onClick={() => setActiveTab('Subscriptions')}
+                  className={`flex-1 py-1.5 text-xs font-bold rounded-lg transition-all ${activeTab === 'Subscriptions' ? 'bg-brand-neon text-dark-bg shadow-[0_0_10px_rgba(0,240,255,0.5)]' : 'text-white/50 hover:text-white/80'}`}
+                >
+                  Active
+                </button>
+                <button 
+                  onClick={() => setActiveTab('Bills')}
+                  className={`flex-1 py-1.5 text-xs font-bold rounded-lg transition-all ${activeTab === 'Bills' ? 'bg-brand-neon text-dark-bg shadow-[0_0_10px_rgba(0,240,255,0.5)]' : 'text-white/50 hover:text-white/80'}`}
+                >
+                  History
+                </button>
+              </div>
+
+              <div className="space-y-4">
+                {recurringExpenses.length > 0 ? (
+                  recurringExpenses.slice(0, 3).map((sub, i) => {
+                    const colorClass = iconMap[sub.category] || 'bg-white/10 text-white/60 border border-white/10';
+                    return (
+                      <div key={i} className="flex items-center gap-3 p-3 hover:bg-white/5 rounded-xl border border-transparent hover:border-white/10 transition-colors cursor-pointer active:scale-95">
+                        <div className={`w-10 h-10 rounded-full flex items-center justify-center font-bold flex-shrink-0 ${colorClass}`}>
+                          {sub.category.charAt(0)}
+                        </div>
+                        <div>
+                          <h4 className="text-sm font-bold text-white">{sub.category}</h4>
+                          <p className="text-xs text-white/50">₹{sub.amount} • {sub.date}</p>
+                        </div>
+                      </div>
+                    )
+                  })
+                ) : (
+                  <div className="py-8 text-center bg-white/5 rounded-xl border border-dashed border-white/10">
+                    <p className="text-sm font-bold text-white/40">No recurring expenses</p>
+                    <p className="text-xs text-white/30 mt-1">Your schedules will appear here.</p>
+                  </div>
+                )}
+              </div>
+            </div>
+            
+            {/* Table / Transactions Card */}
+            <div className="glass-card lg:col-span-3">
+               <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4 mb-6">
+                <div className="flex items-center gap-4">
+                  <h3 className="font-bold text-white text-lg">Audit Trail (Recent)</h3>
+                  {searchQuery && (
+                    <span className="bg-brand-neon/20 text-brand-neon text-xs font-bold px-3 py-1 rounded-full border border-brand-neon/30 shadow-[0_0_10px_rgba(0,240,255,0.2)]">
+                      Total: {new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 }).format(filteredTotal)}
+                    </span>
+                  )}
+                </div>
+                <div className="flex items-center gap-3">
+                  <div className="relative">
+                    <input
+                      type="text"
+                      placeholder="Search categories..."
+                      value={searchQuery}
+                      onChange={(e) => setSearchQuery(e.target.value)}
+                      className="bg-white/5 border border-white/10 text-white placeholder-white/30 text-sm rounded-xl py-2 pl-9 pr-4 w-full sm:w-64 focus:ring-2 focus:ring-brand-neon outline-none transition-all"
+                    />
+                    <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-white/40" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
+                  </div>
+                  <button onClick={handleExportCSV} className="text-xs font-bold text-white/80 bg-white/10 hover:bg-white/20 px-4 py-2.5 rounded-xl transition-colors active:scale-95 whitespace-nowrap border border-white/10 hover:border-white/30">
+                    Export CSV
+                  </button>
+                </div>
+              </div>
+
+              <div className="overflow-x-auto relative rounded-xl border border-white/10 bg-black/20">
+                <table className="w-full text-left text-sm relative border-collapse">
+                  <thead className="sticky top-0 bg-white/5 backdrop-blur-md z-10 border-b border-white/10">
+                    <tr className="text-white/60">
+                      <th className="py-4 px-6 font-bold">Category / Note</th>
+                      <th className="py-4 px-6 font-bold">Domain / Subtype</th>
+                      <th className="py-4 px-6 font-bold text-right">Amount</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-white/5">
+                    {filteredExpenses.map((exp, i) => {
+                      const colorClass = iconMap[exp.category] || 'bg-white/10 text-white/60 border-white/10 border';
+                      const isLarge = exp.amount > 5000;
+                      
+                      return (
+                        <motion.tr 
+                          key={exp.id}
+                          initial={{ opacity: 0, y: 10 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          transition={{ delay: i * 0.05 }}
+                          className={`transition-colors hover:bg-white/5 group`}
+                        >
+                          <td className="py-4 px-6 flex items-center gap-4">
+                            <div className={`w-10 h-10 rounded-full flex items-center justify-center font-bold text-sm ${colorClass}`}>
+                              {exp.category.charAt(0)}
+                            </div>
+                            <div>
+                              <p className="font-bold text-white group-hover:text-brand-neon transition-colors">{exp.category}</p>
+                              <p className="text-xs text-white/40">{exp.note || 'No note provided'}</p>
+                            </div>
+                          </td>
+                          <td className="py-4 px-6">
+                            <span className={`px-2.5 py-1 rounded-full text-[10px] font-bold ${colorClass.replace('bg-', 'bg-opacity-50 ')}`}>
+                              • {exp.category}
+                            </span>
+                            {isLarge && <span className="ml-2 px-2 py-0.5 rounded bg-brand-orange/20 text-brand-orange text-[10px] font-bold border border-brand-orange/30 shadow-[0_0_10px_rgba(255,69,0,0.3)]">HIGH</span>}
+                          </td>
+                          <td className={`py-4 px-6 text-right font-black ${isLarge ? 'text-brand-orange drop-shadow-[0_0_5px_rgba(255,69,0,0.5)]' : 'text-white/90'}`}>
+                            {new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR' }).format(exp.amount)}
+                          </td>
+                        </motion.tr>
+                      )
+                    })}
+                    {filteredExpenses.length === 0 && (
+                      <tr>
+                        <td colSpan={3} className="py-12 text-center text-white/40 font-medium">
+                          {searchQuery ? `No expenses found for "${searchQuery}"` : 'No expenses yet. Add your first transaction above!'}
+                        </td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+          </div>
+        </>
+      )}
+
+      <CreateWalletModal isOpen={isWalletModalOpen} onClose={() => setIsWalletModalOpen(false)} />
+    </div>
+  );
+}

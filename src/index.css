@@ -1,0 +1,67 @@
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap');
+@import "tailwindcss";
+
+@theme {
+  /* Neo-Glass UI Palette */
+  --color-glass-50: rgba(255, 255, 255, 0.05);
+  --color-glass-100: rgba(255, 255, 255, 0.1);
+  --color-glass-200: rgba(255, 255, 255, 0.2);
+  
+  --color-brand-neon: #00F0FF;     /* Cyan */
+  --color-brand-fuchsia: #FF00FF;  /* Fuchsia */
+  --color-brand-purple: #8A2BE2;   /* Deep Purple */
+  --color-brand-orange: #FF4500;   /* Vibrant Orange */
+  
+  --color-dark-bg: #09090b;        /* Zinc-950 */
+  --color-dark-surface: #18181b;   /* Zinc-900 */
+  
+  /* Friendly SaaS Typography */
+  --font-sans: 'Plus Jakarta Sans', system-ui, sans-serif;
+}
+
+@layer base {
+  body {
+    @apply bg-dark-bg text-white antialiased;
+    background-image: 
+      radial-gradient(circle at 15% 50%, rgba(138, 43, 226, 0.15), transparent 25%),
+      radial-gradient(circle at 85% 30%, rgba(0, 240, 255, 0.15), transparent 25%),
+      radial-gradient(circle at 50% 80%, rgba(255, 0, 255, 0.1), transparent 25%);
+    background-attachment: fixed;
+    background-color: #09090b;
+    -webkit-tap-highlight-color: transparent;
+  }
+}
+
+@layer utilities {
+  .glass-card {
+    @apply bg-white/5 backdrop-blur-xl border border-white/10 shadow-[0_8px_32px_rgba(0,0,0,0.3)] rounded-3xl p-6 relative overflow-hidden;
+  }
+  
+  .glass-panel {
+    @apply bg-black/40 backdrop-blur-2xl border border-white/5 rounded-[40px] shadow-2xl;
+  }
+  
+  .text-gradient {
+    @apply bg-clip-text text-transparent bg-gradient-to-r from-brand-neon via-brand-purple to-brand-fuchsia;
+  }
+  
+  .text-gradient-warm {
+    @apply bg-clip-text text-transparent bg-gradient-to-r from-brand-fuchsia to-brand-orange;
+  }
+}
+
+/* Hide scrollbar for clean UI */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  @apply bg-white/20 rounded-full hover:bg-white/30;
+}
+* {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255,255,255,0.2) transparent;
+}
