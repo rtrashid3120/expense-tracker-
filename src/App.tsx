@@ -1,6 +1,6 @@
 import React, { useState, useEffect, Component } from 'react';
 import type { ErrorInfo } from 'react';
-import { HashRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { HashRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { AnimatePresence, motion } from 'framer-motion';
 import { Dashboard } from './pages/Dashboard';
 import { Trips } from './pages/Trips';
@@ -42,6 +42,7 @@ class ErrorBoundary extends Component<{children: React.ReactNode}, {hasError: bo
 // ... (Layout and PageTransition components remain exactly the same)
 function Layout({ children, onAddClick }: { children: React.ReactNode; onAddClick: () => void }) {
   const { signOut } = useAppStore();
+  const location = useLocation();
   
   return (
     <div className="flex h-screen w-full bg-transparent overflow-hidden">
@@ -69,14 +70,16 @@ function Layout({ children, onAddClick }: { children: React.ReactNode; onAddClic
           </div>
         </header>
 
-        {/* Mobile Logout Button (Floating) */}
-        <button 
-          onClick={signOut}
-          className="md:hidden absolute top-4 right-4 z-50 w-10 h-10 rounded-full bg-red-500/10 border border-red-500/20 flex items-center justify-center text-red-600 dark:text-red-400 hover:bg-red-500/20 transition-all shadow-sm"
-          title="Log Out"
-        >
-          <FiLogOut size={18} />
-        </button>
+        {/* Mobile Logout Button (Floating) - Only on home page */}
+        {location.pathname === '/' && (
+          <button 
+            onClick={signOut}
+            className="md:hidden absolute top-4 right-4 z-50 w-10 h-10 rounded-full bg-red-500/10 border border-red-500/20 flex items-center justify-center text-red-600 dark:text-red-400 hover:bg-red-500/20 transition-all shadow-sm"
+            title="Log Out"
+          >
+            <FiLogOut size={18} />
+          </button>
+        )}
 
         <main className="flex-1 overflow-y-auto p-4 md:p-8 pb-24 md:pb-8 pt-16 md:pt-4">
           {children}
