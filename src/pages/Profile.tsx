@@ -1,9 +1,11 @@
 import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useAppStore } from '../store';
 import { FiUser, FiSearch, FiUserPlus, FiCheck, FiAward, FiMap, FiCreditCard, FiUsers } from 'react-icons/fi';
 import { api } from '../api';
 
 export function Profile() {
+  const navigate = useNavigate();
   const { profile, friends, incomingRequests, outgoingRequests, acceptFriendRequest, sendFriendRequest, wallets, trips, expenses } = useAppStore();
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState<any[]>([]);
@@ -74,15 +76,15 @@ export function Profile() {
           <div className="glass-card p-6">
             <h3 className="text-sm font-bold text-gray-900 dark:text-white uppercase tracking-wider mb-4">Your Domains</h3>
             <div className="space-y-3">
-              <div className="flex items-center justify-between p-3 bg-white/50 dark:bg-white/5 rounded-xl border border-white/20">
+              <div onClick={() => navigate('/')} className="cursor-pointer flex items-center justify-between p-3 bg-white/50 dark:bg-white/5 rounded-xl border border-white/20 hover:shadow-md transition-shadow">
                 <div className="flex items-center gap-3"><FiCreditCard className="text-blue-500" /><span className="font-medium text-sm">Wallets</span></div>
                 <span className="font-bold">{wallets.length}</span>
               </div>
-              <div className="flex items-center justify-between p-3 bg-white/50 dark:bg-white/5 rounded-xl border border-white/20">
+              <div onClick={() => navigate('/trips')} className="cursor-pointer flex items-center justify-between p-3 bg-white/50 dark:bg-white/5 rounded-xl border border-white/20 hover:shadow-md transition-shadow">
                 <div className="flex items-center gap-3"><FiMap className="text-purple-500" /><span className="font-medium text-sm">Trips</span></div>
                 <span className="font-bold">{trips.length}</span>
               </div>
-              <div className="flex items-center justify-between p-3 bg-white/50 dark:bg-white/5 rounded-xl border border-white/20">
+              <div onClick={() => navigate('/profile')} className="cursor-pointer flex items-center justify-between p-3 bg-white/50 dark:bg-white/5 rounded-xl border border-white/20 hover:shadow-md transition-shadow">
                 <div className="flex items-center gap-3"><FiUsers className="text-green-500" /><span className="font-medium text-sm">Friends</span></div>
                 <span className="font-bold">{friends.length}</span>
               </div>
