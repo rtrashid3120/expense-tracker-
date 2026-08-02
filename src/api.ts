@@ -259,20 +259,115 @@ export const api = {
     };
   },
 
-  // Users Directory (Mocking real Supabase user search)
-  searchUsers: async (query: string): Promise<{ id: string; name: string; avatar?: string }[]> => {
-    const mockDirectory = [
-      { id: '@rahul_99', name: 'Rahul Sharma', avatar: 'https://i.pravatar.cc/150?u=rahul' },
-      { id: '@priya_desai', name: 'Priya Desai', avatar: 'https://i.pravatar.cc/150?u=priya' },
-      { id: '@amit_k', name: 'Amit Kumar', avatar: 'https://i.pravatar.cc/150?u=amit' },
-      { id: '@neha_s', name: 'Neha Singh', avatar: 'https://i.pravatar.cc/150?u=neha' },
-      { id: '@rashid_dev', name: 'Mohamed Rashid', avatar: 'https://i.pravatar.cc/150?u=rashid' },
-      { id: '@elanoire', name: 'Elanoire Maggie', avatar: 'https://i.pravatar.cc/150?u=elanoire' },
-    ];
+  // --- Profiles ---
+  getProfile: async (): Promise<any> => {
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session) return null;
+    
+    const { data, error } = await supabase.from('profiles').select('*').eq('id', session.user.id).single();
+    if (error && error.code !== 'PGRST116') {
+      console.error('Error fetching profile:', error);
+    }
+    return data;
+  },
 
+  updateProfile: async (updates: any): Promise<void> => {
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session) throw new Error("Not logged in");
+
+    // Upsert the profile
+    const { error } = await supabase.from('profiles').upsert({
+      id: session.user.id,
+      email: session.user.email,
+      ...updates,
+      updated_at: new Date().toISOString()
+    });
+    
+    if (error) throw error;
+  },
+
+  // --- Users Directory ---
+  searchUsers: async (query: string): Promise<any[]> => {
+    if (!query || query.length < 3) return [];
     const q = query.toLowerCase();
-    return mockDirectory.filter(
-      u => u.name.toLowerCase().includes(q) || u.id.toLowerCase().includes(q)
-    );
+    
+    const { data, error } = await supabase.from('profiles')
+      .select('id, username, full_name, avatar_url, email')
+      .or(`username.ilike.%${q}%,email.ilike.%${q}%,id.eq.${q}`)
+      .limit(10);
+      
+    if (error) {
+      // Ignore invalid UUID error if they are searching by name
+      if (error.code !== '22P02') throw error;
+      
+      const { data: textData, error: textError } = await supabase.from('profiles')
+        .select('id, username, full_name, avatar_url, email')
+        .or(`username.ilike.%${q}%,email.ilike.%${q}%`)
+        .limit(10);
+      
+      if (textError) throw textError;
+      return textData || [];
+    }
+    
+    return data || [];
+  },
+
+  // --- Friends ---
+  getFriends: async (): Promise<{ friends: any[], incomingRequests: any[], outgoingRequests: any[] }> => {
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session) return { friends: [], incomingRequests: [], outgoingRequests: [] };
+
+    const { data, error } = await supabase.from('friends')
+      .select(`
+        *,
+        requester:profiles!friends_requester_id_fkey(*),
+        receiver:profiles!friends_receiver_id_fkey(*)
+      `)
+      .or(`requester_id.eq.${session.user.id},receiver_id.eq.${session.user.id}`);
+
+    if (error) throw error;
+
+    const friends: any[] = [];
+    const incomingRequests: any[] = [];
+    const outgoingRequests: any[] = [];
+
+    data?.forEach(f => {
+      const isRequester = f.requester_id === session.user.id;
+      const otherUser = isRequester ? f.receiver : f.requester;
+      
+      if (f.status === 'accepted') {
+        friends.push(otherUser);
+      } else if (f.status === 'pending') {
+        if (isRequester) {
+          outgoingRequests.push(otherUser);
+        } else {
+          incomingRequests.push({ ...otherUser, requestId: f.id });
+        }
+      }
+    });
+
+    return { friends, incomingRequests, outgoingRequests };
+  },
+
+  sendFriendRequest: async (receiverId: string): Promise<void> => {
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session) throw new Error("Not logged in");
+    if (session.user.id === receiverId) throw new Error("Cannot add yourself");
+
+    const { error } = await supabase.from('friends').insert({
+      requester_id: session.user.id,
+      receiver_id: receiverId,
+      status: 'pending'
+    });
+
+    if (error) throw error;
+  },
+
+  acceptFriendRequest: async (requestId: string): Promise<void> => {
+    const { error } = await supabase.from('friends').update({
+      status: 'accepted'
+    }).eq('id', requestId);
+
+    if (error) throw error;
   }
 };

@@ -85,11 +85,18 @@ interface AppState {
   monthlyBudget: number;
   isLoading: boolean;
   error: string | null;
+  profile: any | null;
+  friends: any[];
+  incomingRequests: any[];
+  outgoingRequests: any[];
   
   // Actions
   initAuth: () => void;
   signOut: () => Promise<void>;
   fetchData: () => Promise<void>;
+  updateProfile: (updates: any) => Promise<void>;
+  sendFriendRequest: (receiverId: string) => Promise<void>;
+  acceptFriendRequest: (requestId: string) => Promise<void>;
   addExpense: (expense: Omit<Expense, 'id' | 'date'>) => Promise<void>;
   deleteExpense: (id: string) => Promise<void>;
   createTrip: (tripData: Omit<Trip, 'id' | 'spent'>) => Promise<void>;
@@ -117,6 +124,10 @@ export const useAppStore = create<AppState>((set, get) => ({
   monthlyBudget: 50000,
   isLoading: true,
   error: null,
+  profile: null,
+  friends: [],
+  incomingRequests: [],
+  outgoingRequests: [],
 
   initAuth: () => {
     supabase.auth.getSession().then(({ data: { session } }) => {
@@ -138,12 +149,14 @@ export const useAppStore = create<AppState>((set, get) => ({
   fetchData: async () => {
     set({ isLoading: true, error: null });
     try {
-      const [expenses, trips, familyPools, monthlyBudget, wallets] = await Promise.all([
+      const [expenses, trips, familyPools, monthlyBudget, wallets, profile, friendsData] = await Promise.all([
         api.getExpenses(),
         api.getTrips(),
         api.getFamilyPools(),
         api.getUserBudget(),
-        api.getWallets()
+        api.getWallets(),
+        api.getProfile(),
+        api.getFriends()
       ]);
       
       const totalSpent = expenses.reduce((sum, e) => sum + e.amount, 0);
@@ -153,9 +166,61 @@ export const useAppStore = create<AppState>((set, get) => ({
       const activeWalletId = get().activeWalletId || (wallets.length > 0 ? wallets[0].id : null);
       const activeFamilyPoolId = get().activeFamilyPoolId || (familyPools.length > 0 ? familyPools[0].id : null);
 
-      set({ expenses, trips, familyPools, activeFamilyPoolId, monthlyBudget, balance, wallets, activeWalletId, isLoading: false });
+      set({ 
+        expenses, 
+        trips, 
+        familyPools, 
+        activeFamilyPoolId, 
+        monthlyBudget, 
+        balance, 
+        wallets, 
+        activeWalletId,
+        profile,
+        friends: friendsData.friends,
+        incomingRequests: friendsData.incomingRequests,
+        outgoingRequests: friendsData.outgoingRequests,
+        isLoading: false 
+      });
     } catch (err: any) {
       set({ error: err.message || 'Failed to load data', isLoading: false });
+    }
+  },
+
+  updateProfile: async (updates: any) => {
+    try {
+      await api.updateProfile(updates);
+      const profile = await api.getProfile();
+      set({ profile });
+    } catch (err: any) {
+      throw new Error(err.message || 'Failed to update profile');
+    }
+  },
+
+  sendFriendRequest: async (receiverId: string) => {
+    try {
+      await api.sendFriendRequest(receiverId);
+      const friendsData = await api.getFriends();
+      set({ 
+        friends: friendsData.friends,
+        incomingRequests: friendsData.incomingRequests,
+        outgoingRequests: friendsData.outgoingRequests,
+      });
+    } catch (err: any) {
+      throw new Error(err.message || 'Failed to send request');
+    }
+  },
+
+  acceptFriendRequest: async (requestId: string) => {
+    try {
+      await api.acceptFriendRequest(requestId);
+      const friendsData = await api.getFriends();
+      set({ 
+        friends: friendsData.friends,
+        incomingRequests: friendsData.incomingRequests,
+        outgoingRequests: friendsData.outgoingRequests,
+      });
+    } catch (err: any) {
+      throw new Error(err.message || 'Failed to accept request');
     }
   },
 

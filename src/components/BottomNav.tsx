@@ -1,16 +1,16 @@
 import { Link, useLocation } from 'react-router-dom';
-import { FiGrid, FiMap, FiPieChart, FiUsers, FiPlus } from 'react-icons/fi';
+import { FiMap, FiPieChart, FiPlus, FiHome, FiUser } from 'react-icons/fi';
 import { motion } from 'framer-motion';
 
 export function BottomNav({ onAddClick }: { onAddClick: () => void }) {
   const location = useLocation();
 
   const tabs = [
-    { id: '/', icon: FiGrid, label: 'Home' },
-    { id: '/trips', icon: FiMap, label: 'Trips' },
+    { id: '/', icon: FiHome, label: 'Dashboard' },
+    { id: '/expenses', icon: FiPieChart, label: 'Expenses' },
     { id: 'add', isAdd: true },
-    { id: '/expenses', icon: FiPieChart, label: 'Reports' },
-    { id: '/family', icon: FiUsers, label: 'Family' },
+    { id: '/trips', icon: FiMap, label: 'Trips' },
+    { id: '/profile', icon: FiUser, label: 'Profile' },
   ];
 
   return (

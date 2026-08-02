@@ -7,6 +7,8 @@ import { Trips } from './pages/Trips';
 import { Reports } from './pages/Reports';
 import { Family } from './pages/Family';
 import { Login } from './pages/Login';
+import { Profile } from './pages/Profile';
+import { Onboarding } from './pages/Onboarding';
 import { BottomNav } from './components/BottomNav';
 import { Sidebar } from './components/Sidebar';
 import { AddExpenseModal } from './components/AddExpenseModal';
@@ -39,7 +41,6 @@ class ErrorBoundary extends Component<{children: React.ReactNode}, {hasError: bo
   }
 }
 
-// ... (Layout and PageTransition components remain exactly the same)
 function Layout({ children, onAddClick }: { children: React.ReactNode; onAddClick: () => void }) {
   const { signOut } = useAppStore();
   const location = useLocation();
@@ -105,7 +106,7 @@ const PageTransition = ({ children }: { children: React.ReactNode }) => (
 
 export default function App() {
   const [isAddOpen, setIsAddOpen] = useState(false);
-  const { initAuth, user, isAuthLoading, isLoading } = useAppStore();
+  const { initAuth, user, isAuthLoading, isLoading, profile } = useAppStore();
 
   useEffect(() => {
     initAuth();
@@ -126,21 +127,29 @@ export default function App() {
     return <Login />;
   }
 
+  // Force onboarding if profile is missing a username
+  if (!profile?.username) {
+    return <Onboarding />;
+  }
+
   return (
     <ErrorBoundary>
       <HashRouter>
-        <Layout onAddClick={() => setIsAddOpen(true)}>
-          <AnimatePresence mode="wait">
-            <Routes>
-              <Route path="/" element={<PageTransition><Dashboard /></PageTransition>} />
-              <Route path="/trips" element={<PageTransition><Trips /></PageTransition>} />
-              <Route path="/expenses" element={<PageTransition><Reports /></PageTransition>} />
-              <Route path="/family" element={<PageTransition><Family /></PageTransition>} />
-              <Route path="*" element={<Navigate to="/" replace />} />
-            </Routes>
-          </AnimatePresence>
-        </Layout>
-        <AddExpenseModal isOpen={isAddOpen} onClose={() => setIsAddOpen(false)} />
+        <AnimatePresence>
+          <Layout onAddClick={() => setIsAddOpen(true)}>
+            <AnimatePresence mode="wait">
+              <Routes>
+                <Route path="/" element={<PageTransition><Dashboard /></PageTransition>} />
+                <Route path="/trips" element={<PageTransition><Trips /></PageTransition>} />
+                <Route path="/expenses" element={<PageTransition><Reports /></PageTransition>} />
+                <Route path="/family" element={<PageTransition><Family /></PageTransition>} />
+                <Route path="/profile" element={<PageTransition><Profile /></PageTransition>} />
+                <Route path="*" element={<Navigate to="/" replace />} />
+              </Routes>
+            </AnimatePresence>
+          </Layout>
+          <AddExpenseModal isOpen={isAddOpen} onClose={() => setIsAddOpen(false)} />
+        </AnimatePresence>
       </HashRouter>
     </ErrorBoundary>
   );

@@ -1,15 +1,16 @@
 import { Link, useLocation } from 'react-router-dom';
-import { FiGrid, FiUsers, FiMap, FiPieChart, FiSettings } from 'react-icons/fi';
+import { FiUsers, FiMap, FiPieChart, FiSettings, FiUser, FiHome } from 'react-icons/fi';
 import { motion } from 'framer-motion';
 
 export function Sidebar() {
   const location = useLocation();
   
   const menuItems = [
-    { path: '/', label: 'Dashboard', icon: FiGrid },
+    { path: '/', label: 'Dashboard', icon: FiHome },
     { path: '/expenses', label: 'Expenses', icon: FiPieChart },
     { path: '/trips', label: 'Trips & Groups', icon: FiMap },
     { path: '/family', label: 'Family', icon: FiUsers },
+    { path: '/profile', label: 'Profile', icon: FiUser },
   ];
 
   return (
