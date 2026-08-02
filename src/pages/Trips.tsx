@@ -19,7 +19,7 @@ export function Trips() {
   // Filter expenses for this specific trip
   const tripExpenses = useMemo(() => {
     if (!selectedTrip) return [];
-    return expenses.filter(e => e.category === 'Trip' && (e as any).tripId === selectedTrip.id);
+    return expenses.filter(e => e.category === 'Travel' && (e as any).tripId === selectedTrip.id);
   }, [expenses, selectedTrip]);
 
   // Generate raw debts dynamically from the selected trip's balances
@@ -152,7 +152,7 @@ export function Trips() {
         <AddExpenseModal
           isOpen={isAddExpenseOpen}
           onClose={() => setIsAddExpenseOpen(false)}
-          initialCategory="Trip"
+          initialCategory="Travel"
           initialTripId={selectedTrip.id}
         />
       </motion.div>

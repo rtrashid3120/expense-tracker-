@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { FiX, FiCheck, FiSearch, FiUserPlus, FiArrowRight } from 'react-icons/fi';
+import { FiX, FiCheck, FiSearch, FiArrowRight } from 'react-icons/fi';
 import { useAppStore } from '../store';
 import { api } from '../api';
 import type { FamilyMember } from '../store';

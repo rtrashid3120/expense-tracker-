@@ -31,7 +31,7 @@ export function AddExpenseModal({
   const [familyMember, setFamilyMember] = useState('');
   const [claimStatus, setClaimStatus] = useState('None');
   
-  const categories: Category[] = ['Personal', 'Groceries', 'Rent', 'Fuel', 'Medical', 'Family', 'Trip'];
+  const categories: Category[] = ['Personal', 'Groceries', 'Rent', 'Fuel', 'Medical', 'Travel'];
 
   // Set default wallet and category when opened
   useEffect(() => {
@@ -63,11 +63,11 @@ export function AddExpenseModal({
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!amount) return;
-    if (wallets.length > 0 && category !== 'Trip' && !walletId) {
+    if (wallets.length > 0 && category !== 'Travel' && !walletId) {
       setErrorMsg('Please select a source wallet.');
       return;
     }
-    if (category === 'Trip' && !tripId) {
+    if (category === 'Travel' && !tripId) {
       setErrorMsg('Please select a trip.');
       return;
     }
@@ -82,14 +82,14 @@ export function AddExpenseModal({
       amount: parsedAmount,
       category,
       note,
-      walletId: category === 'Trip' ? undefined : walletId
+      walletId: category === 'Travel' ? undefined : walletId
     };
 
     if (category === 'Fuel') {
       expenseData = { ...expenseData, liters: parseFloat(liters), odometer: parseFloat(odometer) };
     } else if (category === 'Medical') {
       expenseData = { ...expenseData, familyMember, claimStatus };
-    } else if (category === 'Trip') {
+    } else if (category === 'Travel') {
       expenseData = { ...expenseData, tripId };
     }
 
@@ -146,7 +146,7 @@ export function AddExpenseModal({
             </div>
 
             <form onSubmit={handleSubmit} className="flex flex-col gap-6 flex-1 pb-10">
-              {wallets.length > 0 && category !== 'Trip' && (
+              {wallets.length > 0 && category !== 'Travel' && (
                 <div>
                   <label className="text-sm font-bold text-gray-500 dark:text-white/60 block mb-2 uppercase tracking-wider">Source Wallet</label>
                   <select 
@@ -237,7 +237,7 @@ export function AddExpenseModal({
                   </motion.div>
                 )}
 
-                {category === 'Trip' && (
+                {category === 'Travel' && (
                   <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }} className="space-y-4">
                     <div>
                       <label className="text-sm font-bold text-gray-500 dark:text-white/60 block mb-2">Select Trip</label>

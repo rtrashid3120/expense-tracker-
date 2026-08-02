@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion } from 'framer-motion';
 import { useAppStore } from '../store';
 import { CreateWalletModal } from '../components/CreateWalletModal';
 import { FiTrash2 } from 'react-icons/fi';

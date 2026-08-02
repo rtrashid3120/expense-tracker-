@@ -1,5 +1,7 @@
 import { create } from 'zustand';
 import { api } from './api';
+import { supabase } from './lib/supabase';
+import type { User } from '@supabase/supabase-js';
 
 export type Category = 'Groceries' | 'Transport' | 'Rent' | 'Dining' | 'Shopping' | 'Personal' | 'Medical' | 'Fuel' | 'Travel';
 
@@ -71,6 +73,8 @@ export interface FamilyPool {
 }
 
 interface AppState {
+  user: User | null;
+  isAuthLoading: boolean;
   expenses: Expense[];
   wallets: Wallet[];
   activeWalletId: string | null;
@@ -83,6 +87,8 @@ interface AppState {
   error: string | null;
   
   // Actions
+  initAuth: () => void;
+  signOut: () => Promise<void>;
   fetchData: () => Promise<void>;
   addExpense: (expense: Omit<Expense, 'id' | 'date'>) => Promise<void>;
   deleteExpense: (id: string) => Promise<void>;
@@ -99,6 +105,8 @@ interface AppState {
 }
 
 export const useAppStore = create<AppState>((set, get) => ({
+  user: null,
+  isAuthLoading: true,
   expenses: [],
   wallets: [],
   activeWalletId: null,
@@ -109,6 +117,23 @@ export const useAppStore = create<AppState>((set, get) => ({
   monthlyBudget: 50000,
   isLoading: true,
   error: null,
+
+  initAuth: () => {
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      set({ user: session?.user ?? null, isAuthLoading: false });
+    });
+
+    supabase.auth.onAuthStateChange((_event, session) => {
+      set({ user: session?.user ?? null, isAuthLoading: false });
+      if (session?.user) {
+        get().fetchData();
+      }
+    });
+  },
+
+  signOut: async () => {
+    await supabase.auth.signOut();
+  },
 
   fetchData: async () => {
     set({ isLoading: true, error: null });
@@ -125,8 +150,8 @@ export const useAppStore = create<AppState>((set, get) => ({
       const balance = monthlyBudget - totalSpent;
       
       // Set active wallet to the first one if not set
-      const activeWalletId = state.activeWalletId || (wallets.length > 0 ? wallets[0].id : null);
-      const activeFamilyPoolId = state.activeFamilyPoolId || (familyPools.length > 0 ? familyPools[0].id : null);
+      const activeWalletId = get().activeWalletId || (wallets.length > 0 ? wallets[0].id : null);
+      const activeFamilyPoolId = get().activeFamilyPoolId || (familyPools.length > 0 ? familyPools[0].id : null);
 
       set({ expenses, trips, familyPools, activeFamilyPoolId, monthlyBudget, balance, wallets, activeWalletId, isLoading: false });
     } catch (err: any) {
@@ -210,7 +235,7 @@ export const useAppStore = create<AppState>((set, get) => ({
         }
         
         let newTrips = state.trips;
-        if (newExpense.category === 'Trip' && (newExpense as any).tripId) {
+        if (newExpense.category === 'Travel' && (newExpense as any).tripId) {
           const tId = (newExpense as any).tripId;
           newTrips = state.trips.map(t => 
             t.id === tId ? { ...t, spent: t.spent + newExpense.amount } : t

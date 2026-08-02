@@ -1,4 +1,4 @@
-import type { Expense, Trip, Family, FamilyMember, Wallet } from './store';
+import type { Expense, Trip, FamilyMember, Wallet } from './store';
 
 // Simulate network latency
 const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
@@ -86,7 +86,7 @@ export const api = {
     }
     
     // If it's a Trip expense, deduct from trip budget
-    if (newExpense.category === 'Trip' && (newExpense as any).tripId) {
+    if (newExpense.category === 'Travel' && (newExpense as any).tripId) {
       const tripId = (newExpense as any).tripId;
       const trips = await api.getTrips();
       const tripIndex = trips.findIndex(t => t.id === tripId);
