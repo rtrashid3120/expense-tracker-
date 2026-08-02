@@ -1,17 +1,56 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAppStore } from '../store';
-import { FiUser, FiSearch, FiUserPlus, FiCheck, FiAward, FiMap, FiCreditCard, FiUsers } from 'react-icons/fi';
+import { FiUser, FiSearch, FiUserPlus, FiCheck, FiAward, FiMap, FiCreditCard, FiUsers, FiEdit2 } from 'react-icons/fi';
 import { api } from '../api';
 import { UserProfileModal } from '../components/UserProfileModal';
 
 export function Profile() {
   const navigate = useNavigate();
-  const { profile, friends, incomingRequests, outgoingRequests, acceptFriendRequest, sendFriendRequest, wallets, trips, expenses } = useAppStore();
+  const { profile, updateProfile, friends, incomingRequests, outgoingRequests, acceptFriendRequest, sendFriendRequest, wallets, trips, expenses } = useAppStore();
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState<any[]>([]);
   const [isSearching, setIsSearching] = useState(false);
   const [selectedUser, setSelectedUser] = useState<any>(null);
+
+  // Profile editing state
+  const [isEditingProfile, setIsEditingProfile] = useState(false);
+  const [editName, setEditName] = useState('');
+  const [editUsername, setEditUsername] = useState('');
+  const [isSavingProfile, setIsSavingProfile] = useState(false);
+
+  useEffect(() => {
+    if (profile) {
+      setEditName(profile.full_name || '');
+      setEditUsername(profile.username || '');
+    }
+  }, [profile]);
+
+  const handleSaveProfile = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editUsername.trim()) {
+      alert("Username cannot be empty");
+      return;
+    }
+    
+    setIsSavingProfile(true);
+    try {
+      let formattedUsername = editUsername.trim();
+      if (!formattedUsername.startsWith('@')) {
+        formattedUsername = `@${formattedUsername}`;
+      }
+      
+      await updateProfile({
+        full_name: editName.trim(),
+        username: formattedUsername
+      });
+      setIsEditingProfile(false);
+    } catch (err: any) {
+      alert(err.message || 'Failed to update username');
+    } finally {
+      setIsSavingProfile(false);
+    }
+  };
 
   // Gamification logic
   const hasBudgetMaster = expenses.length > 0 && expenses.reduce((a, b) => a + b.amount, 0) < 50000;
@@ -66,9 +105,64 @@ export function Profile() {
                 <FiUser size={40} className="text-white" />
               )}
             </div>
-            <h2 className="text-xl font-bold text-gray-900 dark:text-white">{profile?.full_name || 'User'}</h2>
-            <p className="text-brand-neon font-medium">{profile?.username}</p>
-            <p className="text-xs text-gray-500 dark:text-white/50 mt-2 truncate px-4">{profile?.email}</p>
+
+            {!isEditingProfile ? (
+              <>
+                <h2 className="text-xl font-bold text-gray-900 dark:text-white">{profile?.full_name || 'User'}</h2>
+                <p className="text-brand-neon font-bold">{profile?.username || '@username'}</p>
+                <p className="text-xs text-gray-500 dark:text-white/50 mt-2 truncate px-4">{profile?.email}</p>
+                
+                <button
+                  onClick={() => setIsEditingProfile(true)}
+                  className="mt-4 px-4 py-1.5 text-xs font-bold bg-white/50 dark:bg-white/10 border border-gray-200 dark:border-white/10 text-gray-700 dark:text-white rounded-full hover:bg-white/80 dark:hover:bg-white/20 transition-all flex items-center gap-1.5 mx-auto active:scale-95"
+                >
+                  <FiEdit2 size={12} /> Edit Username & Profile
+                </button>
+              </>
+            ) : (
+              <form onSubmit={handleSaveProfile} className="space-y-4 text-left pt-2">
+                <h3 className="text-xs font-bold text-gray-900 dark:text-white uppercase tracking-wider text-center">Edit Profile</h3>
+                <div>
+                  <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider block mb-1">Full Name</label>
+                  <input
+                    type="text"
+                    value={editName}
+                    onChange={(e) => setEditName(e.target.value)}
+                    className="w-full bg-white/50 dark:bg-black/20 border border-gray-200 dark:border-white/10 text-gray-900 dark:text-white rounded-xl py-2 px-3 text-sm outline-none focus:ring-2 focus:ring-brand-neon"
+                    placeholder="Your Full Name"
+                  />
+                </div>
+
+                <div>
+                  <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider block mb-1">Username</label>
+                  <input
+                    type="text"
+                    value={editUsername}
+                    onChange={(e) => setEditUsername(e.target.value)}
+                    className="w-full bg-white/50 dark:bg-black/20 border border-gray-200 dark:border-white/10 text-brand-neon rounded-xl py-2 px-3 text-sm font-bold outline-none focus:ring-2 focus:ring-brand-neon"
+                    placeholder="@username"
+                  />
+                </div>
+
+                <div className="flex gap-2 pt-2">
+                  <button
+                    type="button"
+                    onClick={() => setIsEditingProfile(false)}
+                    className="flex-1 py-2 text-xs font-bold border border-gray-200 dark:border-white/10 text-gray-500 dark:text-white/60 rounded-xl hover:bg-gray-100 dark:hover:bg-white/5"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={isSavingProfile}
+                    className="flex-1 py-2 text-xs font-bold bg-brand-neon text-black rounded-xl hover:bg-white transition-colors disabled:opacity-50"
+                  >
+                    {isSavingProfile ? 'Saving...' : 'Save'}
+                  </button>
+                </div>
+              </form>
+            )}
+
             <div className="mt-4 pt-4 border-t border-gray-200 dark:border-white/10">
               <p className="text-[10px] text-gray-400 uppercase tracking-widest font-bold">Friend Code</p>
               <p className="text-xl font-mono font-bold text-gray-900 dark:text-white tracking-[0.2em]">{profile?.short_id || profile?.id?.substring(0, 7)}</p>
