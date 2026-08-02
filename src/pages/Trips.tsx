@@ -41,7 +41,7 @@ export function Trips() {
     }
 
     // Match friend from friends store with sanitized @ symbols
-    const foundFriend = friends.find(f => {
+    let foundFriend = friends.find(f => {
       const fId = (f.id || '').toLowerCase();
       const fUsername = (f.username || '').replace(/^@/, '').toLowerCase();
       const fFullName = (f.full_name || '').toLowerCase();
@@ -54,6 +54,11 @@ export function Trips() {
         (fFirstName && fFirstName === cleanUserId)
       );
     });
+
+    // Fallback: If stored userId is generic 'user' or 'friend', link to your actual friend
+    if (!foundFriend && (cleanUserId === 'user' || cleanUserId === 'friend') && friends.length > 0) {
+      foundFriend = friends[0];
+    }
 
     if (foundFriend) {
       return {

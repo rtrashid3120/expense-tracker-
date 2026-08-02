@@ -66,11 +66,9 @@ export function InviteToTripModal({ isOpen, onClose, trip }: InviteToTripModalPr
 
   const handleAddUser = async (user: any) => {
     try {
-      // Use the name or ID as the userId in the balance array (depending on how CreateGroupModal does it)
-      // For simplicity, we use their name as the identifier to match existing mock data structure
-      const name = user.name || user.full_name || user.username || 'User';
-      const displayName = name.split(' ')[0]; // use first name
-      await addMemberToTrip(trip.id, { userId: displayName, balance: 0 });
+      // Use exact username or full_name as the identifier
+      const name = user.username || user.full_name || user.name || 'User';
+      await addMemberToTrip(trip.id, { userId: name, balance: 0 });
       setSearchQuery('');
       onClose();
     } catch (err) {
