@@ -15,7 +15,7 @@ export function AddExpenseModal({
   initialCategory?: Category;
   initialTripId?: string;
 }) {
-  const { wallets, activeWalletId, trips, addExpense } = useAppStore();
+  const { wallets, activeWalletId, trips, addExpense, createWallet, createTrip } = useAppStore();
   
   const [amount, setAmount] = useState('');
   const [category, setCategory] = useState<Category>(initialCategory);
@@ -30,6 +30,7 @@ export function AddExpenseModal({
   const [odometer, setOdometer] = useState('');
   const [familyMember, setFamilyMember] = useState('');
   const [claimStatus, setClaimStatus] = useState('None');
+  const [isListening, setIsListening] = useState(false);
   
   const categories: Category[] = ['Personal', 'Groceries', 'Rent', 'Fuel', 'Medical', 'Travel'];
 
@@ -106,13 +107,89 @@ export function AddExpenseModal({
   };
 
   const handleVoiceInput = () => {
-    // Mock voice input
-    alert("Voice input listening... (e.g., 'Added 200 for lunch')");
-    setTimeout(() => {
-      setAmount('200');
-      setCategory('Personal');
-      setNote('Lunch');
-    }, 1500);
+    const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+    if (!SpeechRecognition) {
+      alert("Your browser does not support voice input. Please use Google Chrome or Safari on desktop, or Chrome on Android.");
+      return;
+    }
+
+    const recognition = new SpeechRecognition();
+    recognition.lang = 'en-IN';
+    recognition.interimResults = false;
+    recognition.maxAlternatives = 1;
+
+    recognition.onstart = () => {
+      setIsListening(true);
+      setErrorMsg('');
+    };
+
+    recognition.onresult = (event: any) => {
+      const speechResult = event.results[0][0].transcript.toLowerCase();
+      
+      const matchNumber = speechResult.match(/\d+/);
+      if (matchNumber) {
+        setAmount(new Intl.NumberFormat('en-IN').format(parseInt(matchNumber[0], 10)));
+      }
+      
+      const text = speechResult;
+      if (text.includes('grocery') || text.includes('groceries')) setCategory('Groceries');
+      else if (text.includes('rent')) setCategory('Rent');
+      else if (text.includes('fuel') || text.includes('petrol') || text.includes('gas')) setCategory('Fuel');
+      else if (text.includes('medical') || text.includes('doctor') || text.includes('hospital') || text.includes('pharmacy')) setCategory('Medical');
+      else if (text.includes('travel') || text.includes('trip')) setCategory('Travel');
+      else setCategory('Personal');
+
+      let noteStr = speechResult
+        .replace(/add|spent|paid|for|rupees|rs/g, '')
+        .replace(/\d+/g, '')
+        .trim();
+      
+      if (noteStr) {
+        setNote(noteStr.charAt(0).toUpperCase() + noteStr.slice(1));
+      }
+    };
+
+    recognition.onerror = (event: any) => {
+      setErrorMsg("Voice recognition error: " + event.error);
+      setIsListening(false);
+    };
+
+    recognition.onend = () => {
+      setIsListening(false);
+    };
+
+    recognition.start();
+  };
+
+  const handleCreateWallet = async () => {
+    const name = window.prompt("Enter new wallet name:");
+    if (!name) return;
+    const budgetStr = window.prompt("Enter initial budget for wallet:", "0");
+    const budget = budgetStr ? parseFloat(budgetStr) : 0;
+    try {
+      await createWallet(name, budget);
+      // The new wallet will become the active one automatically in store
+    } catch (e: any) {
+      alert(e.message || "Failed to create wallet");
+    }
+  };
+
+  const handleCreateTrip = async () => {
+    const name = window.prompt("Enter new trip name:");
+    if (!name) return;
+    const budgetStr = window.prompt("Enter total budget for trip:", "1000");
+    const budget = budgetStr ? parseFloat(budgetStr) : 0;
+    try {
+      await createTrip({
+        name,
+        totalBudget: budget,
+        groupSize: 1,
+        image: 'https://images.unsplash.com/photo-1503220317375-aaad61436b1b?w=800&q=80',
+        balances: []
+      });
+    } catch (e: any) {
+      alert(e.message || "Failed to create trip");
+    }
   };
 
   return (
@@ -136,7 +213,7 @@ export function AddExpenseModal({
             <div className="flex justify-between items-center mb-8">
               <h2 className="text-2xl font-black text-gray-900 dark:text-white tracking-tight">Add Expense</h2>
               <div className="flex gap-3">
-                <button type="button" onClick={handleVoiceInput} className="p-3 bg-blue-50 dark:bg-brand-neon/10 border border-blue-200 dark:border-brand-neon/20 rounded-full text-blue-600 dark:text-brand-neon hover:bg-blue-100 dark:hover:bg-brand-neon/20 transition-colors">
+                <button type="button" onClick={handleVoiceInput} className={`p-3 border rounded-full transition-colors ${isListening ? 'bg-red-50 dark:bg-red-500/20 border-red-200 dark:border-red-500/30 text-red-600 dark:text-red-400 animate-pulse' : 'bg-blue-50 dark:bg-brand-neon/10 border-blue-200 dark:border-brand-neon/20 text-blue-600 dark:text-brand-neon hover:bg-blue-100 dark:hover:bg-brand-neon/20'}`}>
                   <FiMic size={20} />
                 </button>
                 <button onClick={onClose} className="p-3 bg-gray-100 dark:bg-white/5 border border-gray-200 dark:border-white/10 rounded-full text-gray-500 dark:text-white/50 hover:bg-gray-200 dark:hover:bg-white/10 hover:text-gray-900 dark:hover:text-white transition-colors">
@@ -146,18 +223,24 @@ export function AddExpenseModal({
             </div>
 
             <form onSubmit={handleSubmit} className="flex flex-col gap-6 flex-1 pb-10">
-              {wallets.length > 0 && category !== 'Travel' && (
+              {category !== 'Travel' && (
                 <div>
                   <label className="text-sm font-bold text-gray-500 dark:text-white/60 block mb-2 uppercase tracking-wider">Source Wallet</label>
-                  <select 
-                    value={walletId} 
-                    onChange={(e) => setWalletId(e.target.value)}
-                    className="w-full bg-gray-50 dark:bg-white/5 border border-gray-200 dark:border-white/10 rounded-2xl py-4 px-4 font-bold text-gray-900 dark:text-white outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-brand-neon transition-all appearance-none"
-                  >
-                    {wallets.map(w => (
-                      <option key={w.id} value={w.id} className="bg-white dark:bg-dark-surface">{w.name} (₹{w.balance.toLocaleString()})</option>
-                    ))}
-                  </select>
+                  <div className="flex gap-2">
+                    <select 
+                      value={walletId} 
+                      onChange={(e) => setWalletId(e.target.value)}
+                      className="flex-1 bg-gray-50 dark:bg-white/5 border border-gray-200 dark:border-white/10 rounded-2xl py-4 px-4 font-bold text-gray-900 dark:text-white outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-brand-neon transition-all appearance-none"
+                    >
+                      {wallets.length === 0 && <option value="" className="bg-white dark:bg-dark-surface">No wallets available</option>}
+                      {wallets.map(w => (
+                        <option key={w.id} value={w.id} className="bg-white dark:bg-dark-surface">{w.name} (₹{w.balance.toLocaleString()})</option>
+                      ))}
+                    </select>
+                    <button type="button" onClick={handleCreateWallet} className="px-4 bg-gray-50 dark:bg-white/5 border border-gray-200 dark:border-white/10 rounded-2xl flex items-center justify-center text-gray-500 dark:text-white/60 hover:bg-gray-100 dark:hover:bg-white/10 hover:text-gray-900 dark:hover:text-white transition-colors">
+                      <FiPlus size={24} />
+                    </button>
+                  </div>
                 </div>
               )}
 
@@ -241,16 +324,21 @@ export function AddExpenseModal({
                   <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }} className="space-y-4">
                     <div>
                       <label className="text-sm font-bold text-gray-500 dark:text-white/60 block mb-2">Select Trip</label>
-                      <select 
-                        value={tripId} 
-                        onChange={(e) => setTripId(e.target.value)}
-                        className="w-full bg-gray-50 dark:bg-white/5 border border-gray-200 dark:border-white/10 rounded-2xl py-3 px-4 font-bold text-gray-900 dark:text-white outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-brand-neon appearance-none"
-                      >
-                        {trips.length === 0 && <option value="" className="bg-white dark:bg-dark-surface">No trips available</option>}
-                        {trips.map(t => (
-                          <option key={t.id} value={t.id} className="bg-white dark:bg-dark-surface">{t.name}</option>
-                        ))}
-                      </select>
+                      <div className="flex gap-2">
+                        <select 
+                          value={tripId} 
+                          onChange={(e) => setTripId(e.target.value)}
+                          className="flex-1 bg-gray-50 dark:bg-white/5 border border-gray-200 dark:border-white/10 rounded-2xl py-3 px-4 font-bold text-gray-900 dark:text-white outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-brand-neon appearance-none"
+                        >
+                          {trips.length === 0 && <option value="" className="bg-white dark:bg-dark-surface">No trips available</option>}
+                          {trips.map(t => (
+                            <option key={t.id} value={t.id} className="bg-white dark:bg-dark-surface">{t.name}</option>
+                          ))}
+                        </select>
+                        <button type="button" onClick={handleCreateTrip} className="px-4 bg-gray-50 dark:bg-white/5 border border-gray-200 dark:border-white/10 rounded-2xl flex items-center justify-center text-gray-500 dark:text-white/60 hover:bg-gray-100 dark:hover:bg-white/10 hover:text-gray-900 dark:hover:text-white transition-colors">
+                          <FiPlus size={24} />
+                        </button>
+                      </div>
                     </div>
                   </motion.div>
                 )}
