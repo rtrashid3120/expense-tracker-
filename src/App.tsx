@@ -1,4 +1,5 @@
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect, Component } from 'react';
+import type { ErrorInfo } from 'react';
 import { HashRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AnimatePresence, motion } from 'framer-motion';
 import { Dashboard } from './pages/Dashboard';
@@ -11,6 +12,32 @@ import { Sidebar } from './components/Sidebar';
 import { AddExpenseModal } from './components/AddExpenseModal';
 import { useAppStore } from './store';
 import { FiLogOut } from 'react-icons/fi';
+
+class ErrorBoundary extends Component<{children: React.ReactNode}, {hasError: boolean, error: Error | null}> {
+  constructor(props: {children: React.ReactNode}) {
+    super(props);
+    this.state = { hasError: false, error: null };
+  }
+  static getDerivedStateFromError(error: Error) {
+    return { hasError: true, error };
+  }
+  componentDidCatch(error: Error, errorInfo: ErrorInfo) {
+    console.error("ErrorBoundary caught an error", error, errorInfo);
+  }
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div className="p-8 text-red-500 bg-red-50 h-screen w-full flex flex-col items-center justify-center">
+          <h1 className="text-2xl font-bold mb-4">Something went wrong.</h1>
+          <pre className="bg-white p-4 rounded shadow max-w-2xl overflow-auto text-sm">{this.state.error?.toString()}</pre>
+          <pre className="bg-white p-4 rounded shadow max-w-2xl overflow-auto text-xs mt-4">{this.state.error?.stack}</pre>
+          <button onClick={() => window.location.reload()} className="mt-6 bg-red-500 text-white px-4 py-2 rounded">Reload Page</button>
+        </div>
+      );
+    }
+    return this.props.children;
+  }
+}
 
 // ... (Layout and PageTransition components remain exactly the same)
 function Layout({ children, onAddClick }: { children: React.ReactNode; onAddClick: () => void }) {
@@ -88,19 +115,21 @@ export default function App() {
   }
 
   return (
-    <HashRouter>
-      <Layout onAddClick={() => setIsAddOpen(true)}>
-        <AnimatePresence mode="wait">
-          <Routes>
-            <Route path="/" element={<PageTransition><Dashboard /></PageTransition>} />
-            <Route path="/trips" element={<PageTransition><Trips /></PageTransition>} />
-            <Route path="/expenses" element={<PageTransition><Reports /></PageTransition>} />
-            <Route path="/family" element={<PageTransition><Family /></PageTransition>} />
-            <Route path="*" element={<Navigate to="/" replace />} />
-          </Routes>
-        </AnimatePresence>
-      </Layout>
-      <AddExpenseModal isOpen={isAddOpen} onClose={() => setIsAddOpen(false)} />
-    </HashRouter>
+    <ErrorBoundary>
+      <HashRouter>
+        <Layout onAddClick={() => setIsAddOpen(true)}>
+          <AnimatePresence mode="wait">
+            <Routes>
+              <Route path="/" element={<PageTransition><Dashboard /></PageTransition>} />
+              <Route path="/trips" element={<PageTransition><Trips /></PageTransition>} />
+              <Route path="/expenses" element={<PageTransition><Reports /></PageTransition>} />
+              <Route path="/family" element={<PageTransition><Family /></PageTransition>} />
+              <Route path="*" element={<Navigate to="/" replace />} />
+            </Routes>
+          </AnimatePresence>
+        </Layout>
+        <AddExpenseModal isOpen={isAddOpen} onClose={() => setIsAddOpen(false)} />
+      </HashRouter>
+    </ErrorBoundary>
   );
 }
