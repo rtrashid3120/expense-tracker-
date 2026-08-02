@@ -45,6 +45,9 @@ export function Login() {
         provider: 'google',
         options: {
           redirectTo: window.location.origin + '/expense-tracker-/',
+          queryParams: {
+            prompt: 'select_account',
+          }
         }
       });
       if (error) throw error;
