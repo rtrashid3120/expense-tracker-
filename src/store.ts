@@ -3,7 +3,7 @@ import { api } from './api';
 import { supabase } from './lib/supabase';
 import type { User } from '@supabase/supabase-js';
 
-export type Category = 'Groceries' | 'Transport' | 'Rent' | 'Dining' | 'Shopping' | 'Personal' | 'Medical' | 'Fuel' | 'Travel';
+export type Category = 'Groceries' | 'Transport' | 'Rent' | 'Dining' | 'Shopping' | 'Personal' | 'Medical' | 'Fuel' | 'Travel' | (string & {});
 
 export interface BaseExpense {
   id: string;

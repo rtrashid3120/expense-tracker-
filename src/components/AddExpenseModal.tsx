@@ -15,7 +15,7 @@ export function AddExpenseModal({
   initialCategory?: Category;
   initialTripId?: string;
 }) {
-  const { wallets, activeWalletId, trips, addExpense, createWallet, createTrip } = useAppStore();
+  const { wallets, activeWalletId, trips, addExpense, createTrip } = useAppStore();
   
   const [amount, setAmount] = useState('');
   const [category, setCategory] = useState<Category>(initialCategory);
@@ -32,7 +32,47 @@ export function AddExpenseModal({
   const [claimStatus, setClaimStatus] = useState('None');
   const [isListening, setIsListening] = useState(false);
   
-  const categories: Category[] = ['Personal', 'Groceries', 'Rent', 'Fuel', 'Medical', 'Travel'];
+  // Category Domains state with persistence
+  const defaultCategories: string[] = ['Personal', 'Groceries', 'Rent', 'Fuel', 'Medical', 'Travel'];
+  const [customCategories, setCustomCategories] = useState<string[]>(() => {
+    try {
+      const saved = localStorage.getItem('custom_category_domains');
+      return saved ? JSON.parse(saved) : [];
+    } catch (e) {
+      return [];
+    }
+  });
+
+  const categories = [...defaultCategories, ...customCategories];
+
+  const handleSwitchWallet = () => {
+    if (wallets.length <= 1) return;
+    const currentIndex = wallets.findIndex(w => w.id === walletId);
+    const nextIndex = (currentIndex + 1) % wallets.length;
+    setWalletId(wallets[nextIndex].id);
+  };
+
+  const handleAddCustomCategory = () => {
+    const name = window.prompt("Enter new Category Domain name (e.g. Chappals, Hotel, Food, Bike, Household):");
+    if (!name || !name.trim()) return;
+    
+    const formattedName = name.trim();
+    const categoryName = formattedName.charAt(0).toUpperCase() + formattedName.slice(1);
+
+    if (!categories.some(c => c.toLowerCase() === categoryName.toLowerCase())) {
+      const updated = [...customCategories, categoryName];
+      setCustomCategories(updated);
+      try {
+        localStorage.setItem('custom_category_domains', JSON.stringify(updated));
+      } catch (e) {
+        console.error(e);
+      }
+      setCategory(categoryName as any);
+    } else {
+      const existing = categories.find(c => c.toLowerCase() === categoryName.toLowerCase());
+      if (existing) setCategory(existing as any);
+    }
+  };
 
   // Set default wallet and category when opened
   useEffect(() => {
@@ -167,18 +207,7 @@ export function AddExpenseModal({
     recognition.start();
   };
 
-  const handleCreateWallet = async () => {
-    const name = window.prompt("Enter new wallet name:");
-    if (!name) return;
-    const budgetStr = window.prompt("Enter initial budget for wallet:", "0");
-    const budget = budgetStr ? parseFloat(budgetStr) : 0;
-    try {
-      await createWallet(name, budget);
-      // The new wallet will become the active one automatically in store
-    } catch (e: any) {
-      alert(e.message || "Failed to create wallet");
-    }
-  };
+
 
   const handleCreateTrip = async () => {
     const name = window.prompt("Enter new trip name:");
@@ -252,7 +281,7 @@ export function AddExpenseModal({
                           <option key={w.id} value={w.id} className="bg-white dark:bg-dark-surface">{w.name} (₹{w.balance.toLocaleString()})</option>
                         ))}
                       </select>
-                      <button type="button" onClick={handleCreateWallet} className="px-4 bg-gray-50 dark:bg-white/5 border border-gray-200 dark:border-white/10 rounded-2xl flex items-center justify-center text-gray-500 dark:text-white/60 hover:bg-gray-100 dark:hover:bg-white/10 hover:text-gray-900 dark:hover:text-white transition-colors">
+                      <button type="button" onClick={handleSwitchWallet} className="px-4 bg-gray-50 dark:bg-white/5 border border-gray-200 dark:border-white/10 rounded-2xl flex items-center justify-center text-gray-500 dark:text-white/60 hover:bg-gray-100 dark:hover:bg-white/10 hover:text-gray-900 dark:hover:text-white transition-colors" title="Switch between created wallets">
                         <FiPlus size={24} />
                       </button>
                     </div>
@@ -283,7 +312,7 @@ export function AddExpenseModal({
                     <button
                       key={cat}
                       type="button"
-                      onClick={() => setCategory(cat)}
+                      onClick={() => setCategory(cat as any)}
                       className={`px-5 py-3 rounded-2xl whitespace-nowrap font-bold transition-all border ${
                         category === cat 
                           ? 'bg-blue-50 dark:bg-brand-neon/20 border-blue-600 dark:border-brand-neon text-blue-700 dark:text-brand-neon shadow-sm dark:shadow-[0_0_15px_rgba(0,240,255,0.3)]' 
@@ -293,6 +322,14 @@ export function AddExpenseModal({
                       {cat}
                     </button>
                   ))}
+                  <button
+                    type="button"
+                    onClick={handleAddCustomCategory}
+                    className="px-4 py-3 bg-gray-50 dark:bg-white/5 border border-dashed border-gray-300 dark:border-white/20 rounded-2xl flex items-center justify-center text-gray-500 dark:text-white/60 hover:bg-gray-100 dark:hover:bg-white/10 hover:text-gray-900 dark:hover:text-white transition-colors shrink-0"
+                    title="Add Custom Category Domain"
+                  >
+                    <FiPlus size={20} />
+                  </button>
                 </div>
               </div>
 
