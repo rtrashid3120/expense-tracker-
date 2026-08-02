@@ -40,6 +40,16 @@ export function Trips() {
     return expenses.filter(e => (e as any).tripId === selectedTrip.id);
   }, [expenses, selectedTrip]);
 
+  // Calculate real-time spent amount directly from tripExpenses
+  const currentSpent = useMemo(() => {
+    return tripExpenses.reduce((sum, e) => sum + e.amount, 0);
+  }, [tripExpenses]);
+
+  const remainingBudget = useMemo(() => {
+    if (!selectedTrip) return 0;
+    return selectedTrip.totalBudget - currentSpent;
+  }, [selectedTrip, currentSpent]);
+
   // Generate raw debts dynamically from the selected trip's balances
   const rawDebts = useMemo(() => {
     if (!selectedTrip) return [];
@@ -80,15 +90,23 @@ export function Trips() {
       <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} className="p-4 md:p-6 pb-24 max-w-5xl mx-auto">
         <button onClick={() => setSelectedTrip(null)} className="text-blue-600 dark:text-brand-neon font-bold mb-6 hover:text-blue-800 dark:hover:text-white transition-colors">← Back to Trips</button>
         
-        <h1 className="text-3xl md:text-5xl font-black text-gray-900 dark:text-white mb-2 tracking-tight">{selectedTrip.name}</h1>
-        <div className="flex justify-between items-end mb-8">
-          <div>
-            <p className="text-gray-500 dark:text-white/60">Total Budget: ₹{selectedTrip.totalBudget.toLocaleString()}</p>
-            <p className="text-blue-600 dark:text-brand-neon font-bold mt-1 drop-shadow-sm dark:drop-shadow-[0_0_8px_rgba(0,240,255,0.5)]">Spent: ₹{selectedTrip.spent.toLocaleString()}</p>
+        <h1 className="text-3xl md:text-5xl font-black text-gray-900 dark:text-white mb-6 tracking-tight">{selectedTrip.name}</h1>
+        
+        {/* Financial Overview Cards */}
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-8">
+          <div className="bg-white/60 dark:bg-white/5 backdrop-blur-xl border border-gray-200 dark:border-white/10 p-5 rounded-2xl shadow-sm">
+            <p className="text-xs font-bold text-gray-500 dark:text-white/50 uppercase tracking-wider mb-1">Total Budget</p>
+            <p className="text-2xl md:text-3xl font-black text-gray-900 dark:text-white">₹{selectedTrip.totalBudget.toLocaleString('en-IN')}</p>
           </div>
-          <div className="text-right">
-            <p className="text-sm text-gray-400 dark:text-white/50 uppercase tracking-widest font-bold">Remaining</p>
-            <p className="text-2xl md:text-3xl font-black text-gray-900 dark:text-white">₹{(selectedTrip.totalBudget - selectedTrip.spent).toLocaleString()}</p>
+
+          <div className="bg-white/60 dark:bg-white/5 backdrop-blur-xl border border-gray-200 dark:border-white/10 p-5 rounded-2xl shadow-sm">
+            <p className="text-xs font-bold text-brand-neon uppercase tracking-wider mb-1">Total Spent</p>
+            <p className="text-2xl md:text-3xl font-black text-blue-600 dark:text-brand-neon">₹{currentSpent.toLocaleString('en-IN')}</p>
+          </div>
+
+          <div className={`backdrop-blur-xl border p-5 rounded-2xl shadow-sm ${remainingBudget >= 0 ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-600 dark:text-emerald-400' : 'bg-red-500/10 border-red-500/30 text-red-600 dark:text-red-400'}`}>
+            <p className="text-xs font-bold uppercase tracking-wider mb-1">Remaining Balance</p>
+            <p className="text-2xl md:text-3xl font-black">₹{remainingBudget.toLocaleString('en-IN')}</p>
           </div>
         </div>
         
@@ -209,34 +227,42 @@ export function Trips() {
       <h1 className="text-3xl font-black text-gray-900 dark:text-white mb-8 mt-4 tracking-tight">Groups & Trips</h1>
       
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        {trips.map((trip, i) => (
-          <motion.div 
-            key={trip.id}
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: i * 0.1 }}
-            whileHover={{ scale: 1.02, y: -5 }}
-            onClick={() => setSelectedTrip(trip)}
-            className="p-8 bg-white/60 dark:bg-white/5 backdrop-blur-xl border border-gray-200 dark:border-white/10 rounded-[32px] shadow-md dark:shadow-[0_8px_32px_rgba(0,0,0,0.3)] cursor-pointer relative overflow-hidden group"
-          >
-            {/* Colorful Glow Blob */}
-            <div className={`absolute -right-10 -top-10 w-48 h-48 rounded-full blur-3xl opacity-20 group-hover:opacity-40 transition-opacity ${i % 2 === 0 ? 'bg-blue-500 dark:bg-brand-neon' : 'bg-pink-500 dark:bg-brand-fuchsia'}`} />
-            
-            <h2 className="text-2xl font-black text-gray-900 dark:text-white mb-4 relative z-10">{trip.name}</h2>
-            <div className="flex justify-between items-end relative z-10">
-              <div className="bg-white/80 dark:bg-black/30 px-3 py-1.5 rounded-lg border border-gray-200 dark:border-white/5">
-                <p className="text-sm font-bold text-gray-700 dark:text-white/80">₹{trip.totalBudget.toLocaleString()}</p>
+        {trips.map((trip, i) => {
+          const tSpent = expenses.filter(e => (e as any).tripId === trip.id).reduce((sum, e) => sum + e.amount, 0);
+          const tRemaining = trip.totalBudget - tSpent;
+
+          return (
+            <motion.div 
+              key={trip.id}
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: i * 0.1 }}
+              whileHover={{ scale: 1.02, y: -5 }}
+              onClick={() => setSelectedTrip(trip)}
+              className="p-8 bg-white/60 dark:bg-white/5 backdrop-blur-xl border border-gray-200 dark:border-white/10 rounded-[32px] shadow-md dark:shadow-[0_8px_32px_rgba(0,0,0,0.3)] cursor-pointer relative overflow-hidden group"
+            >
+              {/* Colorful Glow Blob */}
+              <div className={`absolute -right-10 -top-10 w-48 h-48 rounded-full blur-3xl opacity-20 group-hover:opacity-40 transition-opacity ${i % 2 === 0 ? 'bg-blue-500 dark:bg-brand-neon' : 'bg-pink-500 dark:bg-brand-fuchsia'}`} />
+              
+              <h2 className="text-2xl font-black text-gray-900 dark:text-white mb-4 relative z-10">{trip.name}</h2>
+              <div className="flex justify-between items-end relative z-10">
+                <div className="bg-white/80 dark:bg-black/30 px-3.5 py-2 rounded-xl border border-gray-200 dark:border-white/10 space-y-0.5">
+                  <p className="text-xs text-gray-500 dark:text-white/60 font-semibold">Budget: ₹{trip.totalBudget.toLocaleString('en-IN')}</p>
+                  <p className="text-sm font-bold text-gray-900 dark:text-white">
+                    Spent: <span className="text-brand-neon">₹{tSpent.toLocaleString('en-IN')}</span> | Rem: <span className={tRemaining >= 0 ? 'text-emerald-500' : 'text-red-500'}>₹{tRemaining.toLocaleString('en-IN')}</span>
+                  </p>
+                </div>
+                <div className="flex -space-x-3">
+                  {trip.balances.map((m, idx) => (
+                    <div key={m.userId} className="w-10 h-10 rounded-full bg-gray-100 dark:bg-dark-surface text-blue-600 dark:text-brand-neon flex items-center justify-center text-sm font-black border-2 border-white dark:border-white/10 z-10 shadow-sm dark:shadow-[0_0_10px_rgba(0,0,0,0.5)]" style={{ zIndex: 10 - idx }}>
+                      {m.userId.charAt(0)}
+                    </div>
+                  ))}
+                </div>
               </div>
-              <div className="flex -space-x-3">
-                {trip.balances.map((m, idx) => (
-                  <div key={m.userId} className="w-10 h-10 rounded-full bg-gray-100 dark:bg-dark-surface text-blue-600 dark:text-brand-neon flex items-center justify-center text-sm font-black border-2 border-white dark:border-white/10 z-10 shadow-sm dark:shadow-[0_0_10px_rgba(0,0,0,0.5)]" style={{ zIndex: 10 - idx }}>
-                    {m.userId.charAt(0)}
-                  </div>
-                ))}
-              </div>
-            </div>
-          </motion.div>
-        ))}
+            </motion.div>
+          );
+        })}
       </div>
       
       <button 
