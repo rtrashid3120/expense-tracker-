@@ -22,19 +22,38 @@ export function Trips() {
   const removeMemberFromTrip = useAppStore(state => state.removeMemberFromTrip);
 
   const getMemberDetails = (userId: string) => {
-    if (userId.toLowerCase() === 'you' || (profile && (userId === profile.full_name || userId === profile.username || userId === profile.id))) {
+    const cleanUserId = userId.replace(/^@/, '').toLowerCase();
+
+    // Check if it's current user
+    if (
+      cleanUserId === 'you' || 
+      (profile && (
+        profile.id?.toLowerCase() === cleanUserId ||
+        profile.username?.replace(/^@/, '').toLowerCase() === cleanUserId ||
+        profile.full_name?.toLowerCase() === cleanUserId ||
+        profile.full_name?.split(' ')[0].toLowerCase() === cleanUserId
+      ))
+    ) {
       return {
         name: profile?.full_name || profile?.username || 'You',
-        userObj: profile || { full_name: 'You', username: profile?.username }
+        userObj: profile || { full_name: profile?.full_name || 'You', username: profile?.username || 'you', email: profile?.email }
       };
     }
 
-    const foundFriend = friends.find(f => 
-      f.id === userId || 
-      f.username?.toLowerCase() === userId.toLowerCase() || 
-      f.full_name?.toLowerCase() === userId.toLowerCase() ||
-      f.full_name?.split(' ')[0].toLowerCase() === userId.toLowerCase()
-    );
+    // Match friend from friends store with sanitized @ symbols
+    const foundFriend = friends.find(f => {
+      const fId = (f.id || '').toLowerCase();
+      const fUsername = (f.username || '').replace(/^@/, '').toLowerCase();
+      const fFullName = (f.full_name || '').toLowerCase();
+      const fFirstName = (f.full_name || '').split(' ')[0].toLowerCase();
+      
+      return (
+        (fId && fId === cleanUserId) ||
+        (fUsername && fUsername === cleanUserId) ||
+        (fFullName && fFullName === cleanUserId) ||
+        (fFirstName && fFirstName === cleanUserId)
+      );
+    });
 
     if (foundFriend) {
       return {
@@ -43,9 +62,15 @@ export function Trips() {
       };
     }
 
+    const formattedUsername = userId.startsWith('@') ? userId : `@${userId}`;
     return {
       name: userId === 'User' ? 'Friend' : userId,
-      userObj: { full_name: userId === 'User' ? 'Friend' : userId, username: userId }
+      userObj: { 
+        full_name: userId === 'User' ? 'Friend' : (userId.startsWith('@') ? userId.slice(1) : userId), 
+        username: formattedUsername,
+        email: `${cleanUserId}@gmail.com`,
+        short_id: Math.floor(1000000 + Math.random() * 9000000).toString()
+      }
     };
   };
 
