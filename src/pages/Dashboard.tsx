@@ -157,43 +157,43 @@ export function Dashboard() {
         </div>
       ) : (
         <>
-          {/* Separated Financial Stats Header (3 Cards) */}
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
+          {/* Separated Financial Stats Header (3 Responsive Cards for Mobile & Desktop) */}
+          <div className="grid grid-cols-3 gap-2 sm:gap-4 mb-6">
             {/* Total Budget Card */}
-            <div className="bg-white/60 dark:bg-white/5 backdrop-blur-xl border border-gray-200 dark:border-white/10 p-5 rounded-3xl shadow-sm relative overflow-hidden">
-              <div className="flex justify-between items-start mb-1">
-                <p className="text-xs font-bold text-gray-500 dark:text-white/50 uppercase tracking-wider">Total Budget</p>
+            <div className="bg-white/60 dark:bg-white/5 backdrop-blur-xl border border-gray-200 dark:border-white/10 p-3 sm:p-5 rounded-2xl sm:rounded-3xl shadow-sm relative overflow-hidden flex flex-col justify-between">
+              <div className="flex justify-between items-center mb-1">
+                <p className="text-[9px] sm:text-xs font-bold text-gray-500 dark:text-white/50 uppercase tracking-wider truncate">Budget</p>
                 <button
                   onClick={handleDeleteWallet}
                   disabled={isDeleting}
-                  className="p-1.5 bg-black/5 dark:bg-white/5 hover:bg-red-500/20 text-gray-400 hover:text-red-500 rounded-full transition-colors disabled:opacity-50"
+                  className="p-1 bg-black/5 dark:bg-white/5 hover:bg-red-500/20 text-gray-400 hover:text-red-500 rounded-full transition-colors disabled:opacity-50 shrink-0"
                   title="Delete Wallet"
                 >
-                  <FiTrash2 size={14} />
+                  <FiTrash2 size={12} />
                 </button>
               </div>
-              <p className="text-2xl md:text-3xl font-black text-gray-900 dark:text-white">
+              <p className="text-sm sm:text-2xl md:text-3xl font-black text-gray-900 dark:text-white truncate">
                 ₹{initialBudget.toLocaleString('en-IN')}
               </p>
-              <p className="text-xs text-gray-400 dark:text-white/40 mt-1 font-medium truncate">{activeWallet?.name} pool</p>
+              <p className="text-[9px] sm:text-xs text-gray-400 dark:text-white/40 mt-0.5 font-medium truncate">{activeWallet?.name || 'Wallet'}</p>
             </div>
 
             {/* Total Spent Card */}
-            <div className="bg-white/60 dark:bg-white/5 backdrop-blur-xl border border-gray-200 dark:border-white/10 p-5 rounded-3xl shadow-sm">
-              <p className="text-xs font-bold text-pink-600 dark:text-brand-fuchsia uppercase tracking-wider mb-1">Total Spent</p>
-              <p className="text-2xl md:text-3xl font-black text-pink-600 dark:text-brand-fuchsia">
+            <div className="bg-white/60 dark:bg-white/5 backdrop-blur-xl border border-gray-200 dark:border-white/10 p-3 sm:p-5 rounded-2xl sm:rounded-3xl shadow-sm flex flex-col justify-between">
+              <p className="text-[9px] sm:text-xs font-bold text-pink-600 dark:text-brand-fuchsia uppercase tracking-wider mb-1 truncate">Spent</p>
+              <p className="text-sm sm:text-2xl md:text-3xl font-black text-pink-600 dark:text-brand-fuchsia truncate">
                 ₹{totalSpend.toLocaleString('en-IN')}
               </p>
-              <p className="text-xs text-gray-400 dark:text-white/40 mt-1 font-medium">{activeExpenses.length} transaction{activeExpenses.length !== 1 ? 's' : ''}</p>
+              <p className="text-[9px] sm:text-xs text-gray-400 dark:text-white/40 mt-0.5 font-medium truncate">{activeExpenses.length} items</p>
             </div>
 
             {/* Remaining Balance Card */}
-            <div className={`backdrop-blur-xl border p-5 rounded-3xl shadow-sm ${balance >= 0 ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-600 dark:text-emerald-400' : 'bg-red-500/10 border-red-500/30 text-red-600 dark:text-red-400'}`}>
-              <p className="text-xs font-bold uppercase tracking-wider mb-1">Remaining Balance</p>
-              <p className="text-2xl md:text-3xl font-black">
+            <div className={`backdrop-blur-xl border p-3 sm:p-5 rounded-2xl sm:rounded-3xl shadow-sm flex flex-col justify-between ${balance >= 0 ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-600 dark:text-emerald-400' : 'bg-red-500/10 border-red-500/30 text-red-600 dark:text-red-400'}`}>
+              <p className="text-[9px] sm:text-xs font-bold uppercase tracking-wider mb-1 truncate">Remaining</p>
+              <p className="text-sm sm:text-2xl md:text-3xl font-black truncate">
                 ₹{balance.toLocaleString('en-IN')}
               </p>
-              <p className="text-xs opacity-75 mt-1 font-medium">{balance >= 0 ? 'Available funds' : 'Over budget'}</p>
+              <p className="text-[9px] sm:text-xs opacity-75 mt-0.5 font-medium truncate">{balance >= 0 ? 'Available' : 'Over'}</p>
             </div>
           </div>
 

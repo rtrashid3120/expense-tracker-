@@ -148,21 +148,21 @@ export function Trips() {
         
         <h1 className="text-3xl md:text-5xl font-black text-gray-900 dark:text-white mb-6 tracking-tight">{selectedTrip.name}</h1>
         
-        {/* Financial Overview Cards */}
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-8">
-          <div className="bg-white/60 dark:bg-white/5 backdrop-blur-xl border border-gray-200 dark:border-white/10 p-5 rounded-2xl shadow-sm">
-            <p className="text-xs font-bold text-gray-500 dark:text-white/50 uppercase tracking-wider mb-1">Total Budget</p>
-            <p className="text-2xl md:text-3xl font-black text-gray-900 dark:text-white">₹{selectedTrip.totalBudget.toLocaleString('en-IN')}</p>
+        {/* Financial Overview Cards (3 Responsive Cards) */}
+        <div className="grid grid-cols-3 gap-2 sm:gap-4 mb-8">
+          <div className="bg-white/60 dark:bg-white/5 backdrop-blur-xl border border-gray-200 dark:border-white/10 p-3 sm:p-5 rounded-2xl shadow-sm flex flex-col justify-between">
+            <p className="text-[9px] sm:text-xs font-bold text-gray-500 dark:text-white/50 uppercase tracking-wider mb-1 truncate">Budget</p>
+            <p className="text-sm sm:text-2xl md:text-3xl font-black text-gray-900 dark:text-white truncate">₹{selectedTrip.totalBudget.toLocaleString('en-IN')}</p>
           </div>
 
-          <div className="bg-white/60 dark:bg-white/5 backdrop-blur-xl border border-gray-200 dark:border-white/10 p-5 rounded-2xl shadow-sm">
-            <p className="text-xs font-bold text-brand-neon uppercase tracking-wider mb-1">Total Spent</p>
-            <p className="text-2xl md:text-3xl font-black text-blue-600 dark:text-brand-neon">₹{currentSpent.toLocaleString('en-IN')}</p>
+          <div className="bg-white/60 dark:bg-white/5 backdrop-blur-xl border border-gray-200 dark:border-white/10 p-3 sm:p-5 rounded-2xl shadow-sm flex flex-col justify-between">
+            <p className="text-[9px] sm:text-xs font-bold text-brand-neon uppercase tracking-wider mb-1 truncate">Spent</p>
+            <p className="text-sm sm:text-2xl md:text-3xl font-black text-blue-600 dark:text-brand-neon truncate">₹{currentSpent.toLocaleString('en-IN')}</p>
           </div>
 
-          <div className={`backdrop-blur-xl border p-5 rounded-2xl shadow-sm ${remainingBudget >= 0 ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-600 dark:text-emerald-400' : 'bg-red-500/10 border-red-500/30 text-red-600 dark:text-red-400'}`}>
-            <p className="text-xs font-bold uppercase tracking-wider mb-1">Remaining Balance</p>
-            <p className="text-2xl md:text-3xl font-black">₹{remainingBudget.toLocaleString('en-IN')}</p>
+          <div className={`backdrop-blur-xl border p-3 sm:p-5 rounded-2xl shadow-sm flex flex-col justify-between ${remainingBudget >= 0 ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-600 dark:text-emerald-400' : 'bg-red-500/10 border-red-500/30 text-red-600 dark:text-red-400'}`}>
+            <p className="text-[9px] sm:text-xs font-bold uppercase tracking-wider mb-1 truncate">Remaining</p>
+            <p className="text-sm sm:text-2xl md:text-3xl font-black truncate">₹{remainingBudget.toLocaleString('en-IN')}</p>
           </div>
         </div>
         
