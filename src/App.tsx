@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { HashRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AnimatePresence, motion } from 'framer-motion';
 import { Dashboard } from './pages/Dashboard';
 import { Trips } from './pages/Trips';
@@ -88,7 +88,7 @@ export default function App() {
   }
 
   return (
-    <BrowserRouter>
+    <HashRouter>
       <Layout onAddClick={() => setIsAddOpen(true)}>
         <AnimatePresence mode="wait">
           <Routes>
@@ -101,6 +101,6 @@ export default function App() {
         </AnimatePresence>
       </Layout>
       <AddExpenseModal isOpen={isAddOpen} onClose={() => setIsAddOpen(false)} />
-    </BrowserRouter>
+    </HashRouter>
   );
 }
