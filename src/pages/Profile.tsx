@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useAppStore } from '../store';
 import { FiUser, FiSearch, FiUserPlus, FiCheck, FiAward, FiMap, FiCreditCard, FiUsers } from 'react-icons/fi';
 import { api } from '../api';
+import { UserProfileModal } from '../components/UserProfileModal';
 
 export function Profile() {
   const navigate = useNavigate();
@@ -10,6 +11,7 @@ export function Profile() {
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState<any[]>([]);
   const [isSearching, setIsSearching] = useState(false);
+  const [selectedUser, setSelectedUser] = useState<any>(null);
 
   // Gamification logic
   const hasBudgetMaster = expenses.length > 0 && expenses.reduce((a, b) => a + b.amount, 0) < 50000;
@@ -213,14 +215,14 @@ export function Profile() {
             ) : (
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 {friends.map(friend => (
-                  <div key={friend.id} className="flex items-center gap-3 p-3 bg-white/50 dark:bg-white/5 border border-white/20 rounded-xl">
+                  <div key={friend.id} onClick={() => setSelectedUser(friend)} className="flex items-center gap-3 p-3 bg-white/50 dark:bg-white/5 border border-white/20 rounded-xl cursor-pointer hover:bg-white/80 dark:hover:bg-white/10 transition-colors">
                     <div className="w-12 h-12 bg-gradient-to-tr from-blue-500 to-purple-500 rounded-full p-[2px]">
                       <div className="w-full h-full bg-white dark:bg-gray-900 rounded-full flex items-center justify-center overflow-hidden">
                         {friend.avatar_url ? <img src={friend.avatar_url} className="w-full h-full object-cover" /> : <FiUser className="text-gray-400" />}
                       </div>
                     </div>
                     <div>
-                      <p className="text-sm font-bold text-gray-900 dark:text-white">{friend.full_name || 'User'}</p>
+                      <p className="text-sm font-bold text-gray-900 dark:text-white">{friend.full_name || friend.username || 'User'}</p>
                       <p className="text-xs text-brand-neon">{friend.username}</p>
                     </div>
                   </div>
@@ -231,6 +233,12 @@ export function Profile() {
         </div>
 
       </div>
+
+      <UserProfileModal
+        isOpen={!!selectedUser}
+        onClose={() => setSelectedUser(null)}
+        user={selectedUser}
+      />
     </div>
   );
 }

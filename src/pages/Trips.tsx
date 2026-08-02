@@ -8,6 +8,7 @@ import { CreateGroupModal } from '../components/CreateGroupModal';
 import { InviteToTripModal } from '../components/InviteToTripModal';
 import { AddExpenseModal } from '../components/AddExpenseModal';
 import { FiX } from 'react-icons/fi';
+import { UserProfileModal } from '../components/UserProfileModal';
 
 export function Trips() {
   const trips = useAppStore(state => state.trips);
@@ -16,7 +17,37 @@ export function Trips() {
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [isInviteOpen, setIsInviteOpen] = useState(false);
   const [isAddExpenseOpen, setIsAddExpenseOpen] = useState(false);
+  const { friends, profile } = useAppStore();
+  const [selectedUser, setSelectedUser] = useState<any>(null);
   const removeMemberFromTrip = useAppStore(state => state.removeMemberFromTrip);
+
+  const getMemberDetails = (userId: string) => {
+    if (userId.toLowerCase() === 'you' || (profile && (userId === profile.full_name || userId === profile.username || userId === profile.id))) {
+      return {
+        name: profile?.full_name || profile?.username || 'You',
+        userObj: profile || { full_name: 'You', username: profile?.username }
+      };
+    }
+
+    const foundFriend = friends.find(f => 
+      f.id === userId || 
+      f.username?.toLowerCase() === userId.toLowerCase() || 
+      f.full_name?.toLowerCase() === userId.toLowerCase() ||
+      f.full_name?.split(' ')[0].toLowerCase() === userId.toLowerCase()
+    );
+
+    if (foundFriend) {
+      return {
+        name: foundFriend.full_name || foundFriend.username || userId,
+        userObj: foundFriend
+      };
+    }
+
+    return {
+      name: userId === 'User' ? 'Friend' : userId,
+      userObj: { full_name: userId === 'User' ? 'Friend' : userId, username: userId }
+    };
+  };
 
   const handleRemoveMember = async (userId: string) => {
     if (!selectedTrip) return;
@@ -114,21 +145,37 @@ export function Trips() {
         <div className="mb-8">
           <h2 className="text-sm font-bold text-gray-500 dark:text-white/50 uppercase tracking-wider mb-3">Trip Members</h2>
           <div className="flex flex-wrap gap-2">
-            {selectedTrip.balances.map(member => (
-              <div key={member.userId} className="flex items-center gap-2 bg-white/60 dark:bg-white/5 border border-gray-200 dark:border-white/10 px-3 py-1.5 rounded-full shadow-sm">
-                <div className="w-6 h-6 rounded-full bg-blue-100 dark:bg-brand-neon/20 text-blue-600 dark:text-brand-neon flex items-center justify-center text-xs font-bold">
-                  {member.userId.charAt(0).toUpperCase()}
+            {selectedTrip.balances.map(member => {
+              const details = getMemberDetails(member.userId);
+              return (
+                <div key={member.userId} className="flex items-center gap-2 bg-white/60 dark:bg-white/5 border border-gray-200 dark:border-white/10 px-3 py-1.5 rounded-full shadow-sm">
+                  <div 
+                    onClick={() => setSelectedUser(details.userObj)} 
+                    className="flex items-center gap-2 cursor-pointer hover:opacity-80 transition-opacity"
+                    title="Click to view profile"
+                  >
+                    <div className="w-6 h-6 rounded-full bg-blue-100 dark:bg-brand-neon/20 text-blue-600 dark:text-brand-neon flex items-center justify-center text-xs font-bold overflow-hidden">
+                      {details.userObj?.avatar_url ? (
+                        <img src={details.userObj.avatar_url} className="w-full h-full object-cover" />
+                      ) : (
+                        details.name.charAt(0).toUpperCase()
+                      )}
+                    </div>
+                    <span className="text-sm font-bold text-gray-900 dark:text-white">{details.name}</span>
+                  </div>
+                  <button 
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleRemoveMember(member.userId);
+                    }} 
+                    className="ml-1 w-5 h-5 rounded-full hover:bg-red-100 dark:hover:bg-red-500/20 text-gray-400 hover:text-red-500 flex items-center justify-center transition-colors"
+                    title="Remove from trip"
+                  >
+                    <FiX size={12} />
+                  </button>
                 </div>
-                <span className="text-sm font-bold text-gray-900 dark:text-white">{member.userId}</span>
-                <button 
-                  onClick={() => handleRemoveMember(member.userId)} 
-                  className="ml-1 w-5 h-5 rounded-full hover:bg-red-100 dark:hover:bg-red-500/20 text-gray-400 hover:text-red-500 flex items-center justify-center transition-colors"
-                  title="Remove from trip"
-                >
-                  <FiX size={12} />
-                </button>
-              </div>
-            ))}
+              );
+            })}
           </div>
         </div>
 
@@ -273,6 +320,12 @@ export function Trips() {
       </button>
       
       <CreateGroupModal isOpen={isCreateOpen} onClose={() => setIsCreateOpen(false)} />
+      
+      <UserProfileModal
+        isOpen={!!selectedUser}
+        onClose={() => setSelectedUser(null)}
+        user={selectedUser}
+      />
     </motion.div>
   );
 }
