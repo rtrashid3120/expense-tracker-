@@ -38,7 +38,7 @@ export function UserProfileModal({ isOpen, onClose, user }: UserProfileModalProp
             initial={{ opacity: 0, scale: 0.9, y: 20 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.9, y: 20 }}
-            className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[90%] max-w-md bg-white dark:bg-[#0f1423] border border-gray-200 dark:border-white/10 rounded-3xl p-6 z-[151] shadow-2xl overflow-hidden"
+            className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[92%] max-w-md max-h-[85vh] overflow-y-auto bg-white dark:bg-[#0f1423] border border-gray-200 dark:border-white/10 rounded-3xl p-5 sm:p-6 z-[151] shadow-2xl scrollbar-hide"
           >
             <div className="flex justify-between items-center mb-6">
               <h3 className="text-xs font-bold text-gray-400 dark:text-white/50 uppercase tracking-widest">Friend Profile</h3>

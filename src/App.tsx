@@ -82,7 +82,7 @@ function Layout({ children, onAddClick }: { children: React.ReactNode; onAddClic
           </button>
         )}
 
-        <main className="flex-1 overflow-y-auto p-4 md:p-8 pb-24 md:pb-8 pt-16 md:pt-4">
+        <main className="flex-1 overflow-y-auto p-4 md:p-8 pb-36 md:pb-8 pt-16 md:pt-4">
           {children}
         </main>
         

@@ -251,20 +251,20 @@ export function Profile() {
             </div>
           )}
 
-          {/* Side-By-Side Grid for Find Friends & My Friends (Always 2 Columns Side by Side) */}
-          <div className="grid grid-cols-2 gap-3 md:gap-6 items-start">
+          {/* Responsive Grid for Find Friends & My Friends (1 Column on Mobile, 2 Columns on Tablet/Desktop) */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 md:gap-6 items-start">
             
             {/* Find Friends Card */}
-            <div className="glass-card p-3 md:p-6 flex flex-col min-h-[300px]">
-              <h3 className="text-sm md:text-lg font-bold text-gray-900 dark:text-white mb-3">Find Friends</h3>
+            <div className="glass-card p-4 md:p-6 flex flex-col min-h-[300px]">
+              <h3 className="text-base md:text-lg font-bold text-gray-900 dark:text-white mb-3">Find Friends</h3>
               <div className="relative mb-3">
-                <FiSearch className="absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-400" size={14} />
+                <FiSearch className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400" size={16} />
                 <input
                   type="text"
-                  placeholder="Search..."
+                  placeholder="Search @username, email, or Code..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  className="w-full bg-white/50 dark:bg-black/20 border border-gray-200 dark:border-white/10 text-gray-900 dark:text-white rounded-xl py-2 pl-8 pr-2 focus:ring-2 focus:ring-brand-neon outline-none text-xs"
+                  className="w-full bg-white/50 dark:bg-black/20 border border-gray-200 dark:border-white/10 text-gray-900 dark:text-white rounded-xl py-2.5 pl-10 pr-3 focus:ring-2 focus:ring-brand-neon outline-none text-xs sm:text-sm"
                 />
               </div>
               
