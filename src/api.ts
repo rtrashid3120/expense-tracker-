@@ -215,6 +215,32 @@ export const api = {
     };
   },
 
+  removeMemberFromTrip: async (tripId: string, userId: string): Promise<Trip> => {
+    const trips = await api.getTrips();
+    const trip = trips.find(t => t.id === tripId);
+    if (!trip) throw new Error("Trip not found");
+    
+    const newBalances = trip.balances.filter(b => b.userId !== userId);
+    const newSize = Math.max(1, trip.groupSize - 1);
+
+    const { data, error } = await supabase.from('trips').update({
+      balances: newBalances,
+      group_size: newSize
+    }).eq('id', tripId).select().single();
+
+    if (error) throw error;
+
+    return {
+      id: data.id,
+      name: data.name,
+      totalBudget: Number(data.total_budget),
+      spent: Number(data.spent),
+      groupSize: data.group_size,
+      image: data.image,
+      balances: data.balances || []
+    };
+  },
+
   // Family Pools
   getFamilyPools: async (): Promise<any[]> => {
     const { data, error } = await supabase.from('family_pools').select('*').order('created_at', { ascending: false });

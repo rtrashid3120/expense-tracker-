@@ -101,6 +101,7 @@ interface AppState {
   deleteExpense: (id: string) => Promise<void>;
   createTrip: (tripData: Omit<Trip, 'id' | 'spent'>) => Promise<void>;
   addMemberToTrip: (tripId: string, member: { userId: string, balance: number }) => Promise<void>;
+  removeMemberFromTrip: (tripId: string, userId: string) => Promise<void>;
   createFamilyPool: (name: string, totalBudget: number) => Promise<void>;
   addFamilyMember: (poolId: string, member: FamilyMember) => Promise<void>;
   setActiveFamilyPool: (id: string) => void;
@@ -256,6 +257,17 @@ export const useAppStore = create<AppState>((set, get) => ({
       }));
     } catch (err: any) {
       throw new Error(err.message || 'Failed to add member to trip');
+    }
+  },
+
+  removeMemberFromTrip: async (tripId, userId) => {
+    try {
+      const updatedTrip = await api.removeMemberFromTrip(tripId, userId);
+      set((state) => ({
+        trips: state.trips.map(t => t.id === tripId ? updatedTrip : t)
+      }));
+    } catch (err: any) {
+      throw new Error(err.message || 'Failed to remove member from trip');
     }
   },
 

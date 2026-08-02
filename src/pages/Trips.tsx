@@ -7,6 +7,7 @@ import type { Transaction } from '../utils/debtOptimizer';
 import { CreateGroupModal } from '../components/CreateGroupModal';
 import { InviteToTripModal } from '../components/InviteToTripModal';
 import { AddExpenseModal } from '../components/AddExpenseModal';
+import { FiX } from 'react-icons/fi';
 
 export function Trips() {
   const trips = useAppStore(state => state.trips);
@@ -15,6 +16,23 @@ export function Trips() {
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [isInviteOpen, setIsInviteOpen] = useState(false);
   const [isAddExpenseOpen, setIsAddExpenseOpen] = useState(false);
+  const removeMemberFromTrip = useAppStore(state => state.removeMemberFromTrip);
+
+  const handleRemoveMember = async (userId: string) => {
+    if (!selectedTrip) return;
+    if (window.confirm(`Are you sure you want to remove ${userId} from the trip?`)) {
+      try {
+        await removeMemberFromTrip(selectedTrip.id, userId);
+        setSelectedTrip({
+          ...selectedTrip,
+          balances: selectedTrip.balances.filter(b => b.userId !== userId),
+          groupSize: Math.max(1, selectedTrip.groupSize - 1)
+        });
+      } catch (e: any) {
+        alert(e.message || 'Failed to remove member');
+      }
+    }
+  };
 
   // Filter expenses for this specific trip
   const tripExpenses = useMemo(() => {
@@ -74,6 +92,28 @@ export function Trips() {
           </div>
         </div>
         
+        {/* Trip Members Section */}
+        <div className="mb-8">
+          <h2 className="text-sm font-bold text-gray-500 dark:text-white/50 uppercase tracking-wider mb-3">Trip Members</h2>
+          <div className="flex flex-wrap gap-2">
+            {selectedTrip.balances.map(member => (
+              <div key={member.userId} className="flex items-center gap-2 bg-white/60 dark:bg-white/5 border border-gray-200 dark:border-white/10 px-3 py-1.5 rounded-full shadow-sm">
+                <div className="w-6 h-6 rounded-full bg-blue-100 dark:bg-brand-neon/20 text-blue-600 dark:text-brand-neon flex items-center justify-center text-xs font-bold">
+                  {member.userId.charAt(0).toUpperCase()}
+                </div>
+                <span className="text-sm font-bold text-gray-900 dark:text-white">{member.userId}</span>
+                <button 
+                  onClick={() => handleRemoveMember(member.userId)} 
+                  className="ml-1 w-5 h-5 rounded-full hover:bg-red-100 dark:hover:bg-red-500/20 text-gray-400 hover:text-red-500 flex items-center justify-center transition-colors"
+                  title="Remove from trip"
+                >
+                  <FiX size={12} />
+                </button>
+              </div>
+            ))}
+          </div>
+        </div>
+
         {/* Trip Expenses List */}
         <div className="mb-8 glass-card">
           <div className="flex justify-between items-center mb-6">
