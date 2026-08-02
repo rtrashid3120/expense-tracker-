@@ -69,7 +69,7 @@ export function InviteToTripModal({ isOpen, onClose, trip }: InviteToTripModalPr
     try {
       // Use the name or ID as the userId in the balance array (depending on how CreateGroupModal does it)
       // For simplicity, we use their name as the identifier to match existing mock data structure
-      const name = user.full_name || user.username || 'User';
+      const name = user.name || user.full_name || user.username || 'User';
       const displayName = name.split(' ')[0]; // use first name
       await addMemberToTrip(trip.id, { userId: displayName, balance: 0 });
       setSearchQuery('');
