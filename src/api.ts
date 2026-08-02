@@ -39,6 +39,18 @@ export const api = {
     return newWallet;
   },
 
+  deleteWallet: async (id: string): Promise<void> => {
+    await delay(400);
+    const current = await api.getWallets();
+    const updated = current.filter(w => w.id !== id);
+    localStorage.setItem('wallets_data_v2', JSON.stringify(updated));
+    
+    // Also delete associated expenses
+    const expenses = await api.getExpenses();
+    const updatedExpenses = expenses.filter(e => e.walletId !== id);
+    localStorage.setItem('expenses_data_v2', JSON.stringify(updatedExpenses));
+  },
+
   // Expenses
   getExpenses: async (): Promise<Expense[]> => {
     await delay(300);

@@ -93,6 +93,7 @@ interface AppState {
   setActiveFamilyPool: (id: string) => void;
   setMonthlyBudget: (budget: number) => Promise<void>;
   createWallet: (name: string, initialBudget: number) => Promise<void>;
+  deleteWallet: (id: string) => Promise<void>;
   setActiveWallet: (id: string) => void;
   clearError: () => void;
 }
@@ -266,6 +267,26 @@ export const useAppStore = create<AppState>((set, get) => ({
       }));
     } catch (err: any) {
       throw new Error(err.message || 'Failed to create wallet');
+    }
+  },
+
+  deleteWallet: async (id: string) => {
+    try {
+      await api.deleteWallet(id);
+      set((state) => {
+        const newWallets = state.wallets.filter(w => w.id !== id);
+        const newExpenses = state.expenses.filter(e => e.walletId !== id);
+        const totalSpent = newExpenses.reduce((sum, e) => sum + e.amount, 0);
+        
+        return {
+          wallets: newWallets,
+          expenses: newExpenses,
+          activeWalletId: newWallets.length > 0 ? newWallets[0].id : null,
+          balance: state.monthlyBudget - totalSpent
+        };
+      });
+    } catch (err: any) {
+      throw new Error(err.message || 'Failed to delete wallet');
     }
   },
 
