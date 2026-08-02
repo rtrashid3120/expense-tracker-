@@ -148,27 +148,26 @@ export function Trips() {
             {selectedTrip.balances.map(member => {
               const details = getMemberDetails(member.userId);
               return (
-                <div key={member.userId} className="flex items-center gap-2 bg-white/60 dark:bg-white/5 border border-gray-200 dark:border-white/10 px-3 py-1.5 rounded-full shadow-sm">
-                  <div 
-                    onClick={() => setSelectedUser(details.userObj)} 
-                    className="flex items-center gap-2 cursor-pointer hover:opacity-80 transition-opacity"
-                    title="Click to view profile"
-                  >
-                    <div className="w-6 h-6 rounded-full bg-blue-100 dark:bg-brand-neon/20 text-blue-600 dark:text-brand-neon flex items-center justify-center text-xs font-bold overflow-hidden">
-                      {details.userObj?.avatar_url ? (
-                        <img src={details.userObj.avatar_url} className="w-full h-full object-cover" />
-                      ) : (
-                        details.name.charAt(0).toUpperCase()
-                      )}
-                    </div>
-                    <span className="text-sm font-bold text-gray-900 dark:text-white">{details.name}</span>
+                <div 
+                  key={member.userId} 
+                  onClick={() => setSelectedUser(details.userObj)} 
+                  className="flex items-center gap-2 bg-white/60 dark:bg-white/5 border border-gray-200 dark:border-white/10 px-3 py-1.5 rounded-full shadow-sm cursor-pointer hover:bg-white/80 dark:hover:bg-white/10 transition-colors"
+                  title="Click to view profile"
+                >
+                  <div className="w-6 h-6 rounded-full bg-blue-100 dark:bg-brand-neon/20 text-blue-600 dark:text-brand-neon flex items-center justify-center text-xs font-bold overflow-hidden shrink-0">
+                    {details.userObj?.avatar_url ? (
+                      <img src={details.userObj.avatar_url} className="w-full h-full object-cover" />
+                    ) : (
+                      details.name.charAt(0).toUpperCase()
+                    )}
                   </div>
+                  <span className="text-sm font-bold text-gray-900 dark:text-white">{details.name}</span>
                   <button 
                     onClick={(e) => {
                       e.stopPropagation();
                       handleRemoveMember(member.userId);
                     }} 
-                    className="ml-1 w-5 h-5 rounded-full hover:bg-red-100 dark:hover:bg-red-500/20 text-gray-400 hover:text-red-500 flex items-center justify-center transition-colors"
+                    className="ml-1 w-5 h-5 rounded-full hover:bg-red-100 dark:hover:bg-red-500/20 text-gray-400 hover:text-red-500 flex items-center justify-center transition-colors shrink-0"
                     title="Remove from trip"
                   >
                     <FiX size={12} />
@@ -264,6 +263,11 @@ export function Trips() {
           onClose={() => setIsAddExpenseOpen(false)}
           initialCategory="Travel"
           initialTripId={selectedTrip.id}
+        />
+        <UserProfileModal
+          isOpen={!!selectedUser}
+          onClose={() => setSelectedUser(null)}
+          user={selectedUser}
         />
       </motion.div>
     );
