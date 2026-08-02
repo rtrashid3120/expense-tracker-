@@ -52,9 +52,8 @@ export function InviteToTripModal({ isOpen, onClose, trip }: InviteToTripModalPr
           results = results.filter(r => r.short_id === searchQuery || r.id?.startsWith(searchQuery));
         }
 
-        // Filter out users already in the trip
-        const existingIds = trip.balances.map(b => b.userId.toLowerCase());
-        setSearchResults(results.filter(r => !existingIds.includes(r.id?.toLowerCase() || '') && !existingIds.includes((r.full_name || r.username)?.toLowerCase() || '')));
+        // Don't filter out users already in the trip, just pass the raw results so the UI can show them as 'Added'
+        setSearchResults(results);
       } catch (err) {
         console.error(err);
       } finally {
@@ -191,11 +190,13 @@ export function InviteToTripModal({ isOpen, onClose, trip }: InviteToTripModalPr
                     {/* Search Results */}
                     {searchResults.length > 0 && (
                       <div className="bg-white dark:bg-white/5 border border-gray-100 dark:border-white/10 rounded-2xl shadow-lg p-2 space-y-1 z-10 max-h-[50vh] overflow-y-auto">
-                        {searchResults.map(user => (
+                        {searchResults.map(user => {
+                          const isAlreadyInTrip = trip.balances.some(b => b.userId.toLowerCase() === (user.full_name?.split(' ')[0].toLowerCase() || user.username?.toLowerCase() || ''));
+                          return (
                           <div 
                             key={user.id} 
-                            onClick={() => handleAddUser(user)}
-                            className="flex items-center justify-between p-4 hover:bg-brand-50 dark:hover:bg-white/10 rounded-xl cursor-pointer transition-colors group"
+                            onClick={() => !isAlreadyInTrip && handleAddUser(user)}
+                            className={`flex items-center justify-between p-4 rounded-xl transition-colors group ${isAlreadyInTrip ? 'opacity-70 cursor-default' : 'hover:bg-brand-50 dark:hover:bg-white/10 cursor-pointer'}`}
                           >
                             <div className="flex items-center gap-4">
                               {user.avatar_url ? (
@@ -210,11 +211,15 @@ export function InviteToTripModal({ isOpen, onClose, trip }: InviteToTripModalPr
                                 <p className="text-sm text-gray-500 dark:text-brand-neon">{user.username || user.id}</p>
                               </div>
                             </div>
-                            <button className="text-brand-600 dark:text-black font-bold bg-brand-100 dark:bg-brand-neon px-4 py-2 rounded-full text-sm hover:bg-brand-200 dark:hover:bg-white transition-colors">
-                              Invite
-                            </button>
+                            {isAlreadyInTrip ? (
+                              <span className="text-xs font-bold text-green-500 bg-green-50 dark:bg-green-500/10 px-4 py-2 rounded-full">Added</span>
+                            ) : (
+                              <button className="text-brand-600 dark:text-black font-bold bg-brand-100 dark:bg-brand-neon px-4 py-2 rounded-full text-sm hover:bg-brand-200 dark:hover:bg-white transition-colors">
+                                Invite
+                              </button>
+                            )}
                           </div>
-                        ))}
+                        )})}
                       </div>
                     )}
                     {searchQuery.length >= 2 && !isSearching && searchResults.length === 0 && (
