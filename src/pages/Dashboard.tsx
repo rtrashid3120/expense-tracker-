@@ -313,7 +313,54 @@ export function Dashboard() {
                 </div>
               </div>
 
-              <div className="overflow-x-auto relative rounded-xl border border-gray-200 dark:border-white/10 bg-white/40 dark:bg-black/20">
+              {/* Mobile Audit Trail List (Neat Spacious Cards for Mobile UI) */}
+              <div className="block md:hidden space-y-3">
+                {filteredExpenses.map((exp, i) => {
+                  const colorClass = iconMap[exp.category] || 'bg-gray-100 dark:bg-white/10 text-gray-600 dark:text-white/60 border-gray-200 dark:border-white/10 border';
+                  const isLarge = exp.amount > 5000;
+                  
+                  return (
+                    <motion.div 
+                      key={exp.id}
+                      initial={{ opacity: 0, y: 10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ delay: i * 0.03 }}
+                      className="p-4 bg-white/60 dark:bg-white/5 border border-gray-200 dark:border-white/10 rounded-2xl flex justify-between items-center hover:bg-white/80 dark:hover:bg-white/10 transition-colors shadow-sm"
+                    >
+                      <div className="flex items-center gap-3 overflow-hidden pr-2">
+                        <div className={`w-10 h-10 rounded-full flex items-center justify-center font-bold text-sm shrink-0 ${colorClass}`}>
+                          {exp.category.charAt(0)}
+                        </div>
+                        <div className="overflow-hidden">
+                          <div className="flex items-center gap-2">
+                            <p className="font-bold text-sm text-gray-900 dark:text-white truncate">{exp.category}</p>
+                            {isLarge && (
+                              <span className="px-1.5 py-0.5 text-[9px] font-bold bg-orange-100 dark:bg-brand-orange/20 text-orange-700 dark:text-brand-orange rounded border border-orange-200 dark:border-brand-orange/30 shrink-0">
+                                HIGH
+                              </span>
+                            )}
+                          </div>
+                          <p className="text-xs text-gray-500 dark:text-white/50 truncate mt-0.5">{exp.note || 'No note provided'}</p>
+                        </div>
+                      </div>
+
+                      <div className="text-right shrink-0">
+                        <p className={`font-black text-base ${isLarge ? 'text-orange-600 dark:text-brand-orange' : 'text-gray-900 dark:text-white'}`}>
+                          ₹{exp.amount.toLocaleString('en-IN')}
+                        </p>
+                      </div>
+                    </motion.div>
+                  );
+                })}
+                {filteredExpenses.length === 0 && (
+                  <div className="py-8 text-center text-gray-400 dark:text-white/40 font-medium text-sm">
+                    {searchQuery ? `No expenses found for "${searchQuery}"` : 'No expenses yet. Add your first transaction above!'}
+                  </div>
+                )}
+              </div>
+
+              {/* Desktop Audit Trail Table */}
+              <div className="hidden md:block overflow-x-auto relative rounded-xl border border-gray-200 dark:border-white/10 bg-white/40 dark:bg-black/20">
                 <table className="w-full text-left text-sm relative border-collapse">
                   <thead className="sticky top-0 bg-white/80 dark:bg-white/5 backdrop-blur-md z-10 border-b border-gray-200 dark:border-white/10">
                     <tr className="text-gray-500 dark:text-white/60">
