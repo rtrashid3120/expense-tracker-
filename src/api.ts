@@ -1,6 +1,6 @@
 import type { Expense, Trip, FamilyMember, Wallet } from './store';
 
-const API_BASE_URL = 'http://localhost:5001/api';
+const API_BASE_URL = 'https://expense-tracker-kx3e.onrender.com/api';
 
 const getHeaders = () => {
   const token = localStorage.getItem('expensehub_token');
