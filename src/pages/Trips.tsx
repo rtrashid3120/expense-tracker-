@@ -320,22 +320,22 @@ export function Trips() {
               transition={{ delay: i * 0.1 }}
               whileHover={{ scale: 1.02, y: -5 }}
               onClick={() => setSelectedTrip(trip)}
-              className="p-8 bg-white/60 dark:bg-white/5 backdrop-blur-xl border border-gray-200 dark:border-white/10 rounded-[32px] shadow-md dark:shadow-[0_8px_32px_rgba(0,0,0,0.3)] cursor-pointer relative overflow-hidden group"
+              className="p-5 sm:p-7 bg-white/60 dark:bg-white/5 backdrop-blur-xl border border-gray-200 dark:border-white/10 rounded-[28px] sm:rounded-[32px] shadow-md dark:shadow-[0_8px_32px_rgba(0,0,0,0.3)] cursor-pointer relative overflow-hidden group"
             >
               {/* Colorful Glow Blob */}
               <div className={`absolute -right-10 -top-10 w-48 h-48 rounded-full blur-3xl opacity-20 group-hover:opacity-40 transition-opacity ${i % 2 === 0 ? 'bg-blue-500 dark:bg-brand-neon' : 'bg-pink-500 dark:bg-brand-fuchsia'}`} />
               
-              <h2 className="text-2xl font-black text-gray-900 dark:text-white mb-4 relative z-10">{trip.name}</h2>
-              <div className="flex justify-between items-end relative z-10">
-                <div className="bg-white/80 dark:bg-black/30 px-3.5 py-2 rounded-xl border border-gray-200 dark:border-white/10 space-y-0.5">
-                  <p className="text-xs text-gray-500 dark:text-white/60 font-semibold">Budget: ₹{trip.totalBudget.toLocaleString('en-IN')}</p>
-                  <p className="text-sm font-bold text-gray-900 dark:text-white">
+              <h2 className="text-xl sm:text-2xl font-black text-gray-900 dark:text-white mb-3 relative z-10">{trip.name}</h2>
+              <div className="flex flex-col sm:flex-row sm:justify-between sm:items-end gap-3 relative z-10">
+                <div className="bg-white/80 dark:bg-black/30 px-3.5 py-2.5 rounded-xl border border-gray-200 dark:border-white/10 space-y-0.5 max-w-full overflow-hidden">
+                  <p className="text-[10px] sm:text-xs text-gray-500 dark:text-white/60 font-semibold uppercase tracking-wider">Budget: ₹{trip.totalBudget.toLocaleString('en-IN')}</p>
+                  <p className="text-xs sm:text-sm font-bold text-gray-900 dark:text-white truncate">
                     Spent: <span className="text-brand-neon">₹{tSpent.toLocaleString('en-IN')}</span> | Rem: <span className={tRemaining >= 0 ? 'text-emerald-500' : 'text-red-500'}>₹{tRemaining.toLocaleString('en-IN')}</span>
                   </p>
                 </div>
-                <div className="flex -space-x-3">
+                <div className="flex -space-x-2.5 self-end sm:self-auto shrink-0">
                   {trip.balances.map((m, idx) => (
-                    <div key={m.userId} className="w-10 h-10 rounded-full bg-gray-100 dark:bg-dark-surface text-blue-600 dark:text-brand-neon flex items-center justify-center text-sm font-black border-2 border-white dark:border-white/10 z-10 shadow-sm dark:shadow-[0_0_10px_rgba(0,0,0,0.5)]" style={{ zIndex: 10 - idx }}>
+                    <div key={m.userId} className="w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-gray-100 dark:bg-dark-surface text-blue-600 dark:text-brand-neon flex items-center justify-center text-xs sm:text-sm font-black border-2 border-white dark:border-white/10 z-10 shadow-sm" style={{ zIndex: 10 - idx }}>
                       {m.userId.charAt(0)}
                     </div>
                   ))}

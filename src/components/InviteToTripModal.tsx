@@ -93,7 +93,7 @@ export function InviteToTripModal({ isOpen, onClose, trip }: InviteToTripModalPr
             animate={{ y: 0 }}
             exit={{ y: '100%' }}
             transition={{ type: 'spring', damping: 25, stiffness: 200 }}
-            className="fixed bottom-0 w-full max-h-[92vh] md:max-h-[85vh] md:w-[560px] md:left-1/2 md:-translate-x-1/2 md:bottom-auto md:top-1/2 md:-translate-y-1/2 bg-white/95 dark:bg-dark-surface/95 border border-gray-200 dark:border-white/10 rounded-t-[32px] md:rounded-3xl z-[101] p-4 sm:p-6 md:p-8 flex flex-col shadow-2xl overflow-hidden backdrop-blur-3xl"
+            className="fixed inset-x-0 bottom-0 max-h-[90vh] md:max-h-[85vh] w-full md:w-[540px] md:inset-x-auto md:left-1/2 md:-translate-x-1/2 md:bottom-auto md:top-1/2 md:-translate-y-1/2 bg-white/95 dark:bg-dark-surface/95 border border-gray-200 dark:border-white/10 rounded-t-[32px] md:rounded-3xl z-[101] p-4 sm:p-6 md:p-8 flex flex-col shadow-2xl overflow-hidden backdrop-blur-3xl"
           >
             <div className="flex justify-between items-center mb-4 sm:mb-6 flex-shrink-0">
               <h2 className="text-xl sm:text-2xl font-black text-gray-900 dark:text-white tracking-tight">Invite Friends</h2>
