@@ -1,7 +1,5 @@
 import { create } from 'zustand';
 import { api } from './api';
-import { supabase } from './lib/supabase';
-import type { User } from '@supabase/supabase-js';
 
 export type Category = 'Groceries' | 'Transport' | 'Rent' | 'Dining' | 'Shopping' | 'Personal' | 'Medical' | 'Fuel' | 'Travel' | (string & {});
 
@@ -73,7 +71,7 @@ export interface FamilyPool {
 }
 
 interface AppState {
-  user: User | null;
+  user: any | null;
   isAuthLoading: boolean;
   expenses: Expense[];
   wallets: Wallet[];
@@ -130,21 +128,23 @@ export const useAppStore = create<AppState>((set, get) => ({
   incomingRequests: [],
   outgoingRequests: [],
 
-  initAuth: () => {
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      set({ user: session?.user ?? null, isAuthLoading: false });
-    });
-
-    supabase.auth.onAuthStateChange((_event, session) => {
-      set({ user: session?.user ?? null, isAuthLoading: false });
-      if (session?.user) {
-        get().fetchData();
+  initAuth: async () => {
+    try {
+      const profile = await api.getProfile();
+      if (profile) {
+        set({ user: profile, profile, isAuthLoading: false });
+        await get().fetchData();
+      } else {
+        set({ user: null, profile: null, isAuthLoading: false, isLoading: false });
       }
-    });
+    } catch (e) {
+      set({ user: null, profile: null, isAuthLoading: false, isLoading: false });
+    }
   },
 
   signOut: async () => {
-    await supabase.auth.signOut();
+    localStorage.removeItem('expensehub_token');
+    set({ user: null, profile: null, expenses: [], wallets: [], trips: [], friends: [], isAuthLoading: false });
   },
 
   fetchData: async () => {

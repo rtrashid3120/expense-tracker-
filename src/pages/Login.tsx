@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { motion } from 'framer-motion';
-import { supabase } from '../lib/supabase';
+import { api } from '../api';
+import { useAppStore } from '../store';
 
 export function Login() {
   const [isLogin, setIsLogin] = useState(true);
@@ -9,6 +10,8 @@ export function Login() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  const { initAuth } = useAppStore();
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
@@ -16,20 +19,11 @@ export function Login() {
 
     try {
       if (isLogin) {
-        const { error } = await supabase.auth.signInWithPassword({
-          email,
-          password,
-        });
-        if (error) throw error;
+        await api.login(email, password);
       } else {
-        const { error } = await supabase.auth.signUp({
-          email,
-          password,
-        });
-        if (error) throw error;
-        // Optional: show a message if email confirmation is required
-        // alert("Check your email for the confirmation link!");
+        await api.signup(email, password);
       }
+      await initAuth();
     } catch (err: any) {
       setError(err.message || 'An error occurred during authentication');
     } finally {
@@ -38,23 +32,7 @@ export function Login() {
   };
 
   const handleGoogleLogin = async () => {
-    setIsLoading(true);
-    setError(null);
-    try {
-      const { error } = await supabase.auth.signInWithOAuth({
-        provider: 'google',
-        options: {
-          redirectTo: window.location.origin + '/expense-tracker-/',
-          queryParams: {
-            prompt: 'select_account',
-          }
-        }
-      });
-      if (error) throw error;
-    } catch (err: any) {
-      setError(err.message || 'An error occurred during Google authentication');
-      setIsLoading(false);
-    }
+    alert("Please use Email & Password authentication for MongoDB server.");
   };
 
   return (
