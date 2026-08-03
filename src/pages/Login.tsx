@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { motion } from 'framer-motion';
 import { api } from '../api';
 import { useAppStore } from '../store';
+import { supabase } from '../lib/supabase';
 
 export function Login() {
   const [isLogin, setIsLogin] = useState(true);
@@ -32,7 +33,23 @@ export function Login() {
   };
 
   const handleGoogleLogin = async () => {
-    alert("Please use Email & Password authentication for MongoDB server.");
+    setIsLoading(true);
+    setError(null);
+    try {
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider: 'google',
+        options: {
+          redirectTo: window.location.origin + '/expense-tracker-/',
+          queryParams: {
+            prompt: 'select_account',
+          }
+        }
+      });
+      if (error) throw error;
+    } catch (err: any) {
+      setError(err.message || 'An error occurred during Google authentication');
+      setIsLoading(false);
+    }
   };
 
   return (

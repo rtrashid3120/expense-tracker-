@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import { api } from './api';
+import { supabase } from './lib/supabase';
 
 export type Category = 'Groceries' | 'Transport' | 'Rent' | 'Dining' | 'Shopping' | 'Personal' | 'Medical' | 'Fuel' | 'Travel' | (string & {});
 
@@ -130,6 +131,22 @@ export const useAppStore = create<AppState>((set, get) => ({
 
   initAuth: async () => {
     try {
+      // 1. Check if user just returned from Supabase Google Login
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session?.user) {
+        // We have a Google user! Bridge them to MongoDB
+        const email = session.user.email;
+        const full_name = session.user.user_metadata?.full_name;
+        const avatar_url = session.user.user_metadata?.avatar_url;
+        
+        if (email) {
+          await api.googleLogin(email, full_name, avatar_url);
+        }
+        // Sign out of Supabase locally so we rely purely on MongoDB JWT
+        await supabase.auth.signOut();
+      }
+
+      // 2. Load standard MongoDB profile
       const profile = await api.getProfile();
       if (profile) {
         set({ user: profile, profile, isAuthLoading: false });

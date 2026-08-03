@@ -113,6 +113,56 @@ app.post('/api/auth/login', async (req, res) => {
   }
 });
 
+app.post('/api/auth/google', async (req, res) => {
+  try {
+    const { email, full_name, avatar_url } = req.body;
+    if (!email) return res.status(400).json({ error: 'Email required' });
+
+    let user = await User.findOne({ email });
+    
+    if (!user) {
+      // Create new user for Google login
+      const short_id = generateShortId();
+      const cleanUsername = `@user_${short_id}`;
+      // Generate a random password hash since they use Google to login
+      const randomPassword = Math.random().toString(36).slice(-10) + Math.random().toString(36).slice(-10);
+      const password_hash = await bcrypt.hash(randomPassword, 10);
+
+      user = await User.create({
+        email,
+        password_hash,
+        username: cleanUsername,
+        full_name: full_name || 'ExpenseHub User',
+        avatar_url: avatar_url || '',
+        short_id
+      });
+    } else {
+      // Update avatar or name if provided and missing
+      let updated = false;
+      if (avatar_url && !user.avatar_url) { user.avatar_url = avatar_url; updated = true; }
+      if (full_name && user.full_name === 'ExpenseHub User') { user.full_name = full_name; updated = true; }
+      if (updated) await user.save();
+    }
+
+    const token = jwt.sign({ id: user._id, email: user.email }, JWT_SECRET, { expiresIn: '30d' });
+
+    res.json({
+      token,
+      user: {
+        id: user._id.toString(),
+        email: user.email,
+        username: user.username,
+        full_name: user.full_name,
+        short_id: user.short_id,
+        avatar_url: user.avatar_url
+      }
+    });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: err.message || 'Google Auth failed' });
+  }
+});
+
 app.get('/api/auth/me', authenticateToken, async (req, res) => {
   try {
     const user = await User.findById(req.user.id).select('-password_hash');

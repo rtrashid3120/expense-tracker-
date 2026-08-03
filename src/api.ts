@@ -36,6 +36,18 @@ export const api = {
     return data.user;
   },
 
+  googleLogin: async (email: string, full_name?: string, avatar_url?: string): Promise<any> => {
+    const res = await fetch(`${API_BASE_URL}/auth/google`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, full_name, avatar_url })
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'Google Login failed');
+    if (data.token) localStorage.setItem('expensehub_token', data.token);
+    return data.user;
+  },
+
   getProfile: async (): Promise<any> => {
     const token = localStorage.getItem('expensehub_token');
     if (!token) return null;
