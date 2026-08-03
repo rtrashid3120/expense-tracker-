@@ -257,8 +257,8 @@ export function AddExpenseModal({
               </div>
             </div>
 
-            <form onSubmit={handleSubmit} className="flex flex-col flex-1 overflow-hidden">
-              <div className="flex-1 overflow-y-auto pr-1 space-y-4 sm:space-y-6 scrollbar-hide pb-4">
+            <form onSubmit={handleSubmit} className="flex flex-col flex-1 overflow-hidden min-h-0">
+              <div className="flex-1 overflow-y-auto min-h-0 pr-1 space-y-4 sm:space-y-6 scrollbar-hide pb-4">
                 {initialTripId ? (
                   <div className="p-3.5 sm:p-4 bg-brand-50 dark:bg-brand-neon/10 border border-brand-200 dark:border-brand-neon/30 rounded-2xl flex items-center justify-between">
                     <div>

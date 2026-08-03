@@ -211,28 +211,28 @@ export function Trips() {
         {/* Trip Expenses List */}
         <div className="mb-8 glass-card">
           <div className="flex justify-between items-center mb-6">
-            <h2 className="text-xl font-bold text-gray-900 dark:text-white">Trip Expenses</h2>
+            <h2 className="text-lg sm:text-xl font-bold text-gray-900 dark:text-white">Trip Expenses</h2>
           </div>
           
           {tripExpenses.length === 0 ? (
-            <div className="bg-white/60 dark:bg-white/5 rounded-3xl p-8 text-center border border-gray-200 dark:border-white/10 border-dashed shadow-sm">
-              <div className="text-4xl mb-3 drop-shadow-sm dark:drop-shadow-[0_0_15px_rgba(255,255,255,0.3)]">✈️</div>
-              <p className="text-gray-500 dark:text-white/50 font-medium">No expenses logged for this trip yet.</p>
+            <div className="bg-white/60 dark:bg-white/5 rounded-3xl p-6 sm:p-8 text-center border border-gray-200 dark:border-white/10 border-dashed shadow-sm">
+              <div className="text-3xl sm:text-4xl mb-3 drop-shadow-sm dark:drop-shadow-[0_0_15px_rgba(255,255,255,0.3)]">✈️</div>
+              <p className="text-xs sm:text-sm text-gray-500 dark:text-white/50 font-medium">No expenses logged for this trip yet.</p>
             </div>
           ) : (
-            <div className="space-y-3 max-h-[300px] overflow-y-auto pr-2 scrollbar-hide">
+            <div className="space-y-3 max-h-[300px] overflow-y-auto pr-1 scrollbar-hide">
               {tripExpenses.map(expense => (
-                <div key={expense.id} className="bg-white/60 dark:bg-white/5 rounded-2xl p-4 flex justify-between items-center border border-gray-200 dark:border-white/10 hover:border-gray-300 dark:hover:border-white/20 hover:bg-white/80 dark:hover:bg-white/10 transition-colors shadow-sm">
-                  <div className="flex items-center gap-3">
-                    <span className="px-3 py-1 bg-brand-50 dark:bg-brand-neon/10 text-brand-600 dark:text-brand-neon text-xs font-bold rounded-full border border-brand-200 dark:border-brand-neon/30">
+                <div key={expense.id} className="bg-white/60 dark:bg-white/5 rounded-2xl p-3.5 sm:p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-2 border border-gray-200 dark:border-white/10 hover:border-gray-300 dark:hover:border-white/20 hover:bg-white/80 dark:hover:bg-white/10 transition-colors shadow-sm">
+                  <div className="flex items-center gap-3 overflow-hidden">
+                    <span className="px-2.5 py-0.5 sm:px-3 sm:py-1 bg-brand-50 dark:bg-brand-neon/10 text-brand-600 dark:text-brand-neon text-[10px] sm:text-xs font-bold rounded-full border border-brand-200 dark:border-brand-neon/30 shrink-0">
                       {expense.category}
                     </span>
-                    <div>
-                      <p className="font-bold text-gray-900 dark:text-white group-hover:text-blue-600 dark:group-hover:text-brand-neon">{expense.note || `${expense.category} Expense`}</p>
-                      <p className="text-xs text-gray-500 dark:text-white/40 mt-1">{new Date(expense.date).toLocaleDateString()}</p>
+                    <div className="overflow-hidden">
+                      <p className="font-bold text-sm sm:text-base text-gray-900 dark:text-white group-hover:text-blue-600 dark:group-hover:text-brand-neon truncate">{expense.note || `${expense.category} Expense`}</p>
+                      <p className="text-[10px] sm:text-xs text-gray-500 dark:text-white/40 mt-0.5">{new Date(expense.date).toLocaleDateString()}</p>
                     </div>
                   </div>
-                  <span className="font-black text-gray-900 dark:text-white text-lg drop-shadow-md">₹{expense.amount.toLocaleString('en-IN')}</span>
+                  <span className="font-black text-gray-900 dark:text-white text-base sm:text-lg self-end sm:self-auto drop-shadow-md">₹{expense.amount.toLocaleString('en-IN')}</span>
                 </div>
               ))}
             </div>
@@ -240,22 +240,22 @@ export function Trips() {
         </div>
 
         <div className="glass-card mb-8">
-          <h2 className="text-lg font-bold text-gray-900 dark:text-white mb-2 text-gradient">Debt Settlement Optimizer</h2>
-          <p className="text-sm text-gray-500 dark:text-white/50 mb-8">Graph-minimized transactions to settle up efficiently without everyone paying everyone.</p>
+          <h2 className="text-base sm:text-lg font-bold text-gray-900 dark:text-white mb-1 text-gradient">Debt Settlement Optimizer</h2>
+          <p className="text-xs sm:text-sm text-gray-500 dark:text-white/50 mb-6">Graph-minimized transactions to settle up efficiently without everyone paying everyone.</p>
           
-          <div className="space-y-4">
+          <div className="space-y-3 sm:space-y-4">
             {optimizedDebts.map((debt, i) => (
-              <div key={i} className="flex justify-between items-center p-5 bg-white/60 dark:bg-white/5 hover:bg-white/80 dark:hover:bg-white/10 border border-gray-200 dark:border-white/5 hover:border-gray-300 dark:hover:border-white/10 rounded-2xl transition-all">
-                <div className="flex items-center gap-2">
-                  <span className="font-bold text-gray-900 dark:text-white">{debt.from}</span>
-                  <span className="text-gray-500 dark:text-white/40 text-sm">owes</span>
-                  <span className="font-bold text-blue-600 dark:text-brand-neon">{debt.to}</span>
+              <div key={i} className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-4 sm:p-5 bg-white/60 dark:bg-white/5 hover:bg-white/80 dark:hover:bg-white/10 border border-gray-200 dark:border-white/5 hover:border-gray-300 dark:hover:border-white/10 rounded-2xl transition-all">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <span className="font-bold text-sm sm:text-base text-gray-900 dark:text-white">{debt.from}</span>
+                  <span className="text-gray-500 dark:text-white/40 text-xs sm:text-sm">owes</span>
+                  <span className="font-bold text-sm sm:text-base text-blue-600 dark:text-brand-neon">{debt.to}</span>
                 </div>
-                <div className="flex flex-col items-end">
-                  <span className="font-black text-gray-900 dark:text-white text-xl drop-shadow-sm dark:drop-shadow-[0_0_10px_rgba(255,255,255,0.2)]">₹{debt.amount}</span>
+                <div className="flex items-center sm:flex-col sm:items-end justify-between gap-2">
+                  <span className="font-black text-gray-900 dark:text-white text-lg sm:text-xl drop-shadow-sm dark:drop-shadow-[0_0_10px_rgba(255,255,255,0.2)]">₹{debt.amount}</span>
                   <button 
                     onClick={() => alert(`Redirecting to UPI app to pay ₹${debt.amount} to ${debt.to}...`)}
-                    className="text-xs bg-blue-50 dark:bg-brand-neon/20 border border-blue-200 dark:border-brand-neon/30 text-blue-700 dark:text-brand-neon font-bold px-4 py-1.5 rounded-full mt-2 hover:bg-blue-100 dark:hover:bg-brand-neon/30 transition-colors active:scale-95 shadow-sm dark:shadow-[0_0_10px_rgba(0,240,255,0.3)]"
+                    className="text-xs bg-blue-50 dark:bg-brand-neon/20 border border-blue-200 dark:border-brand-neon/30 text-blue-700 dark:text-brand-neon font-bold px-3.5 py-1 sm:px-4 sm:py-1.5 rounded-full hover:bg-blue-100 dark:hover:bg-brand-neon/30 transition-colors active:scale-95 shadow-sm dark:shadow-[0_0_10px_rgba(0,240,255,0.3)]"
                   >
                     UPI Pay
                   </button>
@@ -263,7 +263,7 @@ export function Trips() {
               </div>
             ))}
             {optimizedDebts.length === 0 && (
-              <div className="text-center py-6 text-gray-400 dark:text-white/40 font-medium">All debts settled! 🎉</div>
+              <div className="text-center py-6 text-gray-400 dark:text-white/40 font-medium text-sm">All debts settled! 🎉</div>
             )}
           </div>
         </div>

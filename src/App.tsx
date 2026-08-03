@@ -127,8 +127,8 @@ export default function App() {
     return <Login />;
   }
 
-  // Force onboarding if profile is missing a username
-  if (!profile?.username) {
+  // Force onboarding if profile is missing a username or has an auto-generated one
+  if (!profile?.username || profile.username.startsWith('@user_')) {
     return <Onboarding />;
   }
 

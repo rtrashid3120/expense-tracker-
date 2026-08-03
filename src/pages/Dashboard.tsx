@@ -14,7 +14,7 @@ const iconMap: Record<string, string> = {
 };
 
 export function Dashboard() {
-  const { expenses, wallets, activeWalletId, setActiveWallet, deleteWallet } = useAppStore();
+  const { expenses, wallets, activeWalletId, setActiveWallet, deleteWallet, profile } = useAppStore();
   
   // Interactive States
   const [chartView, setChartView] = useState<'Week' | 'Month'>('Week');
@@ -22,6 +22,16 @@ export function Dashboard() {
   const [searchQuery, setSearchQuery] = useState('');
   const [isWalletModalOpen, setIsWalletModalOpen] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
+
+  // Time-based greeting
+  const getGreeting = () => {
+    const hour = new Date().getHours();
+    if (hour < 12) return 'Good morning';
+    if (hour < 18) return 'Good afternoon';
+    return 'Good evening';
+  };
+  
+  const userName = profile?.full_name?.split(' ')[0] || profile?.username?.replace('@', '') || 'Explorer';
 
   // Filter expenses by active wallet (excluding trip expenses)
   const activeWallet = wallets.find(w => w.id === activeWalletId);
@@ -110,14 +120,33 @@ export function Dashboard() {
   const filteredTotal = filteredExpenses.reduce((sum, e) => sum + e.amount, 0);
 
   return (
-    <div className="max-w-7xl mx-auto space-y-6 pb-20">
-      {/* Header section (Mobile only, desktop has topbar) */}
-      <div className="md:hidden flex justify-between items-center mb-2">
-        <div>
-          <h1 className="text-xl font-bold text-gray-900 dark:text-white">Dashboard</h1>
-          <p className="text-xs text-gray-500 dark:text-white/60">Welcome back to ExpenseHub</p>
+    <div className="max-w-7xl mx-auto space-y-6 pb-20 relative">
+      {/* Background Glow */}
+      <div className="absolute top-0 left-1/4 w-96 h-96 bg-brand-neon/10 rounded-full blur-[120px] pointer-events-none -z-10" />
+
+      {/* Extraordinary Header */}
+      <motion.div 
+        initial={{ opacity: 0, y: -10 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="mb-8 mt-2 relative"
+      >
+        <h1 className="text-3xl md:text-5xl font-black text-gray-900 dark:text-white mb-2 tracking-tight">
+          {getGreeting()},{' '}
+          <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-purple-600 dark:from-brand-neon dark:to-brand-purple filter drop-shadow-sm dark:drop-shadow-[0_0_15px_rgba(0,240,255,0.4)]">
+            {userName}
+          </span>
+          <span className="inline-block ml-2 animate-bounce">👋</span>
+        </h1>
+        <div className="flex items-center gap-3">
+          <p className="text-sm md:text-base text-gray-500 dark:text-white/60 font-medium">
+            Your financial command center
+          </p>
+          <div className="flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-emerald-500/10 border border-emerald-500/20">
+            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+            <span className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400 uppercase tracking-wider">Systems Active</span>
+          </div>
         </div>
-      </div>
+      </motion.div>
 
       {/* Wallet Selector Carousel */}
       <div className="flex overflow-x-auto gap-4 pb-4 scrollbar-hide pt-2 snap-x">

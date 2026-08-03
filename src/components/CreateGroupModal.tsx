@@ -118,18 +118,18 @@ export function CreateGroupModal({ isOpen, onClose }: CreateGroupModalProps) {
             animate={{ y: 0 }}
             exit={{ y: '100%' }}
             transition={{ type: 'spring', damping: 25, stiffness: 200 }}
-            className="fixed bottom-0 w-full h-[90%] md:h-[80%] md:w-[600px] md:left-1/2 md:-translate-x-1/2 md:bottom-auto md:top-1/2 md:-translate-y-1/2 bg-white dark:bg-dark-surface/90 border dark:border-white/10 md:rounded-3xl rounded-t-[40px] z-[60] p-8 flex flex-col shadow-2xl dark:shadow-[0_0_50px_rgba(0,0,0,0.5)] backdrop-blur-3xl overflow-hidden"
+            className="fixed bottom-0 w-full max-h-[92vh] md:max-h-[85vh] md:w-[560px] md:left-1/2 md:-translate-x-1/2 md:bottom-auto md:top-1/2 md:-translate-y-1/2 bg-white/95 dark:bg-dark-surface/95 border border-gray-200 dark:border-white/10 rounded-t-[32px] md:rounded-3xl z-[61] p-4 sm:p-6 md:p-8 flex flex-col shadow-2xl dark:shadow-[0_0_50px_rgba(0,0,0,0.5)] backdrop-blur-3xl overflow-hidden"
           >
-            <div className="flex justify-between items-center mb-8 flex-shrink-0">
-              <h2 className="text-2xl font-bold text-gray-900 dark:text-white">
+            <div className="flex justify-between items-center mb-4 sm:mb-6 flex-shrink-0">
+              <h2 className="text-xl sm:text-2xl font-black text-gray-900 dark:text-white tracking-tight">
                 {step === 1 ? 'New Group' : 'Invite Friends'}
               </h2>
-              <button onClick={onClose} className="p-3 bg-gray-100 dark:bg-white/5 rounded-full text-gray-500 dark:text-white/50 hover:bg-gray-200 dark:hover:bg-white/10 transition-colors">
-                <FiX size={20} />
+              <button onClick={onClose} className="p-2.5 sm:p-3 bg-gray-100 dark:bg-white/5 border border-gray-200 dark:border-white/10 rounded-full text-gray-500 dark:text-white/50 hover:bg-gray-200 dark:hover:bg-white/10 transition-colors">
+                <FiX size={18} />
               </button>
             </div>
 
-            <div className="flex-1 overflow-y-auto pb-6 scrollbar-hide">
+            <div className="flex-1 overflow-y-auto min-h-0 pr-1 space-y-4 sm:space-y-6 scrollbar-hide pb-4">
               <AnimatePresence mode="wait">
                 {step === 1 ? (
                   <motion.div
@@ -137,29 +137,29 @@ export function CreateGroupModal({ isOpen, onClose }: CreateGroupModalProps) {
                     initial={{ opacity: 0, x: -20 }}
                     animate={{ opacity: 1, x: 0 }}
                     exit={{ opacity: 0, x: 20 }}
-                    className="space-y-6"
+                    className="space-y-4 sm:space-y-6"
                   >
                     <div>
-                      <label className="text-sm font-bold text-gray-700 dark:text-white/60 block mb-2">Group Name</label>
+                      <label className="text-xs sm:text-sm font-bold text-gray-700 dark:text-white/60 block mb-2 uppercase tracking-wider">Group Name</label>
                       <input
                         type="text"
                         value={name}
                         onChange={(e) => setName(e.target.value)}
-                        className="w-full bg-gray-50 dark:bg-white/5 border border-gray-200 dark:border-white/10 rounded-2xl py-4 px-6 text-xl font-bold text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 dark:focus:ring-brand-neon outline-none transition-all placeholder-gray-400 dark:placeholder-white/30"
+                        className="w-full bg-gray-50 dark:bg-white/5 border border-gray-200 dark:border-white/10 rounded-2xl py-3.5 sm:py-4 px-4 sm:px-6 text-lg sm:text-xl font-bold text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 dark:focus:ring-brand-neon outline-none transition-all placeholder-gray-400 dark:placeholder-white/30"
                         placeholder="e.g. Goa Weekend 🌴"
                         autoFocus
                       />
                     </div>
                     <div>
-                      <label className="text-sm font-bold text-gray-700 dark:text-white/60 block mb-2">Total Budget Estimate</label>
+                      <label className="text-xs sm:text-sm font-bold text-gray-700 dark:text-white/60 block mb-2 uppercase tracking-wider">Total Budget Estimate</label>
                       <div className="relative">
-                        <span className="absolute left-6 top-1/2 -translate-y-1/2 text-xl text-gray-400 dark:text-white/40 font-bold">₹</span>
+                        <span className="absolute left-4 sm:left-6 top-1/2 -translate-y-1/2 text-lg sm:text-xl text-gray-400 dark:text-white/40 font-bold">₹</span>
                         <input
                           type="text"
                           inputMode="numeric"
                           value={budget}
                           onChange={handleBudgetChange}
-                          className="w-full bg-gray-50 dark:bg-white/5 border border-gray-200 dark:border-white/10 rounded-2xl py-4 pl-12 pr-6 text-xl font-bold text-blue-600 dark:text-white focus:ring-2 focus:ring-blue-500 dark:focus:ring-brand-neon outline-none transition-all placeholder-gray-300 dark:placeholder-white/20"
+                          className="w-full bg-gray-50 dark:bg-white/5 border border-gray-200 dark:border-white/10 rounded-2xl py-3.5 sm:py-4 pl-10 sm:pl-14 pr-4 sm:pr-6 text-lg sm:text-xl font-bold text-blue-600 dark:text-white focus:ring-2 focus:ring-blue-500 dark:focus:ring-brand-neon outline-none transition-all placeholder-gray-300 dark:placeholder-white/20"
                           placeholder="0"
                         />
                       </div>
@@ -171,20 +171,20 @@ export function CreateGroupModal({ isOpen, onClose }: CreateGroupModalProps) {
                     initial={{ opacity: 0, x: -20 }}
                     animate={{ opacity: 1, x: 0 }}
                     exit={{ opacity: 0, x: 20 }}
-                    className="space-y-6 flex flex-col h-full"
+                    className="space-y-4 sm:space-y-6"
                   >
                     {/* Search Bar */}
                     <div className="relative">
-                      <FiSearch className="absolute left-5 top-1/2 -translate-y-1/2 text-gray-400 dark:text-white/40" size={20} />
+                      <FiSearch className="absolute left-4 sm:left-5 top-1/2 -translate-y-1/2 text-gray-400 dark:text-white/40" size={18} />
                       <input
                         type="text"
                         value={searchQuery}
                         onChange={(e) => setSearchQuery(e.target.value)}
-                        className="w-full bg-gray-50 dark:bg-white/5 border border-gray-200 dark:border-white/10 rounded-2xl py-4 pl-14 pr-6 font-medium text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 dark:focus:ring-brand-neon outline-none transition-all placeholder-gray-400 dark:placeholder-white/40"
+                        className="w-full bg-gray-50 dark:bg-white/5 border border-gray-200 dark:border-white/10 rounded-2xl py-3.5 sm:py-4 pl-11 sm:pl-14 pr-4 sm:pr-6 text-sm sm:text-base font-medium text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 dark:focus:ring-brand-neon outline-none transition-all placeholder-gray-400 dark:placeholder-white/40"
                         placeholder="Search by name or @id..."
                       />
                       {isSearching && (
-                        <div className="absolute right-5 top-1/2 -translate-y-1/2 w-4 h-4 border-2 border-blue-200 dark:border-brand-neon/20 border-t-blue-600 dark:border-t-brand-neon rounded-full animate-spin" />
+                        <div className="absolute right-4 sm:right-5 top-1/2 -translate-y-1/2 w-4 h-4 border-2 border-blue-200 dark:border-brand-neon/20 border-t-blue-600 dark:border-t-brand-neon rounded-full animate-spin" />
                       )}
                     </div>
 
@@ -195,36 +195,36 @@ export function CreateGroupModal({ isOpen, onClose }: CreateGroupModalProps) {
                           <div 
                             key={user.id} 
                             onClick={() => handleAddMember(user)}
-                            className="flex items-center justify-between p-3 hover:bg-blue-50 dark:hover:bg-white/5 rounded-xl cursor-pointer transition-colors group"
+                            className="flex items-center justify-between p-2.5 sm:p-3 hover:bg-blue-50 dark:hover:bg-white/5 rounded-xl cursor-pointer transition-colors group"
                           >
                             <div className="flex items-center gap-3">
                               {user.avatar ? (
-                                <img src={user.avatar} alt={user.name} className="w-10 h-10 rounded-full bg-gray-200 dark:bg-white/10 border border-gray-200 dark:border-white/10" />
+                                <img src={user.avatar} alt={user.name} className="w-8 sm:w-10 h-8 sm:h-10 rounded-full bg-gray-200 dark:bg-white/10 border border-gray-200 dark:border-white/10 object-cover" />
                               ) : (
-                                <div className="w-10 h-10 rounded-full bg-blue-100 dark:bg-white/10 text-blue-600 dark:text-white flex items-center justify-center font-bold border border-blue-200 dark:border-white/10">
+                                <div className="w-8 sm:w-10 h-8 sm:h-10 rounded-full bg-blue-100 dark:bg-white/10 text-blue-600 dark:text-white flex items-center justify-center font-bold text-xs sm:text-sm border border-blue-200 dark:border-white/10">
                                   {user.name.charAt(0)}
                                 </div>
                               )}
                               <div>
-                                <p className="font-bold text-gray-900 dark:text-white">{user.name}</p>
+                                <p className="font-bold text-sm text-gray-900 dark:text-white">{user.name}</p>
                                 <p className="text-xs text-gray-500 dark:text-white/50">{user.id}</p>
                               </div>
                             </div>
-                            <button className="text-blue-600 dark:text-brand-neon opacity-0 group-hover:opacity-100 transition-opacity">
-                              <FiUserPlus size={20} />
+                            <button className="text-blue-600 dark:text-brand-neon opacity-100 sm:opacity-0 group-hover:opacity-100 transition-opacity p-1">
+                              <FiUserPlus size={18} />
                             </button>
                           </div>
                         ))}
                       </div>
                     )}
                     {searchQuery.length >= 2 && !isSearching && searchResults.length === 0 && (
-                      <div className="text-center py-4 text-sm text-gray-500 dark:text-white/50">No users found.</div>
+                      <div className="text-center py-3 text-sm text-gray-500 dark:text-white/50">No users found.</div>
                     )}
 
                     {/* Added Members */}
-                    <div className="flex-1 mt-4">
-                      <h3 className="text-sm font-bold text-gray-700 dark:text-white/70 mb-4">Added Members ({members.length})</h3>
-                      <div className="flex flex-wrap gap-2">
+                    <div className="mt-2">
+                      <h3 className="text-xs sm:text-sm font-bold text-gray-700 dark:text-white/70 mb-3 uppercase tracking-wider">Added Members ({members.length})</h3>
+                      <div className="flex flex-wrap gap-2 max-h-36 overflow-y-auto">
                         <AnimatePresence>
                           {members.map(m => (
                             <motion.div
@@ -232,12 +232,12 @@ export function CreateGroupModal({ isOpen, onClose }: CreateGroupModalProps) {
                               initial={{ opacity: 0, scale: 0.8 }}
                               animate={{ opacity: 1, scale: 1 }}
                               exit={{ opacity: 0, scale: 0.8 }}
-                              className="flex items-center gap-2 bg-gray-100 dark:bg-white/10 text-gray-800 dark:text-white px-4 py-2 rounded-full font-medium text-sm border border-gray-200 dark:border-white/20"
+                              className="flex items-center gap-1.5 bg-gray-100 dark:bg-white/10 text-gray-800 dark:text-white px-3 py-1.5 sm:px-4 sm:py-2 rounded-full font-bold text-xs sm:text-sm border border-gray-200 dark:border-white/20"
                             >
                               <span>{m.name}</span>
                               {m.id !== 'You' && (
-                                <button onClick={() => handleRemoveMember(m.id)} className="text-gray-400 hover:text-red-500 dark:text-white/40 dark:hover:text-red-400 ml-1 transition-colors">
-                                  <FiX size={16} />
+                                <button onClick={() => handleRemoveMember(m.id)} className="text-gray-400 hover:text-red-500 dark:text-white/40 dark:hover:text-red-400 ml-1 transition-colors p-0.5">
+                                  <FiX size={14} />
                                 </button>
                               )}
                             </motion.div>
@@ -251,9 +251,9 @@ export function CreateGroupModal({ isOpen, onClose }: CreateGroupModalProps) {
             </div>
 
             {/* Footer Buttons */}
-            <div className="pt-4 border-t border-gray-100 dark:border-white/10 flex-shrink-0">
+            <div className="pt-3 border-t border-gray-100 dark:border-white/10 flex-shrink-0">
               {errorMsg && (
-                <div className="p-4 rounded-xl bg-red-50 dark:bg-red-500/20 text-red-600 dark:text-red-400 text-sm font-semibold mb-4 border border-red-100 dark:border-red-500/30">
+                <div className="p-3 rounded-xl bg-red-50 dark:bg-red-500/20 text-red-600 dark:text-red-400 text-xs font-semibold mb-3 border border-red-100 dark:border-red-500/30">
                   {errorMsg}
                 </div>
               )}
@@ -262,22 +262,22 @@ export function CreateGroupModal({ isOpen, onClose }: CreateGroupModalProps) {
                 <button
                   onClick={() => setStep(2)}
                   disabled={!name || !budget}
-                  className="w-full bg-gradient-to-r from-blue-600 to-purple-600 dark:from-brand-neon dark:to-brand-purple text-white py-5 rounded-[28px] font-bold text-lg shadow-md dark:shadow-[0_0_20px_rgba(0,240,255,0.4)] hover:shadow-lg dark:hover:shadow-[0_0_30px_rgba(0,240,255,0.6)] flex justify-center items-center gap-2 disabled:opacity-50 disabled:scale-100 active:scale-95 transition-all"
+                  className="w-full bg-gradient-to-r from-blue-600 to-purple-600 dark:from-brand-neon dark:to-brand-purple text-white py-3.5 sm:py-4 rounded-2xl font-bold text-base sm:text-lg shadow-md dark:shadow-[0_0_20px_rgba(0,240,255,0.4)] hover:shadow-lg flex justify-center items-center gap-2 disabled:opacity-50 disabled:scale-100 active:scale-95 transition-all"
                 >
                   Next Step
-                  <FiArrowRight size={20} />
+                  <FiArrowRight size={18} />
                 </button>
               ) : (
                 <button
                   onClick={handleSubmit}
                   disabled={isSubmitting}
-                  className="w-full bg-gradient-to-r from-blue-600 to-purple-600 dark:from-brand-neon dark:to-brand-purple text-white py-5 rounded-[28px] font-bold text-lg shadow-md dark:shadow-[0_0_20px_rgba(0,240,255,0.4)] hover:shadow-lg dark:hover:shadow-[0_0_30px_rgba(0,240,255,0.6)] flex justify-center items-center gap-2 disabled:opacity-70 disabled:scale-100 active:scale-95 transition-all"
+                  className="w-full bg-gradient-to-r from-blue-600 to-purple-600 dark:from-brand-neon dark:to-brand-purple text-white py-3.5 sm:py-4 rounded-2xl font-bold text-base sm:text-lg shadow-md dark:shadow-[0_0_20px_rgba(0,240,255,0.4)] hover:shadow-lg flex justify-center items-center gap-2 disabled:opacity-70 disabled:scale-100 active:scale-95 transition-all"
                 >
                   {isSubmitting ? (
-                    <div className="w-6 h-6 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                    <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
                   ) : (
                     <>
-                      <FiCheck size={24} />
+                      <FiCheck size={20} />
                       Create Group
                     </>
                   )}

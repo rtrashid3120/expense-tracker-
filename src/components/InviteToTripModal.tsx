@@ -86,38 +86,38 @@ export function InviteToTripModal({ isOpen, onClose, trip }: InviteToTripModalPr
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             onClick={onClose}
-            className="absolute inset-0 bg-black/40 backdrop-blur-sm z-50"
+            className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[100]"
           />
           <motion.div
             initial={{ y: '100%' }}
             animate={{ y: 0 }}
             exit={{ y: '100%' }}
             transition={{ type: 'spring', damping: 25, stiffness: 200 }}
-            className="absolute bottom-0 w-full h-[85%] bg-white dark:bg-[#0f1423] rounded-t-[40px] z-50 p-6 md:p-8 flex flex-col shadow-2xl overflow-hidden"
+            className="fixed bottom-0 w-full max-h-[92vh] md:max-h-[85vh] md:w-[560px] md:left-1/2 md:-translate-x-1/2 md:bottom-auto md:top-1/2 md:-translate-y-1/2 bg-white/95 dark:bg-dark-surface/95 border border-gray-200 dark:border-white/10 rounded-t-[32px] md:rounded-3xl z-[101] p-4 sm:p-6 md:p-8 flex flex-col shadow-2xl overflow-hidden backdrop-blur-3xl"
           >
-            <div className="flex justify-between items-center mb-6 flex-shrink-0">
-              <h2 className="text-2xl font-bold dark:text-white">Invite Friends</h2>
-              <button onClick={onClose} className="p-3 bg-gray-100 dark:bg-gray-800 rounded-full text-gray-500 hover:bg-gray-200 transition-colors">
-                <FiX size={20} />
+            <div className="flex justify-between items-center mb-4 sm:mb-6 flex-shrink-0">
+              <h2 className="text-xl sm:text-2xl font-black text-gray-900 dark:text-white tracking-tight">Invite Friends</h2>
+              <button onClick={onClose} className="p-2.5 sm:p-3 bg-gray-100 dark:bg-white/5 border border-gray-200 dark:border-white/10 rounded-full text-gray-500 dark:text-white/50 hover:bg-gray-200 dark:hover:bg-white/10 transition-colors">
+                <FiX size={18} />
               </button>
             </div>
 
-            <div className="flex bg-gray-100 dark:bg-white/5 rounded-xl p-1 mb-6 flex-shrink-0 border border-gray-200 dark:border-white/10">
+            <div className="flex bg-gray-100 dark:bg-white/5 rounded-xl p-1 mb-4 sm:mb-6 flex-shrink-0 border border-gray-200 dark:border-white/10">
               <button 
                 onClick={() => setActiveTab('Search')}
-                className={`flex-1 py-2.5 text-sm font-bold rounded-lg transition-all ${activeTab === 'Search' ? 'bg-white dark:bg-brand-neon/20 shadow-sm text-brand-600 dark:text-brand-neon' : 'text-gray-500 dark:text-white/50 hover:text-gray-700 dark:hover:text-white/80'}`}
+                className={`flex-1 py-2 text-xs sm:text-sm font-bold rounded-lg transition-all ${activeTab === 'Search' ? 'bg-white dark:bg-brand-neon/20 shadow-sm text-brand-600 dark:text-brand-neon' : 'text-gray-500 dark:text-white/50 hover:text-gray-700 dark:hover:text-white/80'}`}
               >
                 Find & Invite
               </button>
               <button 
                 onClick={() => setActiveTab('Link')}
-                className={`flex-1 py-2.5 text-sm font-bold rounded-lg transition-all ${activeTab === 'Link' ? 'bg-white dark:bg-brand-neon/20 shadow-sm text-brand-600 dark:text-brand-neon' : 'text-gray-500 dark:text-white/50 hover:text-gray-700 dark:hover:text-white/80'}`}
+                className={`flex-1 py-2 text-xs sm:text-sm font-bold rounded-lg transition-all ${activeTab === 'Link' ? 'bg-white dark:bg-brand-neon/20 shadow-sm text-brand-600 dark:text-brand-neon' : 'text-gray-500 dark:text-white/50 hover:text-gray-700 dark:hover:text-white/80'}`}
               >
                 Shareable Link
               </button>
             </div>
 
-            <div className="flex-1 overflow-y-auto pb-6 scrollbar-hide">
+            <div className="flex-1 overflow-y-auto min-h-0 pr-1 pb-4 scrollbar-hide">
               <AnimatePresence mode="wait">
                 {activeTab === 'Search' ? (
                   <motion.div
