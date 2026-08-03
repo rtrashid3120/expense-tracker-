@@ -1,8 +1,15 @@
 import { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { FiX, FiCheck, FiPlus, FiMic } from 'react-icons/fi';
+import { FiX, FiCheck, FiPlus, FiMic, FiTrash2, FiLayers, FiList } from 'react-icons/fi';
 import { useAppStore } from '../store';
 import type { Category } from '../store';
+
+interface MultiItemRow {
+  id: string;
+  name: string;
+  amount: string;
+  category: Category;
+}
 
 export function AddExpenseModal({ 
   isOpen, 
@@ -17,6 +24,10 @@ export function AddExpenseModal({
 }) {
   const { wallets, activeWalletId, trips, addExpense, createTrip } = useAppStore();
   
+  // Mode state: 'single' or 'batch'
+  const [entryMode, setEntryMode] = useState<'single' | 'batch'>('single');
+
+  // Single item state
   const [amount, setAmount] = useState('');
   const [category, setCategory] = useState<Category>(initialCategory);
   const [note, setNote] = useState('');
@@ -31,6 +42,13 @@ export function AddExpenseModal({
   const [familyMember, setFamilyMember] = useState('');
   const [claimStatus, setClaimStatus] = useState('None');
   const [isListening, setIsListening] = useState(false);
+
+  // Multi-item batch state
+  const [multiItems, setMultiItems] = useState<MultiItemRow[]>([
+    { id: '1', name: '', amount: '', category: 'Groceries' },
+    { id: '2', name: '', amount: '', category: 'Groceries' },
+    { id: '3', name: '', amount: '', category: 'Groceries' },
+  ]);
   
   // Category Domains state with persistence
   const defaultCategories: string[] = ['Personal', 'Groceries', 'Rent', 'Fuel', 'Medical', 'Travel'];
@@ -44,6 +62,43 @@ export function AddExpenseModal({
   });
 
   const categories = [...defaultCategories, ...customCategories];
+
+  const handleAddMultiRow = () => {
+    setMultiItems(prev => [
+      ...prev,
+      { id: Date.now().toString(), name: '', amount: '', category: category || 'Groceries' }
+    ]);
+  };
+
+  const handleRemoveMultiRow = (id: string) => {
+    if (multiItems.length <= 1) return;
+    setMultiItems(prev => prev.filter(item => item.id !== id));
+  };
+
+  const handleMultiRowChange = (id: string, field: keyof MultiItemRow, value: string) => {
+    setMultiItems(prev => prev.map(item => {
+      if (item.id === id) {
+        if (field === 'amount') {
+          const raw = value.replace(/[^0-9]/g, '');
+          const formatted = raw ? new Intl.NumberFormat('en-IN').format(parseInt(raw, 10)) : '';
+          return { ...item, amount: formatted };
+        }
+        return { ...item, [field]: value };
+      }
+      return item;
+    }));
+  };
+
+  const getMultiItemsTotal = () => {
+    return multiItems.reduce((sum, item) => {
+      const parsed = parseFloat(item.amount.replace(/,/g, '')) || 0;
+      return sum + parsed;
+    }, 0);
+  };
+
+  const getValidMultiItemsCount = () => {
+    return multiItems.filter(i => i.amount && parseFloat(i.amount.replace(/,/g, '')) > 0).length;
+  };
 
   const handleSwitchWallet = () => {
     if (wallets.length <= 1) return;
@@ -101,8 +156,58 @@ export function AddExpenseModal({
     setAmount(formatted);
   };
 
+  const handleBatchSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const validItems = multiItems.filter(item => item.amount && parseFloat(item.amount.replace(/,/g, '')) > 0);
+    if (validItems.length === 0) {
+      setErrorMsg('Please enter at least one item with an amount.');
+      return;
+    }
+
+    const targetTripId = initialTripId || (category === 'Travel' ? tripId : undefined);
+
+    if (wallets.length > 0 && !targetTripId && !walletId) {
+      setErrorMsg('Please select a source wallet.');
+      return;
+    }
+
+    setIsSubmitting(true);
+    setErrorMsg('');
+
+    try {
+      for (const item of validItems) {
+        const parsedAmount = parseFloat(item.amount.replace(/,/g, ''));
+        const expenseData: any = {
+          amount: parsedAmount,
+          category: item.category,
+          note: item.name || `${item.category} Expense`,
+          walletId: targetTripId ? undefined : walletId,
+          ...(targetTripId ? { tripId: targetTripId } : {})
+        };
+        await addExpense(expenseData);
+      }
+      
+      // Reset & Close
+      setMultiItems([
+        { id: Date.now().toString() + '-1', name: '', amount: '', category: 'Groceries' },
+        { id: Date.now().toString() + '-2', name: '', amount: '', category: 'Groceries' },
+        { id: Date.now().toString() + '-3', name: '', amount: '', category: 'Groceries' }
+      ]);
+      setAmount(''); setNote('');
+      onClose();
+    } catch (err: any) {
+      setErrorMsg(err.message || 'Failed to save batch expenses. Please try again.');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (entryMode === 'batch') {
+      return handleBatchSubmit(e);
+    }
+    
     if (!amount) return;
     
     // Determine target trip
@@ -207,8 +312,6 @@ export function AddExpenseModal({
     recognition.start();
   };
 
-
-
   const handleCreateTrip = async () => {
     const name = window.prompt("Enter new trip name:");
     if (!name) return;
@@ -245,7 +348,7 @@ export function AddExpenseModal({
             transition={{ type: 'spring', damping: 25, stiffness: 200 }}
             className="fixed inset-x-0 bottom-0 max-h-[90vh] md:max-h-[85vh] w-full md:w-[540px] md:inset-x-auto md:left-1/2 md:-translate-x-1/2 md:bottom-auto md:top-1/2 md:-translate-y-1/2 bg-white/95 dark:bg-dark-surface/95 border-t border-gray-200 dark:border-white/10 rounded-t-[32px] md:rounded-3xl z-[101] p-4 sm:p-6 md:p-8 flex flex-col shadow-2xl backdrop-blur-3xl overflow-hidden"
           >
-            <div className="flex justify-between items-center mb-4 sm:mb-6 flex-shrink-0">
+            <div className="flex justify-between items-center mb-3 sm:mb-4 flex-shrink-0">
               <h2 className="text-xl sm:text-2xl font-black text-gray-900 dark:text-white tracking-tight">Add Expense</h2>
               <div className="flex gap-2 sm:gap-3">
                 <button type="button" onClick={handleVoiceInput} className={`p-2.5 sm:p-3 border rounded-full transition-colors ${isListening ? 'bg-red-50 dark:bg-red-500/20 border-red-200 dark:border-red-500/30 text-red-600 dark:text-red-400 animate-pulse' : 'bg-blue-50 dark:bg-brand-neon/10 border-blue-200 dark:border-brand-neon/20 text-blue-600 dark:text-brand-neon hover:bg-blue-100 dark:hover:bg-brand-neon/20'}`}>
@@ -257,184 +360,336 @@ export function AddExpenseModal({
               </div>
             </div>
 
-            <form onSubmit={handleSubmit} className="flex flex-col flex-1 overflow-hidden min-h-0">
-              <div className="flex-1 overflow-y-auto min-h-0 pr-1 space-y-4 sm:space-y-6 scrollbar-hide pb-4">
-                {initialTripId ? (
-                  <div className="p-3.5 sm:p-4 bg-brand-50 dark:bg-brand-neon/10 border border-brand-200 dark:border-brand-neon/30 rounded-2xl flex items-center justify-between">
-                    <div>
-                      <p className="text-[10px] sm:text-xs font-bold text-brand-600 dark:text-brand-neon uppercase tracking-wider">Logging Expense For Trip</p>
-                      <p className="text-sm sm:text-base font-black text-gray-900 dark:text-white mt-0.5">✈️ {trips.find(t => t.id === initialTripId)?.name || 'Current Trip'}</p>
+            {/* Mode Switcher Tabs */}
+            <div className="flex bg-gray-100 dark:bg-white/5 rounded-2xl p-1 mb-4 flex-shrink-0 border border-gray-200 dark:border-white/10">
+              <button 
+                type="button"
+                onClick={() => setEntryMode('single')}
+                className={`flex-1 py-2 rounded-xl text-xs sm:text-sm font-bold flex items-center justify-center gap-2 transition-all ${
+                  entryMode === 'single'
+                    ? 'bg-white dark:bg-white/10 text-gray-900 dark:text-white shadow-sm'
+                    : 'text-gray-500 dark:text-white/50 hover:text-gray-900 dark:hover:text-white'
+                }`}
+              >
+                <FiList size={16} />
+                Single Item
+              </button>
+              <button 
+                type="button"
+                onClick={() => setEntryMode('batch')}
+                className={`flex-1 py-2 rounded-xl text-xs sm:text-sm font-bold flex items-center justify-center gap-2 transition-all ${
+                  entryMode === 'batch'
+                    ? 'bg-gradient-to-r from-blue-600 to-purple-600 dark:from-brand-neon dark:to-brand-purple text-white shadow-md'
+                    : 'text-gray-500 dark:text-white/50 hover:text-gray-900 dark:hover:text-white'
+                }`}
+              >
+                <FiLayers size={16} />
+                ⚡ Multi-Item Batch
+              </button>
+            </div>
+
+            {entryMode === 'batch' ? (
+              <form onSubmit={handleSubmit} className="flex flex-col flex-1 overflow-hidden min-h-0">
+                <div className="flex-1 overflow-y-auto min-h-0 pr-1 space-y-4 scrollbar-hide pb-4">
+                  {/* Source Wallet / Trip Selector */}
+                  {initialTripId ? (
+                    <div className="p-3.5 bg-brand-50 dark:bg-brand-neon/10 border border-brand-200 dark:border-brand-neon/30 rounded-2xl flex items-center justify-between">
+                      <div>
+                        <p className="text-[10px] font-bold text-brand-600 dark:text-brand-neon uppercase tracking-wider">Logging Batch For Trip</p>
+                        <p className="text-sm font-black text-gray-900 dark:text-white mt-0.5">✈️ {trips.find(t => t.id === initialTripId)?.name || 'Current Trip'}</p>
+                      </div>
+                      <span className="text-[10px] font-bold bg-brand-100 dark:bg-brand-neon/20 text-brand-700 dark:text-brand-neon px-2.5 py-1 rounded-full">Trip Mode</span>
                     </div>
-                    <span className="text-[10px] sm:text-xs font-bold bg-brand-100 dark:bg-brand-neon/20 text-brand-700 dark:text-brand-neon px-2.5 py-1 rounded-full">Trip Mode</span>
-                  </div>
-                ) : (
-                  category !== 'Travel' && (
+                  ) : (
                     <div>
-                      <label className="text-xs sm:text-sm font-bold text-gray-500 dark:text-white/60 block mb-2 uppercase tracking-wider">Source Wallet</label>
+                      <label className="text-xs font-bold text-gray-500 dark:text-white/60 block mb-2 uppercase tracking-wider">Source Wallet</label>
                       <div className="flex gap-2">
                         <select 
                           value={walletId} 
                           onChange={(e) => setWalletId(e.target.value)}
-                          className="flex-1 bg-gray-50 dark:bg-white/5 border border-gray-200 dark:border-white/10 rounded-2xl py-3 sm:py-4 px-4 font-bold text-gray-900 dark:text-white outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-brand-neon transition-all appearance-none text-sm"
+                          className="flex-1 bg-gray-50 dark:bg-white/5 border border-gray-200 dark:border-white/10 rounded-2xl py-3 px-4 font-bold text-gray-900 dark:text-white outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-brand-neon appearance-none text-sm"
                         >
                           {wallets.length === 0 && <option value="" className="bg-white dark:bg-dark-surface">No wallets available</option>}
                           {wallets.map(w => (
                             <option key={w.id} value={w.id} className="bg-white dark:bg-dark-surface">{w.name} (₹{w.balance.toLocaleString()})</option>
                           ))}
                         </select>
-                        <button type="button" onClick={handleSwitchWallet} className="px-4 bg-gray-50 dark:bg-white/5 border border-gray-200 dark:border-white/10 rounded-2xl flex items-center justify-center text-gray-500 dark:text-white/60 hover:bg-gray-100 dark:hover:bg-white/10 hover:text-gray-900 dark:hover:text-white transition-colors" title="Switch between created wallets">
-                          <FiPlus size={20} />
+                        <button type="button" onClick={handleSwitchWallet} className="px-4 bg-gray-50 dark:bg-white/5 border border-gray-200 dark:border-white/10 rounded-2xl flex items-center justify-center text-gray-500 dark:text-white/60 hover:bg-gray-100 dark:hover:bg-white/10" title="Switch wallet">
+                          <FiPlus size={18} />
                         </button>
                       </div>
                     </div>
-                  )
-                )}
+                  )}
 
-                <div>
-                  <label className="text-xs sm:text-sm font-bold text-gray-500 dark:text-white/60 block mb-2 uppercase tracking-wider">Amount</label>
-                  <div className="relative">
-                    <span className="absolute left-4 top-1/2 -translate-y-1/2 text-xl sm:text-2xl text-gray-400 dark:text-white/40 font-bold">₹</span>
+                  {/* Multi-Item Inputs */}
+                  <div className="space-y-3">
+                    <div className="flex justify-between items-center px-1">
+                      <span className="text-xs font-bold text-gray-500 dark:text-white/60 uppercase tracking-wider">Items Table ({multiItems.length})</span>
+                      <span className="text-xs font-black text-blue-600 dark:text-brand-neon">Total: ₹{getMultiItemsTotal().toLocaleString('en-IN')}</span>
+                    </div>
+
+                    {multiItems.map((item, idx) => (
+                      <div key={item.id} className="p-3 bg-gray-50 dark:bg-white/5 border border-gray-200 dark:border-white/10 rounded-2xl space-y-2 relative group">
+                        <div className="flex gap-2 items-center">
+                          <span className="text-xs font-bold text-gray-400 dark:text-white/30 w-4">{idx + 1}.</span>
+                          <input 
+                            type="text"
+                            placeholder={idx === 0 ? "Milk" : idx === 1 ? "Curd" : idx === 2 ? "Rice" : "Item name"}
+                            value={item.name}
+                            onChange={(e) => handleMultiRowChange(item.id, 'name', e.target.value)}
+                            className="flex-1 bg-white dark:bg-black/30 border border-gray-200 dark:border-white/10 rounded-xl px-3 py-2 text-sm font-bold text-gray-900 dark:text-white outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-brand-neon"
+                          />
+                          <div className="relative w-28 shrink-0">
+                            <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-xs font-bold text-gray-400">₹</span>
+                            <input 
+                              type="text"
+                              inputMode="numeric"
+                              placeholder={idx === 0 ? "50" : idx === 1 ? "10" : idx === 2 ? "100" : "0"}
+                              value={item.amount}
+                              onChange={(e) => handleMultiRowChange(item.id, 'amount', e.target.value)}
+                              className="w-full bg-white dark:bg-black/30 border border-gray-200 dark:border-white/10 rounded-xl pl-6 pr-2 py-2 text-sm font-black text-blue-600 dark:text-brand-neon outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-brand-neon"
+                            />
+                          </div>
+                          {multiItems.length > 1 && (
+                            <button 
+                              type="button" 
+                              onClick={() => handleRemoveMultiRow(item.id)}
+                              className="p-2 text-gray-400 hover:text-red-500 dark:hover:text-red-400 transition-colors shrink-0"
+                              title="Delete row"
+                            >
+                              <FiTrash2 size={16} />
+                            </button>
+                          )}
+                        </div>
+
+                        <div className="flex items-center gap-2 pt-1">
+                          <span className="text-[10px] font-bold text-gray-400 dark:text-white/40 uppercase">Category:</span>
+                          <select 
+                            value={item.category}
+                            onChange={(e) => handleMultiRowChange(item.id, 'category', e.target.value as any)}
+                            className="bg-white dark:bg-black/40 border border-gray-200 dark:border-white/10 text-xs font-bold text-gray-800 dark:text-white/80 rounded-lg px-2 py-1 outline-none"
+                          >
+                            {categories.map(c => (
+                              <option key={c} value={c} className="bg-white dark:bg-dark-surface">{c}</option>
+                            ))}
+                          </select>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+
+                  <button 
+                    type="button"
+                    onClick={handleAddMultiRow}
+                    className="w-full py-3 border-2 border-dashed border-gray-300 dark:border-white/20 text-gray-600 dark:text-white/70 font-bold rounded-2xl hover:bg-gray-100 dark:hover:bg-white/5 transition-all text-xs flex items-center justify-center gap-2"
+                  >
+                    <FiPlus size={16} />
+                    + Add Another Item
+                  </button>
+                </div>
+
+                <div className="pt-3 border-t border-gray-100 dark:border-white/10 flex-shrink-0">
+                  {errorMsg && (
+                    <div className="p-3 rounded-xl bg-red-100 dark:bg-red-500/20 text-red-700 dark:text-red-400 text-xs font-bold mb-3 border border-red-200 dark:border-red-500/30">
+                      {errorMsg}
+                    </div>
+                  )}
+
+                  <button
+                    type="submit"
+                    disabled={isSubmitting || getValidMultiItemsCount() === 0}
+                    className="w-full bg-gradient-to-r from-blue-600 to-purple-600 dark:from-brand-neon dark:to-brand-purple text-white py-4 rounded-2xl font-black text-base shadow-md dark:shadow-[0_0_20px_rgba(0,240,255,0.4)] hover:shadow-lg flex justify-center items-center gap-2 active:scale-95 transition-all disabled:opacity-50 disabled:scale-100"
+                  >
+                    {isSubmitting ? (
+                      <div className="w-5 h-5 border-3 border-white/30 border-t-white rounded-full animate-spin" />
+                    ) : (
+                      <>
+                        <FiCheck size={20} />
+                        Save All ({getValidMultiItemsCount()} Items • ₹{getMultiItemsTotal().toLocaleString('en-IN')})
+                      </>
+                    )}
+                  </button>
+                </div>
+              </form>
+            ) : (
+              <form onSubmit={handleSubmit} className="flex flex-col flex-1 overflow-hidden min-h-0">
+                <div className="flex-1 overflow-y-auto min-h-0 pr-1 space-y-4 sm:space-y-6 scrollbar-hide pb-4">
+                  {initialTripId ? (
+                    <div className="p-3.5 sm:p-4 bg-brand-50 dark:bg-brand-neon/10 border border-brand-200 dark:border-brand-neon/30 rounded-2xl flex items-center justify-between">
+                      <div>
+                        <p className="text-[10px] sm:text-xs font-bold text-brand-600 dark:text-brand-neon uppercase tracking-wider">Logging Expense For Trip</p>
+                        <p className="text-sm sm:text-base font-black text-gray-900 dark:text-white mt-0.5">✈️ {trips.find(t => t.id === initialTripId)?.name || 'Current Trip'}</p>
+                      </div>
+                      <span className="text-[10px] sm:text-xs font-bold bg-brand-100 dark:bg-brand-neon/20 text-brand-700 dark:text-brand-neon px-2.5 py-1 rounded-full">Trip Mode</span>
+                    </div>
+                  ) : (
+                    category !== 'Travel' && (
+                      <div>
+                        <label className="text-xs sm:text-sm font-bold text-gray-500 dark:text-white/60 block mb-2 uppercase tracking-wider">Source Wallet</label>
+                        <div className="flex gap-2">
+                          <select 
+                            value={walletId} 
+                            onChange={(e) => setWalletId(e.target.value)}
+                            className="flex-1 bg-gray-50 dark:bg-white/5 border border-gray-200 dark:border-white/10 rounded-2xl py-3 sm:py-4 px-4 font-bold text-gray-900 dark:text-white outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-brand-neon transition-all appearance-none text-sm"
+                          >
+                            {wallets.length === 0 && <option value="" className="bg-white dark:bg-dark-surface">No wallets available</option>}
+                            {wallets.map(w => (
+                              <option key={w.id} value={w.id} className="bg-white dark:bg-dark-surface">{w.name} (₹{w.balance.toLocaleString()})</option>
+                            ))}
+                          </select>
+                          <button type="button" onClick={handleSwitchWallet} className="px-4 bg-gray-50 dark:bg-white/5 border border-gray-200 dark:border-white/10 rounded-2xl flex items-center justify-center text-gray-500 dark:text-white/60 hover:bg-gray-100 dark:hover:bg-white/10 hover:text-gray-900 dark:hover:text-white transition-colors" title="Switch between created wallets">
+                            <FiPlus size={20} />
+                          </button>
+                        </div>
+                      </div>
+                    )
+                  )}
+
+                  <div>
+                    <label className="text-xs sm:text-sm font-bold text-gray-500 dark:text-white/60 block mb-2 uppercase tracking-wider">Amount</label>
+                    <div className="relative">
+                      <span className="absolute left-4 top-1/2 -translate-y-1/2 text-xl sm:text-2xl text-gray-400 dark:text-white/40 font-bold">₹</span>
+                      <input
+                        type="text"
+                        inputMode="numeric"
+                        value={amount}
+                        onChange={handleAmountChange}
+                        className="w-full bg-gray-50 dark:bg-white/5 border border-gray-200 dark:border-white/10 rounded-2xl sm:rounded-3xl py-3.5 sm:py-4 pl-10 sm:pl-12 pr-4 text-2xl sm:text-4xl font-black text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 dark:focus:ring-brand-neon outline-none transition-all placeholder-gray-300 dark:placeholder-white/20"
+                        placeholder="0"
+                        autoFocus
+                      />
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="text-xs sm:text-sm font-bold text-gray-500 dark:text-white/60 block mb-2 uppercase tracking-wider">Category Domain</label>
+                    <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide">
+                      {categories.map(cat => (
+                        <button
+                          key={cat}
+                          type="button"
+                          onClick={() => setCategory(cat as any)}
+                          className={`px-4 py-2.5 sm:px-5 sm:py-3 rounded-2xl whitespace-nowrap text-xs sm:text-sm font-bold transition-all border ${
+                            category === cat 
+                              ? 'bg-blue-50 dark:bg-brand-neon/20 border-blue-600 dark:border-brand-neon text-blue-700 dark:text-brand-neon shadow-sm dark:shadow-[0_0_15px_rgba(0,240,255,0.3)]' 
+                              : 'bg-gray-50 dark:bg-white/5 border-gray-200 dark:border-white/10 text-gray-500 dark:text-white/50 hover:bg-gray-100 dark:hover:bg-white/10 hover:text-gray-900 dark:hover:text-white/80'
+                          }`}
+                        >
+                          {cat}
+                        </button>
+                      ))}
+                      <button
+                        type="button"
+                        onClick={handleAddCustomCategory}
+                        className="px-3.5 py-2.5 sm:px-4 sm:py-3 bg-gray-50 dark:bg-white/5 border border-dashed border-gray-300 dark:border-white/20 rounded-2xl flex items-center justify-center text-gray-500 dark:text-white/60 hover:bg-gray-100 dark:hover:bg-white/10 hover:text-gray-900 dark:hover:text-white transition-colors shrink-0"
+                        title="Add Custom Category Domain"
+                      >
+                        <FiPlus size={18} />
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Dynamic Domain Forms */}
+                  <AnimatePresence mode="popLayout">
+                    {category === 'Fuel' && (
+                      <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }} className="flex gap-3">
+                        <div className="flex-1">
+                          <label className="text-xs font-bold text-gray-500 dark:text-white/60 block mb-1">Liters</label>
+                          <input type="number" value={liters} onChange={(e) => setLiters(e.target.value)} className="w-full bg-gray-50 dark:bg-white/5 border border-gray-200 dark:border-white/10 rounded-xl py-2.5 px-3 text-sm text-gray-900 dark:text-white outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-brand-neon placeholder-gray-400 dark:placeholder-white/30" placeholder="0.0" />
+                        </div>
+                        <div className="flex-1">
+                          <label className="text-xs font-bold text-gray-500 dark:text-white/60 block mb-1">Odometer</label>
+                          <input type="number" value={odometer} onChange={(e) => setOdometer(e.target.value)} className="w-full bg-gray-50 dark:bg-white/5 border border-gray-200 dark:border-white/10 rounded-xl py-2.5 px-3 text-sm text-gray-900 dark:text-white outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-brand-neon placeholder-gray-400 dark:placeholder-white/30" placeholder="km" />
+                        </div>
+                      </motion.div>
+                    )}
+
+                    {category === 'Medical' && (
+                      <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }} className="space-y-3">
+                        <div>
+                          <label className="text-xs font-bold text-gray-500 dark:text-white/60 block mb-1">Family Member</label>
+                          <input type="text" value={familyMember} onChange={(e) => setFamilyMember(e.target.value)} className="w-full bg-gray-50 dark:bg-white/5 border border-gray-200 dark:border-white/10 rounded-xl py-2.5 px-3 text-sm text-gray-900 dark:text-white outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-brand-neon placeholder-gray-400 dark:placeholder-white/30" placeholder="E.g., Mom" />
+                        </div>
+                        <div>
+                          <label className="text-xs font-bold text-gray-500 dark:text-white/60 block mb-1">Insurance Claim</label>
+                          <select value={claimStatus} onChange={(e) => setClaimStatus(e.target.value)} className="w-full bg-gray-50 dark:bg-white/5 border border-gray-200 dark:border-white/10 rounded-xl py-2.5 px-3 text-sm text-gray-900 dark:text-white outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-brand-neon appearance-none">
+                            <option className="bg-white dark:bg-dark-surface">None</option>
+                            <option className="bg-white dark:bg-dark-surface">Pending</option>
+                            <option className="bg-white dark:bg-dark-surface">Approved</option>
+                            <option className="bg-white dark:bg-dark-surface">Rejected</option>
+                          </select>
+                        </div>
+                      </motion.div>
+                    )}
+                    
+                    {category === 'Groceries' && (
+                      <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }} className="p-3.5 bg-blue-50 dark:bg-brand-neon/10 rounded-xl border border-blue-200 dark:border-brand-neon/30">
+                        <p className="text-xs text-blue-600 dark:text-brand-neon font-bold flex items-center gap-1.5"><FiPlus /> Add Itemized Receipt</p>
+                        <p className="text-[10px] text-gray-500 dark:text-white/50 mt-0.5">Item-level tracking helps calculate price inflation.</p>
+                      </motion.div>
+                    )}
+
+                    {category === 'Travel' && !initialTripId && (
+                      <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }} className="space-y-3">
+                        <div>
+                          <label className="text-xs font-bold text-gray-500 dark:text-white/60 block mb-1">Select Trip</label>
+                          <div className="flex gap-2">
+                            <select 
+                              value={tripId} 
+                              onChange={(e) => setTripId(e.target.value)}
+                              className="flex-1 bg-gray-50 dark:bg-white/5 border border-gray-200 dark:border-white/10 rounded-xl py-2.5 px-3 font-bold text-sm text-gray-900 dark:text-white outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-brand-neon appearance-none"
+                            >
+                              {trips.length === 0 && <option value="" className="bg-white dark:bg-dark-surface">No trips available</option>}
+                              {trips.map(t => (
+                                <option key={t.id} value={t.id} className="bg-white dark:bg-dark-surface">{t.name}</option>
+                              ))}
+                            </select>
+                            <button type="button" onClick={handleCreateTrip} className="px-3.5 bg-gray-50 dark:bg-white/5 border border-gray-200 dark:border-white/10 rounded-xl flex items-center justify-center text-gray-500 dark:text-white/60 hover:bg-gray-100 dark:hover:bg-white/10 hover:text-gray-900 dark:hover:text-white transition-colors">
+                              <FiPlus size={18} />
+                            </button>
+                          </div>
+                        </div>
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+
+                  <div>
+                    <label className="text-xs sm:text-sm font-bold text-gray-500 dark:text-white/60 block mb-2 uppercase tracking-wider">Note (Optional)</label>
                     <input
                       type="text"
-                      inputMode="numeric"
-                      value={amount}
-                      onChange={handleAmountChange}
-                      className="w-full bg-gray-50 dark:bg-white/5 border border-gray-200 dark:border-white/10 rounded-2xl sm:rounded-3xl py-3.5 sm:py-4 pl-10 sm:pl-12 pr-4 text-2xl sm:text-4xl font-black text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 dark:focus:ring-brand-neon outline-none transition-all placeholder-gray-300 dark:placeholder-white/20"
-                      placeholder="0"
-                      autoFocus
+                      value={note}
+                      onChange={(e) => setNote(e.target.value)}
+                      className="w-full bg-gray-50 dark:bg-white/5 border border-gray-200 dark:border-white/10 rounded-2xl py-3 sm:py-4 px-4 text-sm text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 dark:focus:ring-brand-neon outline-none transition-all placeholder-gray-400 dark:placeholder-white/30"
+                      placeholder="What was this for?"
                     />
                   </div>
                 </div>
 
-                <div>
-                  <label className="text-xs sm:text-sm font-bold text-gray-500 dark:text-white/60 block mb-2 uppercase tracking-wider">Category Domain</label>
-                  <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide">
-                    {categories.map(cat => (
-                      <button
-                        key={cat}
-                        type="button"
-                        onClick={() => setCategory(cat as any)}
-                        className={`px-4 py-2.5 sm:px-5 sm:py-3 rounded-2xl whitespace-nowrap text-xs sm:text-sm font-bold transition-all border ${
-                          category === cat 
-                            ? 'bg-blue-50 dark:bg-brand-neon/20 border-blue-600 dark:border-brand-neon text-blue-700 dark:text-brand-neon shadow-sm dark:shadow-[0_0_15px_rgba(0,240,255,0.3)]' 
-                            : 'bg-gray-50 dark:bg-white/5 border-gray-200 dark:border-white/10 text-gray-500 dark:text-white/50 hover:bg-gray-100 dark:hover:bg-white/10 hover:text-gray-900 dark:hover:text-white/80'
-                        }`}
-                      >
-                        {cat}
-                      </button>
-                    ))}
-                    <button
-                      type="button"
-                      onClick={handleAddCustomCategory}
-                      className="px-3.5 py-2.5 sm:px-4 sm:py-3 bg-gray-50 dark:bg-white/5 border border-dashed border-gray-300 dark:border-white/20 rounded-2xl flex items-center justify-center text-gray-500 dark:text-white/60 hover:bg-gray-100 dark:hover:bg-white/10 hover:text-gray-900 dark:hover:text-white transition-colors shrink-0"
-                      title="Add Custom Category Domain"
-                    >
-                      <FiPlus size={18} />
-                    </button>
-                  </div>
+                {/* Fixed Bottom Action Area */}
+                <div className="pt-3 border-t border-gray-100 dark:border-white/10 flex-shrink-0">
+                  {errorMsg && (
+                    <div className="p-3 rounded-xl bg-red-100 dark:bg-red-500/20 text-red-700 dark:text-red-400 text-xs font-bold mb-3 border border-red-200 dark:border-red-500/30">
+                      {errorMsg}
+                    </div>
+                  )}
+
+                  <button
+                    type="submit"
+                    disabled={isSubmitting}
+                    className="w-full bg-gradient-to-r from-blue-600 to-purple-600 dark:from-brand-neon dark:to-brand-purple text-white py-4 sm:py-5 rounded-[24px] sm:rounded-[28px] font-black text-base sm:text-lg shadow-md dark:shadow-[0_0_20px_rgba(0,240,255,0.4)] hover:shadow-lg dark:hover:shadow-[0_0_30px_rgba(0,240,255,0.6)] flex justify-center items-center gap-2 active:scale-95 transition-all disabled:opacity-50 disabled:scale-100"
+                  >
+                    {isSubmitting ? (
+                      <div className="w-5 h-5 border-3 border-white/30 border-t-white rounded-full animate-spin" />
+                    ) : (
+                      <>
+                        <FiCheck size={20} />
+                        Save {category} Expense
+                      </>
+                    )}
+                  </button>
                 </div>
-
-                {/* Dynamic Domain Forms */}
-                <AnimatePresence mode="popLayout">
-                  {category === 'Fuel' && (
-                    <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }} className="flex gap-3">
-                      <div className="flex-1">
-                        <label className="text-xs font-bold text-gray-500 dark:text-white/60 block mb-1">Liters</label>
-                        <input type="number" value={liters} onChange={(e) => setLiters(e.target.value)} className="w-full bg-gray-50 dark:bg-white/5 border border-gray-200 dark:border-white/10 rounded-xl py-2.5 px-3 text-sm text-gray-900 dark:text-white outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-brand-neon placeholder-gray-400 dark:placeholder-white/30" placeholder="0.0" />
-                      </div>
-                      <div className="flex-1">
-                        <label className="text-xs font-bold text-gray-500 dark:text-white/60 block mb-1">Odometer</label>
-                        <input type="number" value={odometer} onChange={(e) => setOdometer(e.target.value)} className="w-full bg-gray-50 dark:bg-white/5 border border-gray-200 dark:border-white/10 rounded-xl py-2.5 px-3 text-sm text-gray-900 dark:text-white outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-brand-neon placeholder-gray-400 dark:placeholder-white/30" placeholder="km" />
-                      </div>
-                    </motion.div>
-                  )}
-
-                  {category === 'Medical' && (
-                    <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }} className="space-y-3">
-                      <div>
-                        <label className="text-xs font-bold text-gray-500 dark:text-white/60 block mb-1">Family Member</label>
-                        <input type="text" value={familyMember} onChange={(e) => setFamilyMember(e.target.value)} className="w-full bg-gray-50 dark:bg-white/5 border border-gray-200 dark:border-white/10 rounded-xl py-2.5 px-3 text-sm text-gray-900 dark:text-white outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-brand-neon placeholder-gray-400 dark:placeholder-white/30" placeholder="E.g., Mom" />
-                      </div>
-                      <div>
-                        <label className="text-xs font-bold text-gray-500 dark:text-white/60 block mb-1">Insurance Claim</label>
-                        <select value={claimStatus} onChange={(e) => setClaimStatus(e.target.value)} className="w-full bg-gray-50 dark:bg-white/5 border border-gray-200 dark:border-white/10 rounded-xl py-2.5 px-3 text-sm text-gray-900 dark:text-white outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-brand-neon appearance-none">
-                          <option className="bg-white dark:bg-dark-surface">None</option>
-                          <option className="bg-white dark:bg-dark-surface">Pending</option>
-                          <option className="bg-white dark:bg-dark-surface">Approved</option>
-                          <option className="bg-white dark:bg-dark-surface">Rejected</option>
-                        </select>
-                      </div>
-                    </motion.div>
-                  )}
-                  
-                  {category === 'Groceries' && (
-                    <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }} className="p-3.5 bg-blue-50 dark:bg-brand-neon/10 rounded-xl border border-blue-200 dark:border-brand-neon/30">
-                      <p className="text-xs text-blue-600 dark:text-brand-neon font-bold flex items-center gap-1.5"><FiPlus /> Add Itemized Receipt</p>
-                      <p className="text-[10px] text-gray-500 dark:text-white/50 mt-0.5">Item-level tracking helps calculate price inflation.</p>
-                    </motion.div>
-                  )}
-
-                  {category === 'Travel' && !initialTripId && (
-                    <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }} className="space-y-3">
-                      <div>
-                        <label className="text-xs font-bold text-gray-500 dark:text-white/60 block mb-1">Select Trip</label>
-                        <div className="flex gap-2">
-                          <select 
-                            value={tripId} 
-                            onChange={(e) => setTripId(e.target.value)}
-                            className="flex-1 bg-gray-50 dark:bg-white/5 border border-gray-200 dark:border-white/10 rounded-xl py-2.5 px-3 font-bold text-sm text-gray-900 dark:text-white outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-brand-neon appearance-none"
-                          >
-                            {trips.length === 0 && <option value="" className="bg-white dark:bg-dark-surface">No trips available</option>}
-                            {trips.map(t => (
-                              <option key={t.id} value={t.id} className="bg-white dark:bg-dark-surface">{t.name}</option>
-                            ))}
-                          </select>
-                          <button type="button" onClick={handleCreateTrip} className="px-3.5 bg-gray-50 dark:bg-white/5 border border-gray-200 dark:border-white/10 rounded-xl flex items-center justify-center text-gray-500 dark:text-white/60 hover:bg-gray-100 dark:hover:bg-white/10 hover:text-gray-900 dark:hover:text-white transition-colors">
-                            <FiPlus size={18} />
-                          </button>
-                        </div>
-                      </div>
-                    </motion.div>
-                  )}
-                </AnimatePresence>
-
-                <div>
-                  <label className="text-xs sm:text-sm font-bold text-gray-500 dark:text-white/60 block mb-2 uppercase tracking-wider">Note (Optional)</label>
-                  <input
-                    type="text"
-                    value={note}
-                    onChange={(e) => setNote(e.target.value)}
-                    className="w-full bg-gray-50 dark:bg-white/5 border border-gray-200 dark:border-white/10 rounded-2xl py-3 sm:py-4 px-4 text-sm text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 dark:focus:ring-brand-neon outline-none transition-all placeholder-gray-400 dark:placeholder-white/30"
-                    placeholder="What was this for?"
-                  />
-                </div>
-              </div>
-
-              {/* Fixed Bottom Action Area */}
-              <div className="pt-3 border-t border-gray-100 dark:border-white/10 flex-shrink-0">
-                {errorMsg && (
-                  <div className="p-3 rounded-xl bg-red-100 dark:bg-red-500/20 text-red-700 dark:text-red-400 text-xs font-bold mb-3 border border-red-200 dark:border-red-500/30">
-                    {errorMsg}
-                  </div>
-                )}
-
-                <button
-                  type="submit"
-                  disabled={isSubmitting}
-                  className="w-full bg-gradient-to-r from-blue-600 to-purple-600 dark:from-brand-neon dark:to-brand-purple text-white py-4 sm:py-5 rounded-[24px] sm:rounded-[28px] font-black text-base sm:text-lg shadow-md dark:shadow-[0_0_20px_rgba(0,240,255,0.4)] hover:shadow-lg dark:hover:shadow-[0_0_30px_rgba(0,240,255,0.6)] flex justify-center items-center gap-2 active:scale-95 transition-all disabled:opacity-50 disabled:scale-100"
-                >
-                  {isSubmitting ? (
-                    <div className="w-5 h-5 border-3 border-white/30 border-t-white rounded-full animate-spin" />
-                  ) : (
-                    <>
-                      <FiCheck size={20} />
-                      Save {category} Expense
-                    </>
-                  )}
-                </button>
-              </div>
-            </form>
-          </motion.div>
+              </form>
+            )}        </motion.div>
         </>
       )}
     </AnimatePresence>
