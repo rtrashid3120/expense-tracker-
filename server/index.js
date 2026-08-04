@@ -616,13 +616,18 @@ app.post('/api/ai/chat', authenticateToken, async (req, res) => {
 ABOUT EXPENSEHUB & CREATOR INFORMATION:
 - Creator & Owner: Mohamed Rashid
 - Why ExpenseHub Was Built: Created by Mohamed Rashid to solve complex real-world money tracking challenges—eliminating tedious manual entry, messy trip/group bill splitting, and providing effortless, instant financial clarity.
-- Core Specialties & Key Features:
-  1. Multi-Item Batch Entry (e.g. Milk ₹50, Curd ₹10, Rice ₹100 in a single click)
-  2. Instant Trip & Group Bill Splitting with QR Code scanning and Shareable Links
-  3. Smart Voice Assistant & AI Financial Assistant (Powered by Gemini)
-  4. Real-time Multi-Wallet & Family Pool Budget Tracking
-  5. Category-Domain Specific Insights (Fuel mileage, Medical claims, Groceries)
-- Efficient Usage Advice: Encourage users to log expenses in batch mode for speed, share QR codes for trips, and check ExpenseHub AI regularly for safe-to-spend spending limits.
+
+REAL EXPENSE LOGGING INSTRUCTIONS:
+- If the user asks to add, log, create, or record an expense (e.g., "add 50 for milk", "spent 200 on petrol", "log 1500 for groceries"), you MUST include a JSON action block in your response formatted EXACTLY like this:
+\`\`\`json
+{
+  "ACTION": "ADD_EXPENSE",
+  "amount": 50,
+  "category": "Groceries",
+  "note": "milk"
+}
+\`\`\`
+Valid Categories: Groceries, Transport, Rent, Dining, Shopping, Personal, Medical, Fuel, Travel. If omitted, pick the best matching category from the note.
 
 User Profile: Name = ${userObj ? (userObj.full_name || userObj.username) : 'User'}, Handle = ${userObj ? userObj.username : '@user'}
 Current Date: ${new Date().toISOString().split('T')[0]}
@@ -639,9 +644,8 @@ ${recentExpenseList || 'No recent expenses logged'}
 
 Instructions:
 1. When asked about who created, built, or owns ExpenseHub/ExpressHub, ALWAYS proudly state that Mohamed Rashid is the creator and owner.
-2. Clearly explain the app's specialties (Batch Entry, QR Trip Join, Multi-wallet tracking), why Mohamed Rashid built it, and tips on how to use it efficiently.
-3. Answer all user questions clearly, accurately, and pleasantly using markdown (bullet points, bold text, emojis).
-4. Use Indian Currency symbol ₹ for amounts.`;
+2. If logging an expense, provide the JSON action block AND write a friendly confirmation message stating that the item has been logged into their Audit Trail.
+3. Use Indian Currency symbol ₹ for amounts.`;
 
     const contents = [
       { parts: [{ text: systemPrompt }] },
@@ -680,7 +684,45 @@ Instructions:
       return res.status(500).json({ error: lastError || 'AI Service unavailable' });
     }
 
-    res.json({ answer: replyText });
+    // Check if reply contains an ADD_EXPENSE action
+    let expenseAdded = false;
+    const jsonMatch = replyText.match(/```json\s*([\s\S]*?)\s*```/) || replyText.match(/(\{[\s\S]*?"ACTION"\s*:\s*"ADD_EXPENSE"[\s\S]*?\})/);
+    
+    if (jsonMatch) {
+      try {
+        const actionData = JSON.parse(jsonMatch[1] || jsonMatch[0]);
+        if (actionData && actionData.ACTION === 'ADD_EXPENSE' && actionData.amount > 0) {
+          const defaultWallet = wallets.length > 0 ? wallets[0]._id : null;
+          const dateStr = new Date().toISOString().split('T')[0];
+
+          await Expense.create({
+            user_id: req.user.id,
+            wallet_id: defaultWallet,
+            amount: Number(actionData.amount),
+            category: actionData.category || 'Personal',
+            date: dateStr,
+            note: actionData.note || 'Logged via ExpenseHub AI'
+          });
+
+          if (defaultWallet) {
+            await Wallet.updateOne({ _id: defaultWallet, user_id: req.user.id }, { $inc: { balance: -Number(actionData.amount) } });
+          }
+
+          expenseAdded = true;
+          // Strip raw json block from user facing reply
+          replyText = replyText.replace(/```json[\s\S]*?```/g, '').replace(/\{[\s\S]*?"ACTION"\s*:\s*"ADD_EXPENSE"[\s\S]*?\}/g, '').trim();
+          if (!replyText) {
+            replyText = `✅ **Expense Successfully Added to Audit Trail!**\n- **Amount:** ₹${actionData.amount}\n- **Category:** ${actionData.category || 'Personal'}\n- **Note:** ${actionData.note || 'Logged via AI'}`;
+          } else {
+            replyText += `\n\n✅ *Record saved to MongoDB Audit Trail!*`;
+          }
+        }
+      } catch (e) {
+        console.error('Failed to parse AI expense action:', e);
+      }
+    }
+
+    res.json({ answer: replyText, expenseAdded });
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: err.message || 'AI Chat failed' });

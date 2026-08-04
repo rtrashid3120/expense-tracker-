@@ -25,7 +25,7 @@ export function AIChatDrawer() {
   const [isLoading, setIsLoading] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
-  const { expenses, wallets, trips, monthlyBudget, balance, profile } = useAppStore();
+  const { expenses, wallets, trips, monthlyBudget, balance, profile, fetchData } = useAppStore();
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -71,12 +71,16 @@ export function AIChatDrawer() {
         user: profile
       };
 
-      const aiReply = await api.askAIChat(query.trim(), historyForApi, contextData);
+      const res = await api.askAIChat(query.trim(), historyForApi, contextData);
+
+      if (res.expenseAdded) {
+        await fetchData();
+      }
 
       const aiMessage: ChatMessage = {
         id: (Date.now() + 1).toString(),
         sender: 'ai',
-        text: aiReply,
+        text: res.answer,
         timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
       };
 
