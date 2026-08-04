@@ -328,13 +328,43 @@ Instructions:
         if (data.candidates && data.candidates[0]?.content?.parts[0]?.text) {
           let replyText = data.candidates[0].content.parts[0].text;
           let expenseAdded = false;
+          let actionData: any = null;
 
           const jsonMatch = replyText.match(/```json\s*([\s\S]*?)\s*```/) || replyText.match(/(\{[\s\S]*?"ACTION"\s*:\s*".*?"[\s\S]*?\})/);
           if (jsonMatch) {
             try {
-              const actionData = JSON.parse(jsonMatch[1] || jsonMatch[0]);
+              actionData = JSON.parse(jsonMatch[1] || jsonMatch[0]);
+            } catch (err) {
+              console.error(err);
+            }
+          }
 
-              if (actionData && actionData.ACTION === 'SELECT_WALLET_FOR_EXPENSE') {
+          if (!actionData) {
+            const match1 = message.match(/(?:spent|add|log|bought|paid)\s+(?:₹\s*)?(\d+)\s+(?:on|for)?\s*([a-zA-Z0-9\s]+)/i);
+            const match2 = message.match(/(?:spent|add|log|bought|paid)\s+([a-zA-Z0-9\s]+)\s+(?:₹\s*)?(\d+)/i);
+
+            const walletCount = contextData?.wallets?.length || 0;
+            if (match1) {
+              actionData = {
+                ACTION: walletCount >= 2 ? 'SELECT_WALLET_FOR_EXPENSE' : 'ADD_EXPENSE',
+                amount: Number(match1[1]),
+                note: match1[2].trim(),
+                category: 'Dining'
+              };
+            } else if (match2) {
+              actionData = {
+                ACTION: walletCount >= 2 ? 'SELECT_WALLET_FOR_EXPENSE' : 'ADD_EXPENSE',
+                amount: Number(match2[2]),
+                note: match2[1].trim(),
+                category: 'Dining'
+              };
+            }
+          }
+
+          if (actionData) {
+            try {
+              const walletCount = contextData?.wallets?.length || 0;
+              if (actionData.ACTION === 'SELECT_WALLET_FOR_EXPENSE' && walletCount >= 2) {
                 replyText = replyText.replace(/```json[\s\S]*?```/g, '').replace(/\{[\s\S]*?"ACTION"\s*:\s*".*?"[\s\S]*?\}/g, '').trim();
                 return {
                   answer: replyText || `Which wallet should I add **${actionData.note || 'Expense'} (₹${actionData.amount})** to?`,

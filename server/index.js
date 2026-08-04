@@ -725,15 +725,46 @@ Instructions:
 
     // Parse Real-time AI Action Execution
     let expenseAdded = false;
+    let actionData = null;
+
     const jsonMatch = replyText.match(/```json\s*([\s\S]*?)\s*```/) || replyText.match(/(\{[\s\S]*?"ACTION"\s*:\s*".*?"[\s\S]*?\})/);
     
     if (jsonMatch) {
       try {
-        const actionData = JSON.parse(jsonMatch[1] || jsonMatch[0]);
+        actionData = JSON.parse(jsonMatch[1] || jsonMatch[0]);
+      } catch (e) {
+        console.error('Failed JSON parse:', e);
+      }
+    }
+
+    // Fallback regex matcher if Gemini output plain text for spent/add/log prompts
+    if (!actionData) {
+      const match1 = message.match(/(?:spent|add|log|bought|paid)\s+(?:₹\s*)?(\d+)\s+(?:on|for)?\s*([a-zA-Z0-9\s]+)/i);
+      const match2 = message.match(/(?:spent|add|log|bought|paid)\s+([a-zA-Z0-9\s]+)\s+(?:₹\s*)?(\d+)/i);
+
+      if (match1) {
+        actionData = {
+          ACTION: wallets.length >= 2 ? 'SELECT_WALLET_FOR_EXPENSE' : 'ADD_EXPENSE',
+          amount: Number(match1[1]),
+          note: match1[2].trim(),
+          category: 'Dining'
+        };
+      } else if (match2) {
+        actionData = {
+          ACTION: wallets.length >= 2 ? 'SELECT_WALLET_FOR_EXPENSE' : 'ADD_EXPENSE',
+          amount: Number(match2[2]),
+          note: match2[1].trim(),
+          category: 'Dining'
+        };
+      }
+    }
+
+    if (actionData) {
+      try {
         const dateStr = new Date().toISOString().split('T')[0];
         const defaultWallet = wallets.length > 0 ? wallets[0]._id : null;
 
-        if (actionData && actionData.ACTION === 'SELECT_WALLET_FOR_EXPENSE') {
+        if (actionData.ACTION === 'SELECT_WALLET_FOR_EXPENSE' && wallets.length >= 2) {
           replyText = replyText.replace(/```json[\s\S]*?```/g, '').replace(/\{[\s\S]*?"ACTION"\s*:\s*".*?"[\s\S]*?\}/g, '').trim();
           return res.json({
             answer: replyText || `Which wallet should I add **${actionData.note || 'Expense'} (₹${actionData.amount})** to?`,

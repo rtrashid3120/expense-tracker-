@@ -165,8 +165,10 @@ export const useAppStore = create<AppState>((set, get) => ({
     set({ user: null, profile: null, expenses: [], wallets: [], trips: [], friends: [], isAuthLoading: false });
   },
 
-  fetchData: async () => {
-    set({ isLoading: true, error: null });
+  fetchData: async (silent = false) => {
+    if (!silent && get().expenses.length === 0) {
+      set({ isLoading: true, error: null });
+    }
     try {
       const [expenses, trips, familyPools, monthlyBudget, wallets, profile, friendsData] = await Promise.all([
         api.getExpenses(),
