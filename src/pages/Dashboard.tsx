@@ -23,15 +23,7 @@ export function Dashboard() {
   const [isWalletModalOpen, setIsWalletModalOpen] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
 
-  // Time-based greeting
-  const getGreeting = () => {
-    const hour = new Date().getHours();
-    if (hour < 12) return 'Good morning';
-    if (hour < 18) return 'Good afternoon';
-    return 'Good evening';
-  };
-  
-  const userName = profile?.full_name?.split(' ')[0] || profile?.username?.replace('@', '') || 'Explorer';
+  const userName = profile?.full_name?.split(' ')[0] || profile?.username?.replace('@', '') || 'Executive';
 
   // Filter expenses by active wallet (excluding trip expenses)
   const activeWallet = wallets.find(w => w.id === activeWalletId);
@@ -124,29 +116,39 @@ export function Dashboard() {
       {/* Background Glow */}
       <div className="absolute top-0 left-1/4 w-96 h-96 bg-brand-neon/10 rounded-full blur-[120px] pointer-events-none -z-10" />
 
-      {/* Extraordinary Header */}
-      <motion.div 
-        initial={{ opacity: 0, y: -10 }}
-        animate={{ opacity: 1, y: 0 }}
-        className="mb-8 mt-2 relative"
-      >
-        <h1 className="text-3xl md:text-5xl font-black text-gray-900 dark:text-white mb-2 tracking-tight">
-          {getGreeting()},{' '}
-          <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-purple-600 dark:from-brand-neon dark:to-brand-purple filter drop-shadow-sm dark:drop-shadow-[0_0_15px_rgba(0,240,255,0.4)]">
-            {userName}
-          </span>
-          <span className="inline-block ml-2 animate-bounce">👋</span>
-        </h1>
-        <div className="flex items-center gap-3">
-          <p className="text-sm md:text-base text-gray-500 dark:text-white/60 font-medium">
-            Your financial command center
-          </p>
-          <div className="flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-emerald-500/10 border border-emerald-500/20">
-            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-            <span className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400 uppercase tracking-wider">Systems Active</span>
+      {/* Executive Financial Command Center Header */}
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6 pt-1">
+        <div>
+          <div className="flex items-center gap-2.5">
+            <h1 className="text-2xl sm:text-3xl font-black tracking-tight text-gray-900 dark:text-white">
+              Financial Overview
+            </h1>
+            <div className="px-2.5 py-0.5 rounded-full bg-blue-500/10 border border-blue-500/20 text-[10px] font-extrabold text-blue-600 dark:text-brand-neon uppercase tracking-wider">
+              Live Intelligence
+            </div>
           </div>
+          <p className="text-xs sm:text-sm text-gray-500 dark:text-white/50 font-medium mt-0.5">
+            Real-time multi-wallet asset management for <span className="font-bold text-gray-800 dark:text-white/80">{userName}</span>
+          </p>
         </div>
-      </motion.div>
+
+        <div className="flex items-center gap-2 w-full sm:w-auto">
+          <button
+            type="button"
+            onClick={handleExportCSV}
+            className="flex-1 sm:flex-initial px-4 py-2 bg-white/70 dark:bg-white/5 hover:bg-gray-100 dark:hover:bg-white/10 border border-gray-200 dark:border-white/10 rounded-xl text-xs font-bold text-gray-700 dark:text-white flex items-center justify-center gap-1.5 transition-all shadow-sm active:scale-95 cursor-pointer"
+          >
+            <span>📥 Export Audit CSV</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => window.dispatchEvent(new Event('open-ai-chat'))}
+            className="flex-1 sm:flex-initial px-4 py-2 bg-gradient-to-r from-blue-600 to-purple-600 dark:from-brand-neon dark:to-brand-purple text-white dark:text-black rounded-xl text-xs font-bold shadow-md hover:scale-105 transition-all flex items-center justify-center gap-1.5 active:scale-95 cursor-pointer"
+          >
+            <span>⚡ Ask AI Assistant</span>
+          </button>
+        </div>
+      </div>
 
       {/* Wallet Selector Carousel */}
       <div className="flex overflow-x-auto gap-4 pb-4 scrollbar-hide pt-2 snap-x">
