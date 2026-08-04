@@ -5,6 +5,7 @@ import { AnimatePresence, motion } from 'framer-motion';
 import { Dashboard } from './pages/Dashboard';
 import { Trips } from './pages/Trips';
 import { Reports } from './pages/Reports';
+import { AuditTrailPage } from './pages/AuditTrailPage';
 import { Family } from './pages/Family';
 import { Login } from './pages/Login';
 import { Profile } from './pages/Profile';
@@ -186,8 +187,9 @@ export default function App() {
             <AnimatePresence mode="wait">
               <Routes>
                 <Route path="/" element={<PageTransition><Dashboard /></PageTransition>} />
+                <Route path="/heatmaps" element={<PageTransition><Reports /></PageTransition>} />
+                <Route path="/expenses" element={<PageTransition><AuditTrailPage /></PageTransition>} />
                 <Route path="/trips" element={<PageTransition><Trips /></PageTransition>} />
-                <Route path="/expenses" element={<PageTransition><Reports /></PageTransition>} />
                 <Route path="/family" element={<PageTransition><Family /></PageTransition>} />
                 <Route path="/profile" element={<PageTransition><Profile /></PageTransition>} />
                 <Route path="*" element={<Navigate to="/" replace />} />
