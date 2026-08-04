@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { FiX, FiSend, FiZap, FiTrash2, FiSparkles } from 'react-icons/fi';
+import { FiX, FiSend, FiZap, FiTrash2, FiCpu } from 'react-icons/fi';
 import { useAppStore } from '../store';
 import { api } from '../api';
 
@@ -116,7 +116,7 @@ export function AIChatDrawer() {
         className="fixed bottom-20 md:bottom-8 right-5 z-40 bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 dark:from-brand-neon dark:via-blue-500 dark:to-brand-purple text-white dark:text-black p-3.5 sm:p-4 rounded-full shadow-[0_0_25px_rgba(0,240,255,0.5)] border border-white/30 flex items-center gap-2 font-black text-xs sm:text-sm tracking-wide"
       >
         <div className="relative flex items-center justify-center">
-          <FiSparkles className="text-lg sm:text-xl animate-pulse" />
+          <FiCpu className="text-lg sm:text-xl animate-pulse" />
           <span className="absolute -top-1 -right-1 flex h-2.5 w-2.5">
             <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-white dark:bg-black opacity-75"></span>
             <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-green-400"></span>
