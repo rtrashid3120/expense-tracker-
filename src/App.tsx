@@ -1,6 +1,6 @@
 import React, { useState, useEffect, Component } from 'react';
 import type { ErrorInfo } from 'react';
-import { HashRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom';
+import { HashRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AnimatePresence, motion } from 'framer-motion';
 import { Dashboard } from './pages/Dashboard';
 import { Trips } from './pages/Trips';
