@@ -247,7 +247,7 @@ export const api = {
     }
   },
 
-  askAIChat: async (message: string, history: any[], contextData?: any): Promise<string> => {
+  askAIChat: async (message: string, history: any[]): Promise<string> => {
     const res = await fetch(`${API_BASE_URL}/ai/chat`, {
       method: 'POST',
       headers: getHeaders(),

@@ -1,7 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { FiX, FiSend, FiZap, FiTrash2, FiCpu } from 'react-icons/fi';
-import { useAppStore } from '../store';
 import { api } from '../api';
 
 interface ChatMessage {
@@ -24,8 +23,6 @@ export function AIChatDrawer() {
   ]);
   const [isLoading, setIsLoading] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
-
-  const { expenses, wallets, trips, monthlyBudget, balance, profile } = useAppStore();
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -57,15 +54,7 @@ export function AIChatDrawer() {
         .filter(m => m.id !== 'welcome')
         .map(m => ({ sender: m.sender, text: m.text }));
 
-      const contextData = {
-        budget: { monthlyBudget, balance },
-        wallets,
-        expenses,
-        trips,
-        user: profile
-      };
-
-      const aiReply = await api.askAIChat(query.trim(), historyForApi, contextData);
+      const aiReply = await api.askAIChat(query.trim(), historyForApi);
 
       const aiMessage: ChatMessage = {
         id: (Date.now() + 1).toString(),
