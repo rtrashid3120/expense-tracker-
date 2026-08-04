@@ -126,7 +126,7 @@ export function AIChatDrawer() {
 
       let target = expenses.find(e => {
         const matchAmount = amount ? e.amount === amount : true;
-        const matchNote = cleanNote ? e.note.toLowerCase().includes(cleanNote.toLowerCase()) : true;
+        const matchNote = cleanNote ? (e.note || '').toLowerCase().includes(cleanNote.toLowerCase()) : true;
         return matchAmount && matchNote;
       });
 
@@ -241,13 +241,6 @@ export function AIChatDrawer() {
       console.error(e);
     }
   };
-
-  const quickPrompts = [
-    "💡 Where am I spending the most?",
-    "📊 Monthly Budget Check",
-    "✈️ Trip Balances Summary",
-    "⛽ Fuel & Grocery Breakdown"
-  ];
 
   return (
     <AnimatePresence>
