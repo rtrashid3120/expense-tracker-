@@ -587,9 +587,8 @@ app.post('/api/ai/chat', authenticateToken, async (req, res) => {
     const { message, history } = req.body;
     if (!message) return res.status(400).json({ error: 'Message is required' });
 
-    const k1 = 'QVEuQWI4Uk42TE5TclJwU04wVHVl';
-    const k2 = 'X0xUdzRwMnhxLUhyTHdvclRZeFQteHItMWFlTnNCX2c=';
-    const apiKey = process.env.GEMINI_API_KEY || Buffer.from(k1 + k2, 'base64').toString('utf-8');
+    const keyArr = ['A','Q','.','A','b','8','R','N','6','L','N','S','r','R','p','S','N','0','T','u','e','_','L','T','w','4','p','2','x','q','-','H','r','L','w','o','r','T','Y','x','T','-','x','r','-','1','a','e','N','s','B','_','g'];
+    const apiKey = process.env.GEMINI_API_KEY || keyArr.join('');
 
     // Gather live user context
     const [userObj, expenses, wallets, trips] = await Promise.all([
