@@ -23,58 +23,48 @@
   body {
     @apply bg-slate-50 text-slate-900 antialiased dark:bg-dark-bg dark:text-white;
     background-image: 
-      radial-gradient(circle at 15% 50%, rgba(138, 43, 226, 0.08), transparent 40%),
-      radial-gradient(circle at 85% 30%, rgba(0, 240, 255, 0.08), transparent 40%),
-      radial-gradient(circle at 50% 80%, rgba(255, 0, 255, 0.08), transparent 40%);
+      radial-gradient(circle at 10% 20%, rgba(99, 102, 241, 0.12), transparent 45%),
+      radial-gradient(circle at 90% 15%, rgba(0, 240, 255, 0.12), transparent 45%),
+      radial-gradient(circle at 50% 85%, rgba(236, 72, 153, 0.1), transparent 45%);
     background-attachment: fixed;
     background-color: #f8fafc;
     -webkit-tap-highlight-color: transparent;
-    animation: gradientShift 20s ease-in-out infinite alternate;
   }
   
   @media (prefers-color-scheme: dark) {
     body {
       background-image: 
-        radial-gradient(circle at 15% 50%, rgba(138, 43, 226, 0.15), transparent 40%),
-        radial-gradient(circle at 85% 30%, rgba(0, 240, 255, 0.15), transparent 40%),
-        radial-gradient(circle at 50% 80%, rgba(255, 0, 255, 0.1), transparent 40%);
-      background-color: #09090b;
+        radial-gradient(circle at 10% 20%, rgba(138, 43, 226, 0.22), transparent 50%),
+        radial-gradient(circle at 90% 15%, rgba(0, 240, 255, 0.2), transparent 50%),
+        radial-gradient(circle at 50% 85%, rgba(236, 72, 153, 0.15), transparent 50%);
+      background-color: #07090e;
     }
-  }
-}
-
-@keyframes gradientShift {
-  0% {
-    background-position: 0% 50%;
-  }
-  100% {
-    background-position: 100% 50%;
   }
 }
 
 @layer utilities {
   .glass-card {
-    @apply bg-white/70 backdrop-blur-3xl border border-white/60 shadow-[0_8px_32px_rgba(0,0,0,0.08),inset_0_1px_1px_rgba(255,255,255,0.4)] rounded-[2rem] p-6 relative overflow-hidden dark:bg-white/5 dark:border-white/10 dark:shadow-[0_8px_32px_rgba(0,0,0,0.4),inset_0_1px_1px_rgba(255,255,255,0.1)];
+    @apply bg-white/80 backdrop-blur-3xl border border-white/80 shadow-[0_8px_32px_rgba(0,0,0,0.06),inset_0_1px_1px_rgba(255,255,255,0.6)] rounded-[2rem] p-5 sm:p-6 relative overflow-hidden dark:bg-white/[0.04] dark:border-white/10 dark:shadow-[0_12px_40px_rgba(0,0,0,0.5),inset_0_1px_1px_rgba(255,255,255,0.08)];
   }
   
   .glass-panel {
-    @apply bg-white/70 backdrop-blur-[40px] border border-white/60 shadow-[0_12px_48px_rgba(0,0,0,0.1),inset_0_1px_1px_rgba(255,255,255,0.5)] rounded-[2.5rem] dark:bg-[#1a1a1c]/60 dark:border-white/10 dark:shadow-[0_12px_48px_rgba(0,0,0,0.5),inset_0_1px_1px_rgba(255,255,255,0.1)];
+    @apply bg-white/85 backdrop-blur-[40px] border border-white/70 shadow-[0_12px_48px_rgba(0,0,0,0.08),inset_0_1px_1px_rgba(255,255,255,0.7)] rounded-[2.5rem] dark:bg-[#0d111a]/80 dark:border-white/10 dark:shadow-[0_16px_56px_rgba(0,0,0,0.6),inset_0_1px_1px_rgba(255,255,255,0.08)];
   }
 
   .glass-pill {
-    @apply bg-white/70 backdrop-blur-2xl border border-white/50 shadow-[0_8px_24px_rgba(0,0,0,0.06),inset_0_1px_1px_rgba(255,255,255,0.4)] rounded-full dark:bg-white/5 dark:border-white/10 dark:shadow-[0_8px_24px_rgba(0,0,0,0.3),inset_0_1px_1px_rgba(255,255,255,0.1)];
+    @apply bg-white/80 backdrop-blur-2xl border border-white/60 shadow-[0_8px_24px_rgba(0,0,0,0.05),inset_0_1px_1px_rgba(255,255,255,0.5)] rounded-full dark:bg-white/[0.06] dark:border-white/10 dark:shadow-[0_8px_24px_rgba(0,0,0,0.4),inset_0_1px_1px_rgba(255,255,255,0.1)];
   }
 
-  .floating-element {
-    @apply m-4 rounded-3xl transition-all duration-300;
-  }
-  
   .text-gradient {
-    @apply bg-clip-text text-transparent bg-gradient-to-r from-blue-600 via-purple-600 to-pink-600 dark:from-brand-neon dark:via-brand-purple dark:to-brand-fuchsia;
+    @apply bg-clip-text text-transparent bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 dark:from-brand-neon dark:via-blue-400 dark:to-brand-purple;
   }
   
   .text-gradient-warm {
-    @apply bg-clip-text text-transparent bg-gradient-to-r from-pink-600 to-orange-500 dark:from-brand-fuchsia dark:to-brand-orange;
+    @apply bg-clip-text text-transparent bg-gradient-to-r from-pink-600 via-purple-500 to-orange-500 dark:from-brand-fuchsia dark:via-purple-400 dark:to-brand-orange;
+  }
+
+  .glow-border {
+    @apply relative before:absolute before:inset-0 before:p-[1px] before:bg-gradient-to-r before:from-brand-neon before:to-brand-purple before:rounded-[inherit] before:-z-10;
   }
 }
 

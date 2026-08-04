@@ -1,5 +1,5 @@
 import { Link, useLocation } from 'react-router-dom';
-import { FiUsers, FiMap, FiPieChart, FiSettings, FiUser, FiHome } from 'react-icons/fi';
+import { FiUsers, FiMap, FiGrid, FiFileText, FiUser, FiHome, FiCpu } from 'react-icons/fi';
 import { motion } from 'framer-motion';
 
 export function Sidebar() {
@@ -7,9 +7,9 @@ export function Sidebar() {
   
   const menuItems = [
     { path: '/', label: 'Dashboard', icon: FiHome },
-    { path: '/expenses', label: 'Expenses', icon: FiPieChart },
+    { path: '/heatmaps', label: 'Heatmaps', icon: FiGrid },
+    { path: '/expenses', label: 'Audit Trail', icon: FiFileText },
     { path: '/trips', label: 'Trips & Groups', icon: FiMap },
-    { path: '/family', label: 'Family', icon: FiUsers },
     { path: '/profile', label: 'Profile', icon: FiUser },
   ];
 

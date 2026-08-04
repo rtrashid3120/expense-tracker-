@@ -44,22 +44,43 @@ class ErrorBoundary extends Component<{children: React.ReactNode}, {hasError: bo
 }
 
 function Layout({ children, onAddClick }: { children: React.ReactNode; onAddClick: () => void }) {
-  const { signOut } = useAppStore();
+  const { signOut, balance } = useAppStore();
   const location = useLocation();
   
   return (
     <div className="flex h-screen w-full bg-transparent overflow-hidden">
       <Sidebar />
       <div className="flex-1 flex flex-col h-full relative overflow-hidden">
+        {/* Mobile Header Bar */}
+        <header className="md:hidden flex justify-between items-center px-4 py-3 bg-white/80 dark:bg-dark-surface/90 backdrop-blur-2xl border-b border-gray-200/60 dark:border-white/10 sticky top-0 z-40">
+          <div className="flex items-center gap-2.5">
+            <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-blue-600 to-purple-600 dark:from-brand-neon dark:to-brand-purple flex items-center justify-center text-white font-black text-sm shadow-md">
+              E
+            </div>
+            <span className="font-black text-base text-gray-900 dark:text-white tracking-tight">Expense<span className="text-gradient">Hub</span></span>
+          </div>
+
+          <div className="flex items-center gap-2">
+            <div className="bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-500/30 px-2.5 py-1 rounded-full text-[11px] font-extrabold text-emerald-700 dark:text-emerald-400">
+              ₹{balance.toLocaleString('en-IN')}
+            </div>
+
+            <button 
+              onClick={signOut}
+              title="Log Out"
+              className="w-8 h-8 rounded-full bg-red-500/10 border border-red-500/20 flex items-center justify-center text-red-600 dark:text-red-400"
+            >
+              <FiLogOut size={14} />
+            </button>
+          </div>
+        </header>
+
         {/* Top Header for Desktop */}
         <header className="hidden md:flex justify-between items-center p-4 m-4 mb-0 glass-pill z-10 sticky top-4">
           <div className="relative w-96">
             <input type="text" placeholder="Search keyword..." className="w-full bg-white/20 dark:bg-white/5 border border-white/20 dark:border-white/10 rounded-full py-2.5 px-5 text-sm text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-white/40 focus:outline-none focus:ring-2 focus:ring-brand-neon backdrop-blur-md transition-all shadow-inner" />
           </div>
           <div className="flex items-center gap-4">
-            <button className="w-10 h-10 rounded-full bg-white/20 dark:bg-white/5 border border-white/20 dark:border-white/10 flex items-center justify-center text-gray-700 dark:text-white/80 hover:text-brand-neon hover:bg-white/40 transition-all shadow-sm">
-              🔔
-            </button>
             <button 
               onClick={signOut}
               title="Log Out"
@@ -73,18 +94,7 @@ function Layout({ children, onAddClick }: { children: React.ReactNode; onAddClic
           </div>
         </header>
 
-        {/* Mobile Logout Button (Floating) - Only on home page */}
-        {location.pathname === '/' && (
-          <button 
-            onClick={signOut}
-            className="md:hidden absolute top-4 right-4 z-50 w-10 h-10 rounded-full bg-red-500/10 border border-red-500/20 flex items-center justify-center text-red-600 dark:text-red-400 hover:bg-red-500/20 transition-all shadow-sm"
-            title="Log Out"
-          >
-            <FiLogOut size={18} />
-          </button>
-        )}
-
-        <main className="flex-1 overflow-y-auto p-4 md:p-8 pb-36 md:pb-8 pt-16 md:pt-4">
+        <main className="flex-1 overflow-y-auto p-4 md:p-8 pb-32 md:pb-8 pt-3 md:pt-4">
           {children}
         </main>
         
