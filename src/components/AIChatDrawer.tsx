@@ -11,17 +11,32 @@ interface ChatMessage {
   timestamp: string;
 }
 
+const STORAGE_KEY = 'expensehub_ai_chat_messages';
+
 export function AIChatDrawer() {
   const [isOpen, setIsOpen] = useState(false);
   const [inputMsg, setInputMsg] = useState('');
-  const [messages, setMessages] = useState<ChatMessage[]>([
-    {
-      id: 'welcome',
-      sender: 'ai',
-      text: "👋 Hi! I'm **ExpenseHub AI**, your personal financial assistant. Ask me anything about your expenses, budgets, wallets, or trip splits!",
-      timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+  const [messages, setMessages] = useState<ChatMessage[]>(() => {
+    try {
+      const saved = localStorage.getItem(STORAGE_KEY);
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          return parsed;
+        }
+      }
+    } catch (e) {
+      console.error('Failed to load chat history from storage:', e);
     }
-  ]);
+    return [
+      {
+        id: 'welcome',
+        sender: 'ai',
+        text: "👋 Hi! I'm **ExpenseHub AI**, your personal financial assistant created by Mohamed Rashid. Ask me anything about your expenses, budgets, wallets, or trip splits!",
+        timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+      }
+    ];
+  });
   const [isLoading, setIsLoading] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
@@ -36,6 +51,14 @@ export function AIChatDrawer() {
       scrollToBottom();
     }
   }, [messages, isOpen]);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(messages));
+    } catch (e) {
+      console.error('Failed to save chat history:', e);
+    }
+  }, [messages]);
 
   useEffect(() => {
     const handleOpen = () => setIsOpen(true);
@@ -99,14 +122,20 @@ export function AIChatDrawer() {
   };
 
   const handleClear = () => {
-    setMessages([
+    const clearedMsg: ChatMessage[] = [
       {
         id: Date.now().toString(),
         sender: 'ai',
         text: "Chat cleared! How else can I assist you with your finances?",
         timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
       }
-    ]);
+    ];
+    setMessages(clearedMsg);
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(clearedMsg));
+    } catch (e) {
+      console.error(e);
+    }
   };
 
   const quickPrompts = [
