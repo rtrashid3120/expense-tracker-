@@ -264,8 +264,7 @@ export const api = {
     }
 
     // 2. Client-side direct Gemini API fallback
-    const keyArr = ['A','Q','.','A','b','8','R','N','6','L','N','S','r','R','p','S','N','0','T','u','e','_','L','T','w','4','p','2','x','q','-','H','r','L','w','o','r','T','Y','x','T','-','x','r','-','1','a','e','N','s','B','_','g'];
-    const apiKey = import.meta.env.VITE_GEMINI_API_KEY || keyArr.join('');
+    const apiKey = import.meta.env.VITE_GEMINI_API_KEY || '';
     const systemPrompt = `You are ExpenseHub AI, a smart, friendly, personal financial assistant inside ExpenseHub.
 Context:
 - User Balance/Budget Context: ${JSON.stringify(contextData?.budget || {})}
