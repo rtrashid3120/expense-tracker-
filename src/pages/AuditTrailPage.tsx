@@ -1,16 +1,20 @@
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useAppStore } from '../store';
-import { FiSearch, FiTrash2, FiFileText, FiCalendar, FiTag, FiShoppingBag, FiTruck } from 'react-icons/fi';
+import { FiSearch, FiTrash2, FiFileText, FiCalendar, FiTag, FiShoppingBag, FiTruck, FiCreditCard } from 'react-icons/fi';
 
 export function AuditTrailPage() {
-  const { expenses, deleteExpense } = useAppStore();
+  const { expenses, deleteExpense, wallets } = useAppStore();
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<string>('All');
+  const [selectedWalletId, setSelectedWalletId] = useState<string>('All');
 
   const categories = ['All', 'Groceries', 'Transport', 'Rent', 'Dining', 'Shopping', 'Personal', 'Medical', 'Fuel', 'Travel'];
 
   const filteredExpenses = expenses.filter(exp => {
+    const expWalletId = exp.walletId || (exp as any).wallet_id;
+    const matchesWallet = selectedWalletId === 'All' || expWalletId === selectedWalletId;
+    
     const matchesSearch = 
       exp.category.toLowerCase().includes(searchQuery.toLowerCase()) ||
       (exp.note && exp.note.toLowerCase().includes(searchQuery.toLowerCase())) ||
@@ -18,7 +22,7 @@ export function AuditTrailPage() {
     
     const matchesCategory = selectedCategory === 'All' || exp.category === selectedCategory;
 
-    return matchesSearch && matchesCategory;
+    return matchesWallet && matchesSearch && matchesCategory;
   });
 
   const totalFilteredAmount = filteredExpenses.reduce((sum, e) => sum + e.amount, 0);
@@ -31,6 +35,12 @@ export function AuditTrailPage() {
         alert(err.message || 'Failed to delete expense');
       }
     }
+  };
+
+  const getWalletName = (walletId?: string) => {
+    if (!walletId) return null;
+    const found = wallets.find(w => w.id === walletId || (w as any)._id === walletId);
+    return found ? found.name : null;
   };
 
   return (
@@ -47,7 +57,7 @@ export function AuditTrailPage() {
             Audit Trail
           </h1>
           <p className="text-xs sm:text-sm text-gray-500 dark:text-white/60 font-medium mt-1">
-            Complete transaction history and ledger records.
+            Complete transaction history & wallet ledger records.
           </p>
         </div>
 
@@ -60,6 +70,50 @@ export function AuditTrailPage() {
           </div>
         </div>
       </div>
+
+      {/* Wallet Selector Bar (If wallets exist) */}
+      {wallets.length > 0 && (
+        <div className="mb-5 bg-white/40 dark:bg-white/5 border border-gray-200 dark:border-white/10 p-3 rounded-2xl">
+          <div className="flex items-center gap-2 mb-2">
+            <FiCreditCard className="text-purple-600 dark:text-brand-neon" size={16} />
+            <span className="text-xs font-bold text-gray-700 dark:text-white/80 uppercase tracking-wider">Filter by Wallet:</span>
+          </div>
+
+          <div className="flex gap-2 overflow-x-auto scrollbar-hide py-1">
+            <button
+              onClick={() => setSelectedWalletId('All')}
+              className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all whitespace-nowrap shrink-0 border flex items-center gap-1.5 ${
+                selectedWalletId === 'All'
+                  ? 'bg-purple-600 dark:bg-brand-neon text-white dark:text-black border-purple-600 dark:border-brand-neon shadow-md'
+                  : 'bg-white/70 dark:bg-white/5 border-gray-200 dark:border-white/10 text-gray-600 dark:text-white/70 hover:bg-gray-100 dark:hover:bg-white/10'
+              }`}
+            >
+              💳 All Wallets ({expenses.length})
+            </button>
+
+            {wallets.map(w => {
+              const wId = w.id || (w as any)._id;
+              const isSelected = selectedWalletId === wId;
+              const walletExpenseCount = expenses.filter(e => (e.walletId || (e as any).wallet_id) === wId).length;
+
+              return (
+                <button
+                  key={wId}
+                  onClick={() => setSelectedWalletId(wId)}
+                  className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all whitespace-nowrap shrink-0 border flex items-center gap-1.5 ${
+                    isSelected
+                      ? 'bg-purple-600 dark:bg-brand-neon text-white dark:text-black border-purple-600 dark:border-brand-neon shadow-md'
+                      : 'bg-white/70 dark:bg-white/5 border-gray-200 dark:border-white/10 text-gray-600 dark:text-white/70 hover:bg-gray-100 dark:hover:bg-white/10'
+                  }`}
+                >
+                  👛 {w.name} <span className="opacity-75 font-normal">(₹{w.balance.toLocaleString('en-IN')})</span>
+                  <span className="ml-1 text-[10px] px-1.5 py-0.2 rounded-full bg-black/10 dark:bg-white/20">{walletExpenseCount}</span>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      )}
 
       {/* Search & Category Filter */}
       <div className="space-y-3 mb-6">
@@ -98,13 +152,16 @@ export function AuditTrailPage() {
           <div className="text-center py-12 text-gray-400 dark:text-white/40">
             <FiFileText size={40} className="mx-auto mb-3 opacity-50" />
             <p className="font-bold text-base text-gray-600 dark:text-white/60">No Audit Records Found</p>
-            <p className="text-xs mt-1">Try adjusting your search query or category filter.</p>
+            <p className="text-xs mt-1">Try adjusting your search query, category, or wallet filter.</p>
           </div>
         ) : (
           <div className="space-y-3">
             <AnimatePresence mode="popLayout">
               {filteredExpenses.map((expense) => {
                 const items = (expense as any).items || (expense as any).details?.items;
+                const walletId = expense.walletId || (expense as any).wallet_id;
+                const walletName = getWalletName(walletId);
+
                 return (
                   <motion.div
                     key={expense.id}
@@ -120,7 +177,7 @@ export function AuditTrailPage() {
                       </div>
 
                       <div>
-                        <div className="flex items-center gap-2">
+                        <div className="flex items-center flex-wrap gap-2">
                           <p className="font-bold text-gray-900 dark:text-white text-sm sm:text-base">
                             {expense.category}
                           </p>
@@ -128,6 +185,12 @@ export function AuditTrailPage() {
                             <FiCalendar size={10} />
                             {expense.date}
                           </span>
+
+                          {walletName && (
+                            <span className="text-[10px] font-bold bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300 px-2 py-0.5 rounded-full flex items-center gap-1 border border-purple-200 dark:border-purple-800/40">
+                              💳 {walletName}
+                            </span>
+                          )}
                         </div>
 
                         {expense.note && (
