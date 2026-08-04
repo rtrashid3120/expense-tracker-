@@ -1,5 +1,5 @@
 import { Link, useLocation } from 'react-router-dom';
-import { FiUsers, FiMap, FiGrid, FiFileText, FiUser, FiHome, FiCpu } from 'react-icons/fi';
+import { FiMap, FiGrid, FiFileText, FiUser, FiHome, FiSettings } from 'react-icons/fi';
 import { motion } from 'framer-motion';
 
 export function Sidebar() {

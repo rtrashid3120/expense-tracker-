@@ -45,7 +45,6 @@ class ErrorBoundary extends Component<{children: React.ReactNode}, {hasError: bo
 
 function Layout({ children, onAddClick }: { children: React.ReactNode; onAddClick: () => void }) {
   const { signOut, balance } = useAppStore();
-  const location = useLocation();
   
   return (
     <div className="flex h-screen w-full bg-transparent overflow-hidden">
