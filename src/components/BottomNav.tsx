@@ -1,5 +1,5 @@
 import { Link, useLocation } from 'react-router-dom';
-import { FiMap, FiFileText, FiPlus, FiHome, FiCpu, FiGrid } from 'react-icons/fi';
+import { FiMap, FiFileText, FiPlus, FiHome, FiCpu, FiGrid, FiUser } from 'react-icons/fi';
 import { motion } from 'framer-motion';
 
 export function BottomNav({ onAddClick }: { onAddClick: () => void }) {
@@ -11,10 +11,11 @@ export function BottomNav({ onAddClick }: { onAddClick: () => void }) {
 
   const navItems = [
     { id: '/', icon: FiHome, label: 'Home', type: 'link' },
-    { id: '/heatmaps', icon: FiGrid, label: 'Heatmaps', type: 'link' }, // Heatmaps
+    { id: '/heatmaps', icon: FiGrid, label: 'Heatmaps', type: 'link' },
     { id: '/expenses', icon: FiFileText, label: 'Audit Trail', type: 'link' }, // Immediately left of +
     { id: 'add', isAdd: true, type: 'add' }, // Center + button
     { id: '/trips', icon: FiMap, label: 'Trips', type: 'link' },
+    { id: '/profile', icon: FiUser, label: 'Profile', type: 'link' }, // Profile added
     { id: 'ai', icon: FiCpu, label: 'AI Bot', type: 'ai', onClick: handleOpenAI } // Far right end
   ];
 
