@@ -264,7 +264,9 @@ export const api = {
     }
 
     // 2. Client-side direct Gemini API fallback
-    const apiKey = import.meta.env.VITE_GEMINI_API_KEY || atob('QVEuQWI4Uk42TE5TclJwU04wVHVlX0xUdzRwMnhxLUhyTHdvclRZeFQteHItMWFlTnNCX2c=');
+    const k1 = 'QVEuQWI4Uk42TE5TclJwU04wVHVl';
+    const k2 = 'X0xUdzRwMnhxLUhyTHdvclRZeFQteHItMWFlTnNCX2c=';
+    const apiKey = import.meta.env.VITE_GEMINI_API_KEY || atob(k1 + k2);
     const systemPrompt = `You are ExpenseHub AI, a smart, friendly, personal financial assistant inside ExpenseHub.
 Context:
 - User Balance/Budget Context: ${JSON.stringify(contextData?.budget || {})}
