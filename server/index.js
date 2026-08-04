@@ -617,8 +617,10 @@ ABOUT EXPENSEHUB & CREATOR INFORMATION:
 - Creator & Owner: Mohamed Rashid
 - Why ExpenseHub Was Built: Created by Mohamed Rashid to solve complex real-world money tracking challenges—eliminating tedious manual entry, messy trip/group bill splitting, and providing effortless, instant financial clarity.
 
-REAL EXPENSE LOGGING INSTRUCTIONS:
-- If the user asks to add, log, create, or record an expense (e.g., "add 50 for milk", "spent 200 on petrol", "log 1500 for groceries"), you MUST include a JSON action block in your response formatted EXACTLY like this:
+REAL ACTION LOGGING INSTRUCTIONS:
+- If the user asks to add an expense, create a wallet, or create a trip, you MUST include a JSON action block in your response formatted EXACTLY like one of these:
+
+1. Add Single Expense:
 \`\`\`json
 {
   "ACTION": "ADD_EXPENSE",
@@ -627,7 +629,35 @@ REAL EXPENSE LOGGING INSTRUCTIONS:
   "note": "milk"
 }
 \`\`\`
-Valid Categories: Groceries, Transport, Rent, Dining, Shopping, Personal, Medical, Fuel, Travel. If omitted, pick the best matching category from the note.
+
+2. Add Batch Expenses:
+\`\`\`json
+{
+  "ACTION": "BATCH_EXPENSES",
+  "items": [
+    { "name": "Milk", "amount": 50, "category": "Groceries" },
+    { "name": "Curd", "amount": 20, "category": "Groceries" }
+  ]
+}
+\`\`\`
+
+3. Create Wallet:
+\`\`\`json
+{
+  "ACTION": "CREATE_WALLET",
+  "name": "HDFC Salary",
+  "balance": 25000
+}
+\`\`\`
+
+4. Create Trip:
+\`\`\`json
+{
+  "ACTION": "CREATE_TRIP",
+  "name": "Goa Trip",
+  "total_budget": 15000
+}
+\`\`\`
 
 User Profile: Name = ${userObj ? (userObj.full_name || userObj.username) : 'User'}, Handle = ${userObj ? userObj.username : '@user'}
 Current Date: ${new Date().toISOString().split('T')[0]}
@@ -644,7 +674,7 @@ ${recentExpenseList || 'No recent expenses logged'}
 
 Instructions:
 1. When asked about who created, built, or owns ExpenseHub/ExpressHub, ALWAYS proudly state that Mohamed Rashid is the creator and owner.
-2. If logging an expense, provide the JSON action block AND write a friendly confirmation message stating that the item has been logged into their Audit Trail.
+2. If performing an action, provide the JSON action block AND write a clear confirmation message.
 3. Use Indian Currency symbol ₹ for amounts.`;
 
     const contents = [
@@ -684,17 +714,17 @@ Instructions:
       return res.status(500).json({ error: lastError || 'AI Service unavailable' });
     }
 
-    // Check if reply contains an ADD_EXPENSE action
+    // Parse Real-time AI Action Execution
     let expenseAdded = false;
-    const jsonMatch = replyText.match(/```json\s*([\s\S]*?)\s*```/) || replyText.match(/(\{[\s\S]*?"ACTION"\s*:\s*"ADD_EXPENSE"[\s\S]*?\})/);
+    const jsonMatch = replyText.match(/```json\s*([\s\S]*?)\s*```/) || replyText.match(/(\{[\s\S]*?"ACTION"\s*:\s*".*?"[\s\S]*?\})/);
     
     if (jsonMatch) {
       try {
         const actionData = JSON.parse(jsonMatch[1] || jsonMatch[0]);
-        if (actionData && actionData.ACTION === 'ADD_EXPENSE' && actionData.amount > 0) {
-          const defaultWallet = wallets.length > 0 ? wallets[0]._id : null;
-          const dateStr = new Date().toISOString().split('T')[0];
+        const dateStr = new Date().toISOString().split('T')[0];
+        const defaultWallet = wallets.length > 0 ? wallets[0]._id : null;
 
+        if (actionData && actionData.ACTION === 'ADD_EXPENSE' && actionData.amount > 0) {
           await Expense.create({
             user_id: req.user.id,
             wallet_id: defaultWallet,
@@ -709,16 +739,53 @@ Instructions:
           }
 
           expenseAdded = true;
-          // Strip raw json block from user facing reply
-          replyText = replyText.replace(/```json[\s\S]*?```/g, '').replace(/\{[\s\S]*?"ACTION"\s*:\s*"ADD_EXPENSE"[\s\S]*?\}/g, '').trim();
-          if (!replyText) {
-            replyText = `✅ **Expense Successfully Added to Audit Trail!**\n- **Amount:** ₹${actionData.amount}\n- **Category:** ${actionData.category || 'Personal'}\n- **Note:** ${actionData.note || 'Logged via AI'}`;
-          } else {
-            replyText += `\n\n✅ *Record saved to MongoDB Audit Trail!*`;
+        } else if (actionData && actionData.ACTION === 'BATCH_EXPENSES' && Array.isArray(actionData.items)) {
+          for (const item of actionData.items) {
+            if (item.amount > 0) {
+              await Expense.create({
+                user_id: req.user.id,
+                wallet_id: defaultWallet,
+                amount: Number(item.amount),
+                category: item.category || 'Groceries',
+                date: dateStr,
+                note: item.name || 'Batch Logged via AI'
+              });
+
+              if (defaultWallet) {
+                await Wallet.updateOne({ _id: defaultWallet, user_id: req.user.id }, { $inc: { balance: -Number(item.amount) } });
+              }
+            }
           }
+          expenseAdded = true;
+        } else if (actionData && actionData.ACTION === 'CREATE_WALLET' && actionData.name) {
+          await Wallet.create({
+            user_id: req.user.id,
+            name: actionData.name,
+            initial_budget: Number(actionData.balance || 0),
+            balance: Number(actionData.balance || 0)
+          });
+          expenseAdded = true;
+        } else if (actionData && actionData.ACTION === 'CREATE_TRIP' && actionData.name) {
+          await Trip.create({
+            user_id: req.user.id,
+            name: actionData.name,
+            total_budget: Number(actionData.total_budget || 0),
+            spent: 0,
+            members: [{ user_id: req.user.id, username: userObj ? userObj.username : 'User' }],
+            group_size: 1
+          });
+          expenseAdded = true;
+        }
+
+        // Clean raw JSON block from visible text output
+        replyText = replyText.replace(/```json[\s\S]*?```/g, '').replace(/\{[\s\S]*?"ACTION"\s*:\s*".*?"[\s\S]*?\}/g, '').trim();
+        if (!replyText) {
+          replyText = `✅ **Action Executed Successfully!** Saved into your MongoDB Database.`;
+        } else {
+          replyText += `\n\n✅ *Executed & saved in real-time to MongoDB!*`;
         }
       } catch (e) {
-        console.error('Failed to parse AI expense action:', e);
+        console.error('Failed to parse AI real-time action:', e);
       }
     }
 
