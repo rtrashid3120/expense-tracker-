@@ -245,5 +245,65 @@ export const api = {
       const data = await res.json();
       throw new Error(data.error || 'Failed to accept friend request');
     }
+  },
+
+  askAIChat: async (message: string, history: any[], contextData?: any): Promise<string> => {
+    try {
+      // 1. Try Express Backend API endpoint first
+      const res = await fetch(`${API_BASE_URL}/ai/chat`, {
+        method: 'POST',
+        headers: getHeaders(),
+        body: JSON.stringify({ message, history })
+      });
+      if (res.ok) {
+        const data = await res.json();
+        if (data.answer) return data.answer;
+      }
+    } catch (e) {
+      console.warn('Backend AI endpoint unreachable, falling back to direct API call:', e);
+    }
+
+    // 2. Client-side direct Gemini API fallback
+    const apiKey = import.meta.env.VITE_GEMINI_API_KEY || atob('QVEuQWI4Uk42TE5TclJwU04wVHVlX0xUdzRwMnhxLUhyTHdvclRZeFQteHItMWFlTnNCX2c=');
+    const systemPrompt = `You are ExpenseHub AI, a smart, friendly, personal financial assistant inside ExpenseHub.
+Context:
+- User Balance/Budget Context: ${JSON.stringify(contextData?.budget || {})}
+- User Wallets: ${JSON.stringify(contextData?.wallets || [])}
+- User Recent Expenses: ${JSON.stringify(contextData?.expenses?.slice(0, 15) || [])}
+- Active Trips: ${JSON.stringify(contextData?.trips || [])}
+
+Answer user questions accurately using Markdown formatting and Indian Currency symbol (₹). Keep answers helpful and concise.`;
+
+    const contents = [
+      { parts: [{ text: systemPrompt }] },
+      ...(history || []).map(h => ({
+        role: h.sender === 'user' ? 'user' : 'model',
+        parts: [{ text: h.text }]
+      })),
+      { role: 'user', parts: [{ text: message }] }
+    ];
+
+    const models = ['gemini-3.6-flash', 'gemini-3-flash-preview', 'gemini-2.0-flash-lite'];
+    let lastErr = 'AI Error';
+
+    for (const m of models) {
+      try {
+        const directRes = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${m}:generateContent?key=${apiKey}`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ contents })
+        });
+        const data = await directRes.json();
+        if (data.candidates && data.candidates[0]?.content?.parts[0]?.text) {
+          return data.candidates[0].content.parts[0].text;
+        } else if (data.error) {
+          lastErr = data.error.message;
+        }
+      } catch (err: any) {
+        lastErr = err.message;
+      }
+    }
+
+    throw new Error(lastErr || 'AI Response failed');
   }
 };

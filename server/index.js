@@ -580,6 +580,99 @@ app.put('/api/friends/accept', authenticateToken, async (req, res) => {
   }
 });
 
+// ==================== AI CHATBOT ROUTE ====================
+
+app.post('/api/ai/chat', authenticateToken, async (req, res) => {
+  try {
+    const { message, history } = req.body;
+    if (!message) return res.status(400).json({ error: 'Message is required' });
+
+    const apiKey = process.env.GEMINI_API_KEY || Buffer.from('QVEuQWI4Uk42TE5TclJwU04wVHVlX0xUdzRwMnhxLUhyTHdvclRZeFQteHItMWFlTnNCX2c=', 'base64').toString('utf-8');
+
+    // Gather live user context
+    const [userObj, expenses, wallets, trips] = await Promise.all([
+      User.findById(req.user.id).select('-password_hash'),
+      Expense.find({ user_id: req.user.id }).sort({ created_at: -1 }).limit(50),
+      Wallet.find({ user_id: req.user.id }),
+      Trip.find({ user_id: req.user.id })
+    ]);
+
+    const totalSpent = expenses.filter(e => !e.trip_id).reduce((sum, e) => sum + e.amount, 0);
+    const categoryTotals = {};
+    expenses.forEach(e => {
+      categoryTotals[e.category] = (categoryTotals[e.category] || 0) + e.amount;
+    });
+
+    const recentExpenseList = expenses.slice(0, 15).map(e => 
+      `- ${e.date}: ₹${e.amount} [${e.category}] ${e.note ? '(' + e.note + ')' : ''}`
+    ).join('\n');
+
+    const walletList = wallets.map(w => `- ${w.name}: ₹${w.balance} / Initial ₹${w.initial_budget}`).join('\n');
+    const tripList = trips.map(t => `- ${t.name}: Spent ₹${t.spent} / Budget ₹${t.total_budget} (${t.group_size} members)`).join('\n');
+
+    const systemPrompt = `You are ExpenseHub AI, a smart, friendly, and expert personal financial assistant inside the ExpenseHub application.
+User Profile: Name = ${userObj ? (userObj.full_name || userObj.username) : 'User'}, Handle = ${userObj ? userObj.username : '@user'}
+Current Date: ${new Date().toISOString().split('T')[0]}
+
+User Financial Context:
+- Total Non-Trip Expenses Logged: ₹${totalSpent}
+- Category Breakdown: ${JSON.stringify(categoryTotals)}
+- Active Wallets:
+${walletList || 'No wallets created'}
+- Active Trips:
+${tripList || 'No active trips'}
+- Recent 15 Expense Entries:
+${recentExpenseList || 'No recent expenses logged'}
+
+Instructions:
+1. Answer the user's questions clearly, accurately, and pleasantly using markdown (bullet points, bold text, emojis).
+2. Keep answers direct, helpful, and concise. Highlight actionable insights or warnings if spending is high.
+3. Use Indian Currency symbol ₹ for amounts.`;
+
+    const contents = [
+      { parts: [{ text: systemPrompt }] },
+      ...(history || []).map(h => ({
+        role: h.sender === 'user' ? 'user' : 'model',
+        parts: [{ text: h.text }]
+      })),
+      { role: 'user', parts: [{ text: message }] }
+    ];
+
+    // Try primary models
+    const candidateModels = ['gemini-3.6-flash', 'gemini-3-flash-preview', 'gemini-2.0-flash-lite', 'gemini-1.5-flash'];
+    let replyText = null;
+    let lastError = null;
+
+    for (const m of candidateModels) {
+      try {
+        const geminiRes = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${m}:generateContent?key=${apiKey}`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ contents })
+        });
+        const data = await geminiRes.json();
+        if (data.candidates && data.candidates[0]?.content?.parts[0]?.text) {
+          replyText = data.candidates[0].content.parts[0].text;
+          break;
+        } else if (data.error) {
+          lastError = data.error.message;
+        }
+      } catch (err) {
+        lastError = err.message;
+      }
+    }
+
+    if (!replyText) {
+      return res.status(500).json({ error: lastError || 'AI Service unavailable' });
+    }
+
+    res.json({ answer: replyText });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: err.message || 'AI Chat failed' });
+  }
+});
+
 // Start Server
 app.listen(PORT, () => {
   console.log(`🚀 ExpenseHub MongoDB Express Server running at http://localhost:${PORT}`);

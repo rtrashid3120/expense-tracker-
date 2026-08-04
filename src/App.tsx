@@ -12,6 +12,7 @@ import { Onboarding } from './pages/Onboarding';
 import { BottomNav } from './components/BottomNav';
 import { Sidebar } from './components/Sidebar';
 import { AddExpenseModal } from './components/AddExpenseModal';
+import { AIChatDrawer } from './components/AIChatDrawer';
 import { useAppStore } from './store';
 import { FiLogOut } from 'react-icons/fi';
 
@@ -194,6 +195,7 @@ export default function App() {
             </AnimatePresence>
           </Layout>
           <AddExpenseModal isOpen={isAddOpen} onClose={() => setIsAddOpen(false)} />
+          <AIChatDrawer />
           
           {/* Join Trip Invitation Overlay */}
           {pendingJoinTripId && (
