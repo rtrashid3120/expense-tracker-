@@ -117,37 +117,19 @@ export function Dashboard() {
       <div className="absolute top-0 left-1/4 w-96 h-96 bg-brand-neon/10 rounded-full blur-[120px] pointer-events-none -z-10" />
 
       {/* Executive Financial Command Center Header */}
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6 pt-1">
-        <div>
-          <div className="flex items-center gap-2.5">
-            <h1 className="text-2xl sm:text-3xl font-black tracking-tight text-gray-900 dark:text-white">
-              Financial Overview
-            </h1>
-            <div className="px-2.5 py-0.5 rounded-full bg-blue-500/10 border border-blue-500/20 text-[10px] font-extrabold text-blue-600 dark:text-brand-neon uppercase tracking-wider">
-              Live Intelligence
-            </div>
-          </div>
-          <p className="text-xs sm:text-sm text-gray-500 dark:text-white/50 font-medium mt-0.5">
-            Real-time multi-wallet asset management for <span className="font-bold text-gray-800 dark:text-white/80">{userName}</span>
-          </p>
+      <div className="mb-6 pt-1">
+        <div className="flex items-center gap-2">
+          <h1 className="text-2xl sm:text-3xl font-black tracking-tight text-gray-900 dark:text-white">
+            Dashboard
+          </h1>
+          <span className="relative flex h-2.5 w-2.5 mt-1">
+            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
+            <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-green-500"></span>
+          </span>
         </div>
-
-        <div className="flex items-center gap-2 w-full sm:w-auto">
-          <button
-            type="button"
-            onClick={handleExportCSV}
-            className="flex-1 sm:flex-initial px-4 py-2 bg-white/70 dark:bg-white/5 hover:bg-gray-100 dark:hover:bg-white/10 border border-gray-200 dark:border-white/10 rounded-xl text-xs font-bold text-gray-700 dark:text-white flex items-center justify-center gap-1.5 transition-all shadow-sm active:scale-95 cursor-pointer"
-          >
-            <span>📥 Export Audit CSV</span>
-          </button>
-          <button
-            type="button"
-            onClick={() => window.dispatchEvent(new Event('open-ai-chat'))}
-            className="flex-1 sm:flex-initial px-4 py-2 bg-gradient-to-r from-blue-600 to-purple-600 dark:from-brand-neon dark:to-brand-purple text-white dark:text-black rounded-xl text-xs font-bold shadow-md hover:scale-105 transition-all flex items-center justify-center gap-1.5 active:scale-95 cursor-pointer"
-          >
-            <span>⚡ Ask AI Assistant</span>
-          </button>
-        </div>
+        <p className="text-xs text-gray-400 dark:text-white/40 font-medium mt-0.5">
+          Welcome back, <span className="font-semibold text-gray-600 dark:text-white/70">{userName}</span>
+        </p>
       </div>
 
       {/* Wallet Selector Carousel */}
