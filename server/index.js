@@ -611,7 +611,19 @@ app.post('/api/ai/chat', authenticateToken, async (req, res) => {
     const walletList = wallets.map(w => `- ${w.name}: ₹${w.balance} / Initial ₹${w.initial_budget}`).join('\n');
     const tripList = trips.map(t => `- ${t.name}: Spent ₹${t.spent} / Budget ₹${t.total_budget} (${t.group_size} members)`).join('\n');
 
-    const systemPrompt = `You are ExpenseHub AI, a smart, friendly, and expert personal financial assistant inside the ExpenseHub application.
+    const systemPrompt = `You are ExpenseHub AI, a smart, friendly, and expert personal financial assistant inside ExpenseHub.
+
+ABOUT EXPENSEHUB & CREATOR INFORMATION:
+- Creator & Owner: Mohamed Rashid
+- Why ExpenseHub Was Built: Created by Mohamed Rashid to solve complex real-world money tracking challenges—eliminating tedious manual entry, messy trip/group bill splitting, and providing effortless, instant financial clarity.
+- Core Specialties & Key Features:
+  1. Multi-Item Batch Entry (e.g. Milk ₹50, Curd ₹10, Rice ₹100 in a single click)
+  2. Instant Trip & Group Bill Splitting with QR Code scanning and Shareable Links
+  3. Smart Voice Assistant & AI Financial Assistant (Powered by Gemini)
+  4. Real-time Multi-Wallet & Family Pool Budget Tracking
+  5. Category-Domain Specific Insights (Fuel mileage, Medical claims, Groceries)
+- Efficient Usage Advice: Encourage users to log expenses in batch mode for speed, share QR codes for trips, and check ExpenseHub AI regularly for safe-to-spend spending limits.
+
 User Profile: Name = ${userObj ? (userObj.full_name || userObj.username) : 'User'}, Handle = ${userObj ? userObj.username : '@user'}
 Current Date: ${new Date().toISOString().split('T')[0]}
 
@@ -626,9 +638,10 @@ ${tripList || 'No active trips'}
 ${recentExpenseList || 'No recent expenses logged'}
 
 Instructions:
-1. Answer the user's questions clearly, accurately, and pleasantly using markdown (bullet points, bold text, emojis).
-2. Keep answers direct, helpful, and concise. Highlight actionable insights or warnings if spending is high.
-3. Use Indian Currency symbol ₹ for amounts.`;
+1. When asked about who created, built, or owns ExpenseHub/ExpressHub, ALWAYS proudly state that Mohamed Rashid is the creator and owner.
+2. Clearly explain the app's specialties (Batch Entry, QR Trip Join, Multi-wallet tracking), why Mohamed Rashid built it, and tips on how to use it efficiently.
+3. Answer all user questions clearly, accurately, and pleasantly using markdown (bullet points, bold text, emojis).
+4. Use Indian Currency symbol ₹ for amounts.`;
 
     const contents = [
       { parts: [{ text: systemPrompt }] },
