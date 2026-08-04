@@ -106,11 +106,56 @@ const PageTransition = ({ children }: { children: React.ReactNode }) => (
 
 export default function App() {
   const [isAddOpen, setIsAddOpen] = useState(false);
-  const { initAuth, user, isAuthLoading, isLoading, profile } = useAppStore();
+  const { initAuth, user, isAuthLoading, isLoading, profile, joinTripViaLink } = useAppStore();
+  const [pendingJoinTripId, setPendingJoinTripId] = useState<string | null>(null);
+  const [isJoining, setIsJoining] = useState(false);
+  const [joinError, setJoinError] = useState('');
 
   useEffect(() => {
     initAuth();
   }, [initAuth]);
+
+  // Check URL for ?joinTrip=id
+  useEffect(() => {
+    const searchParams = new URLSearchParams(window.location.search);
+    let tripId = searchParams.get('joinTrip');
+    if (!tripId && window.location.hash.includes('joinTrip=')) {
+      const hashQuery = window.location.hash.split('?')[1];
+      if (hashQuery) {
+        const hashParams = new URLSearchParams(hashQuery);
+        tripId = hashParams.get('joinTrip');
+      }
+    }
+    if (tripId) {
+      setPendingJoinTripId(tripId);
+    }
+  }, []);
+
+  const handleAcceptJoin = async () => {
+    if (!pendingJoinTripId) return;
+    setIsJoining(true);
+    setJoinError('');
+    try {
+      await joinTripViaLink(pendingJoinTripId);
+      // Clean up URL search query
+      const url = new URL(window.location.href);
+      url.searchParams.delete('joinTrip');
+      window.history.replaceState({}, '', url.pathname + url.hash);
+      setPendingJoinTripId(null);
+      window.location.hash = '#/trips';
+    } catch (e: any) {
+      setJoinError(e.message || 'Failed to join trip');
+    } finally {
+      setIsJoining(false);
+    }
+  };
+
+  const handleDismissJoin = () => {
+    const url = new URL(window.location.href);
+    url.searchParams.delete('joinTrip');
+    window.history.replaceState({}, '', url.pathname + url.hash);
+    setPendingJoinTripId(null);
+  };
 
   if (isAuthLoading || (user && isLoading)) {
     return (
@@ -149,6 +194,43 @@ export default function App() {
             </AnimatePresence>
           </Layout>
           <AddExpenseModal isOpen={isAddOpen} onClose={() => setIsAddOpen(false)} />
+          
+          {/* Join Trip Invitation Overlay */}
+          {pendingJoinTripId && (
+            <div className="fixed inset-0 bg-black/70 backdrop-blur-md z-[200] flex items-center justify-center p-4">
+              <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="bg-white dark:bg-dark-surface border border-gray-200 dark:border-white/10 rounded-3xl p-6 sm:p-8 max-w-sm w-full text-center shadow-2xl">
+                <div className="w-16 h-16 bg-brand-50 dark:bg-brand-neon/10 text-brand-600 dark:text-brand-neon rounded-full flex items-center justify-center mx-auto mb-4 text-3xl font-bold">
+                  ✈️
+                </div>
+                <h3 className="text-xl font-black text-gray-900 dark:text-white mb-2">Trip Invitation</h3>
+                <p className="text-xs text-gray-500 dark:text-white/60 mb-6">
+                  You've been invited via QR Code to join a trip group on ExpenseHub!
+                </p>
+
+                {joinError && (
+                  <div className="p-3 bg-red-100 dark:bg-red-500/20 text-red-600 dark:text-red-400 text-xs font-bold rounded-xl mb-4">
+                    {joinError}
+                  </div>
+                )}
+
+                <div className="flex gap-3">
+                  <button
+                    onClick={handleDismissJoin}
+                    className="flex-1 py-3 bg-gray-100 dark:bg-white/5 border border-gray-200 dark:border-white/10 rounded-2xl text-xs font-bold text-gray-600 dark:text-white/70 hover:bg-gray-200"
+                  >
+                    Decline
+                  </button>
+                  <button
+                    onClick={handleAcceptJoin}
+                    disabled={isJoining}
+                    className="flex-1 py-3 bg-gradient-to-r from-blue-600 to-purple-600 dark:from-brand-neon dark:to-brand-purple text-white rounded-2xl text-xs font-bold shadow-md hover:shadow-lg transition-all"
+                  >
+                    {isJoining ? 'Joining...' : 'Accept & Join'}
+                  </button>
+                </div>
+              </motion.div>
+            </div>
+          )}
         </AnimatePresence>
       </HashRouter>
     </ErrorBoundary>

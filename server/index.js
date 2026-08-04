@@ -445,6 +445,41 @@ app.post('/api/trips/:id/members', authenticateToken, async (req, res) => {
   }
 });
 
+app.post('/api/trips/:id/join-via-link', authenticateToken, async (req, res) => {
+  try {
+    const trip = await Trip.findById(req.params.id);
+    if (!trip) return res.status(404).json({ error: 'Trip not found' });
+
+    const user = await User.findById(req.user.id);
+    if (!user) return res.status(404).json({ error: 'User not found' });
+
+    const userDisplayName = user.username || user.full_name || user.email;
+
+    // Check if user is already in trip
+    const isAlreadyMember = trip.balances.some(
+      b => b.userId.toLowerCase() === userDisplayName.toLowerCase() || b.userId === user._id.toString()
+    );
+
+    if (!isAlreadyMember) {
+      trip.balances.push({ userId: userDisplayName, balance: 0 });
+      trip.group_size = trip.balances.length;
+      await trip.save();
+    }
+
+    res.json({
+      id: trip._id.toString(),
+      name: trip.name,
+      totalBudget: trip.total_budget,
+      spent: trip.spent,
+      groupSize: trip.group_size,
+      image: trip.image,
+      balances: trip.balances || []
+    });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 app.delete('/api/trips/:id/members/:userId', authenticateToken, async (req, res) => {
   try {
     const trip = await Trip.findById(req.params.id);

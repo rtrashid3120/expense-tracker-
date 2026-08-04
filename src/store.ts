@@ -101,6 +101,7 @@ interface AppState {
   createTrip: (tripData: Omit<Trip, 'id' | 'spent'>) => Promise<void>;
   addMemberToTrip: (tripId: string, member: { userId: string, balance: number }) => Promise<void>;
   removeMemberFromTrip: (tripId: string, userId: string) => Promise<void>;
+  joinTripViaLink: (tripId: string) => Promise<Trip>;
   createFamilyPool: (name: string, totalBudget: number) => Promise<void>;
   addFamilyMember: (poolId: string, member: FamilyMember) => Promise<void>;
   setActiveFamilyPool: (id: string) => void;
@@ -285,6 +286,23 @@ export const useAppStore = create<AppState>((set, get) => ({
       }));
     } catch (err: any) {
       throw new Error(err.message || 'Failed to remove member from trip');
+    }
+  },
+
+  joinTripViaLink: async (tripId) => {
+    try {
+      const updatedTrip = await api.joinTripViaLink(tripId);
+      set((state) => {
+        const exists = state.trips.some(t => t.id === updatedTrip.id);
+        return {
+          trips: exists
+            ? state.trips.map(t => t.id === updatedTrip.id ? updatedTrip : t)
+            : [updatedTrip, ...state.trips]
+        };
+      });
+      return updatedTrip;
+    } catch (err: any) {
+      throw new Error(err.message || 'Failed to join trip via link');
     }
   },
 

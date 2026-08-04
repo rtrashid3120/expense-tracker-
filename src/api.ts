@@ -184,6 +184,16 @@ export const api = {
     return data;
   },
 
+  joinTripViaLink: async (tripId: string): Promise<Trip> => {
+    const res = await fetch(`${API_BASE_URL}/trips/${tripId}/join-via-link`, {
+      method: 'POST',
+      headers: getHeaders()
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'Failed to join trip');
+    return data;
+  },
+
   // Family Pools
   getFamilyPools: async (): Promise<any[]> => {
     const res = await fetch(`${API_BASE_URL}/family-pools`, { headers: getHeaders() });

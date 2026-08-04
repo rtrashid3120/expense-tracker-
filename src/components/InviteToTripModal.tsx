@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { FiX, FiCheck, FiSearch, FiCopy, FiLink, FiUser } from 'react-icons/fi';
+import { FiX, FiCheck, FiSearch, FiCopy, FiLink, FiUser, FiMaximize2 } from 'react-icons/fi';
+import { QRCodeSVG } from 'qrcode.react';
 import { useAppStore } from '../store';
 import { api } from '../api';
 import type { Trip } from '../store';
@@ -23,8 +24,8 @@ export function InviteToTripModal({ isOpen, onClose, trip }: InviteToTripModalPr
   const { friends, addMemberToTrip } = useAppStore();
   const [searchType, setSearchType] = useState<'username' | 'email' | 'code'>('username');
 
-  // Generate a mock invite link
-  const inviteLink = `https://expensehub.app/invite/${trip.name.toLowerCase().replace(/\s+/g, '-')}-${trip.id}`;
+  // Real invite link containing joinTrip parameter
+  const inviteLink = `${window.location.origin}${window.location.pathname}?joinTrip=${trip.id}`;
 
   const handleCopy = () => {
     navigator.clipboard.writeText(inviteLink);
@@ -52,7 +53,6 @@ export function InviteToTripModal({ isOpen, onClose, trip }: InviteToTripModalPr
           results = results.filter(r => r.short_id === searchQuery || r.id?.startsWith(searchQuery));
         }
 
-        // Don't filter out users already in the trip, just pass the raw results so the UI can show them as 'Added'
         setSearchResults(results);
       } catch (err) {
         console.error(err);
@@ -66,7 +66,6 @@ export function InviteToTripModal({ isOpen, onClose, trip }: InviteToTripModalPr
 
   const handleAddUser = async (user: any) => {
     try {
-      // Use exact username or full_name as the identifier
       const name = user.username || user.full_name || user.name || 'User';
       await addMemberToTrip(trip.id, { userId: name, balance: 0 });
       setSearchQuery('');
@@ -113,7 +112,7 @@ export function InviteToTripModal({ isOpen, onClose, trip }: InviteToTripModalPr
                 onClick={() => setActiveTab('Link')}
                 className={`flex-1 py-2 text-xs sm:text-sm font-bold rounded-lg transition-all ${activeTab === 'Link' ? 'bg-white dark:bg-brand-neon/20 shadow-sm text-brand-600 dark:text-brand-neon' : 'text-gray-500 dark:text-white/50 hover:text-gray-700 dark:hover:text-white/80'}`}
               >
-                Shareable Link
+                QR Code & Link
               </button>
             </div>
 
@@ -234,28 +233,38 @@ export function InviteToTripModal({ isOpen, onClose, trip }: InviteToTripModalPr
                     initial={{ opacity: 0, x: 20 }}
                     animate={{ opacity: 1, x: 0 }}
                     exit={{ opacity: 0, x: -20 }}
-                    className="flex flex-col items-center justify-center h-full py-8 text-center"
+                    className="flex flex-col items-center justify-center py-4 text-center space-y-4"
                   >
-                    <div className="w-20 h-20 bg-brand-50 dark:bg-brand-neon/10 rounded-full flex items-center justify-center text-brand-600 dark:text-brand-neon mb-6">
-                      <FiLink size={32} />
+                    <div className="p-4 bg-white dark:bg-white rounded-3xl shadow-xl border-4 border-brand-neon/30 inline-block">
+                      <QRCodeSVG 
+                        value={inviteLink}
+                        size={170}
+                        bgColor="#FFFFFF"
+                        fgColor="#0F172A"
+                        level="H"
+                        includeMargin={false}
+                      />
                     </div>
-                    <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-2">Share Invite Link</h3>
-                    <p className="text-gray-500 dark:text-white/60 mb-8 max-w-[250px]">
-                      Anyone with this link will be able to join <strong className="text-gray-900 dark:text-white">{trip.name}</strong> and view balances.
-                    </p>
+
+                    <div>
+                      <h3 className="text-lg font-black text-gray-900 dark:text-white">Scan QR Code to Join</h3>
+                      <p className="text-xs text-gray-500 dark:text-white/60 mt-1 max-w-[280px]">
+                        Scan this QR code with any phone camera to instantly join <strong className="text-gray-900 dark:text-white">{trip.name}</strong>.
+                      </p>
+                    </div>
                     
-                    <div className="w-full bg-gray-50 dark:bg-white/5 border border-gray-200 dark:border-white/10 rounded-2xl p-4 flex items-center gap-3">
-                      <div className="flex-1 overflow-hidden">
-                        <p className="text-sm font-bold text-gray-900 dark:text-white truncate">{inviteLink}</p>
+                    <div className="w-full bg-gray-50 dark:bg-white/5 border border-gray-200 dark:border-white/10 rounded-2xl p-3 flex items-center gap-2">
+                      <div className="flex-1 overflow-hidden text-left">
+                        <p className="text-xs font-bold text-gray-900 dark:text-white truncate">{inviteLink}</p>
                       </div>
                       <button 
                         onClick={handleCopy}
-                        className={`p-3 rounded-xl flex-shrink-0 transition-all ${isCopied ? 'bg-green-500 text-white border-green-500' : 'bg-white dark:bg-white/10 border border-gray-200 dark:border-white/20 text-gray-700 dark:text-white hover:bg-gray-100 dark:hover:bg-white/20'}`}
+                        className={`p-2.5 rounded-xl flex-shrink-0 transition-all text-xs font-bold flex items-center gap-1.5 ${isCopied ? 'bg-green-500 text-white' : 'bg-blue-600 dark:bg-brand-neon text-white dark:text-black hover:opacity-90'}`}
                       >
-                        {isCopied ? <FiCheck size={20} /> : <FiCopy size={20} />}
+                        {isCopied ? <FiCheck size={16} /> : <FiCopy size={16} />}
+                        {isCopied ? 'Copied!' : 'Copy'}
                       </button>
                     </div>
-                    {isCopied && <p className="text-green-600 dark:text-green-400 text-sm font-bold mt-4 animate-pulse">Link copied to clipboard!</p>}
                   </motion.div>
                 )}
               </AnimatePresence>
