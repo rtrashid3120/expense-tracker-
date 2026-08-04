@@ -7,13 +7,17 @@ export function AuditTrailPage() {
   const { expenses, deleteExpense, wallets } = useAppStore();
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<string>('All');
-  const [selectedWalletId, setSelectedWalletId] = useState<string>('All');
+  
+  const defaultWalletId = wallets[0]?.id || (wallets[0] as any)?._id || '';
+  const [selectedWalletId, setSelectedWalletId] = useState<string>(defaultWalletId);
 
   const categories = ['All', 'Groceries', 'Transport', 'Rent', 'Dining', 'Shopping', 'Personal', 'Medical', 'Fuel', 'Travel'];
 
+  const activeWalletId = selectedWalletId || defaultWalletId;
+
   const filteredExpenses = expenses.filter(exp => {
     const expWalletId = exp.walletId || (exp as any).wallet_id;
-    const matchesWallet = selectedWalletId === 'All' || expWalletId === selectedWalletId;
+    const matchesWallet = !activeWalletId || expWalletId === activeWalletId;
     
     const matchesSearch = 
       exp.category.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -80,20 +84,9 @@ export function AuditTrailPage() {
           </div>
 
           <div className="flex gap-2 overflow-x-auto scrollbar-hide py-1">
-            <button
-              onClick={() => setSelectedWalletId('All')}
-              className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all whitespace-nowrap shrink-0 border flex items-center gap-1.5 ${
-                selectedWalletId === 'All'
-                  ? 'bg-purple-600 dark:bg-brand-neon text-white dark:text-black border-purple-600 dark:border-brand-neon shadow-md'
-                  : 'bg-white/70 dark:bg-white/5 border-gray-200 dark:border-white/10 text-gray-600 dark:text-white/70 hover:bg-gray-100 dark:hover:bg-white/10'
-              }`}
-            >
-              💳 All Wallets ({expenses.length})
-            </button>
-
             {wallets.map(w => {
               const wId = w.id || (w as any)._id;
-              const isSelected = selectedWalletId === wId;
+              const isSelected = activeWalletId === wId;
               const walletExpenseCount = expenses.filter(e => (e.walletId || (e as any).wallet_id) === wId).length;
 
               return (
@@ -102,7 +95,7 @@ export function AuditTrailPage() {
                   onClick={() => setSelectedWalletId(wId)}
                   className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all whitespace-nowrap shrink-0 border flex items-center gap-1.5 ${
                     isSelected
-                      ? 'bg-purple-600 dark:bg-brand-neon text-white dark:text-black border-purple-600 dark:border-brand-neon shadow-md'
+                      ? 'bg-purple-600 dark:bg-brand-neon text-white dark:text-black border-purple-600 dark:border-brand-neon shadow-md ring-2 ring-purple-400/30'
                       : 'bg-white/70 dark:bg-white/5 border-gray-200 dark:border-white/10 text-gray-600 dark:text-white/70 hover:bg-gray-100 dark:hover:bg-white/10'
                   }`}
                 >

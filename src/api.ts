@@ -247,7 +247,7 @@ export const api = {
     }
   },
 
-  askAIChat: async (message: string, history: any[], contextData?: any): Promise<{ answer: string; expenseAdded?: boolean }> => {
+  askAIChat: async (message: string, history: any[], contextData?: any): Promise<{ answer: string; expenseAdded?: boolean; walletPrompt?: { amount: number; category: string; note: string } }> => {
     try {
       const res = await fetch(`${API_BASE_URL}/ai/chat`, {
         method: 'POST',
@@ -273,16 +273,26 @@ ABOUT EXPENSEHUB & CREATOR INFORMATION:
 - Why ExpenseHub Was Built: Created by Mohamed Rashid to solve complex real-world money tracking challenges.
 
 REAL EXPENSE LOGGING INSTRUCTIONS:
-- If the user asks to add, log, create, or record an expense (e.g. "add 50 for milk", "spent 200 on petrol", "log 1500 for groceries"), you MUST include a JSON action block in your response formatted EXACTLY like this:
+- If the user asks to add an expense (e.g. "add cake 40", "spent 200 on fuel") AND has 2 or more active wallets AND did NOT specify a wallet name:
+  MUST return a JSON action block like this:
+\`\`\`json
+{
+  "ACTION": "SELECT_WALLET_FOR_EXPENSE",
+  "amount": 40,
+  "category": "Dining",
+  "note": "cake"
+}
+\`\`\`
+
+- If the user specified a wallet OR has only 1 wallet, return standard ADD_EXPENSE:
 \`\`\`json
 {
   "ACTION": "ADD_EXPENSE",
-  "amount": 50,
-  "category": "Groceries",
-  "note": "milk"
+  "amount": 40,
+  "category": "Dining",
+  "note": "cake"
 }
 \`\`\`
-Valid Categories: Groceries, Transport, Rent, Dining, Shopping, Personal, Medical, Fuel, Travel.
 
 Context:
 - User Balance/Budget Context: ${JSON.stringify(contextData?.budget || {})}
@@ -292,7 +302,7 @@ Context:
 
 Instructions:
 1. When asked about who created, built, or owns ExpenseHub/ExpressHub, ALWAYS proudly state that Mohamed Rashid is the creator and owner.
-2. If logging an expense, provide the JSON action block AND write a friendly confirmation message stating that the item has been logged.
+2. If logging an expense, provide the JSON action block AND write a friendly confirmation message.
 3. Use Indian Currency symbol ₹ for amounts.`;
 
     const contents = [
@@ -319,10 +329,23 @@ Instructions:
           let replyText = data.candidates[0].content.parts[0].text;
           let expenseAdded = false;
 
-          const jsonMatch = replyText.match(/```json\s*([\s\S]*?)\s*```/) || replyText.match(/(\{[\s\S]*?"ACTION"\s*:\s*"ADD_EXPENSE"[\s\S]*?\})/);
+          const jsonMatch = replyText.match(/```json\s*([\s\S]*?)\s*```/) || replyText.match(/(\{[\s\S]*?"ACTION"\s*:\s*".*?"[\s\S]*?\})/);
           if (jsonMatch) {
             try {
               const actionData = JSON.parse(jsonMatch[1] || jsonMatch[0]);
+
+              if (actionData && actionData.ACTION === 'SELECT_WALLET_FOR_EXPENSE') {
+                replyText = replyText.replace(/```json[\s\S]*?```/g, '').replace(/\{[\s\S]*?"ACTION"\s*:\s*".*?"[\s\S]*?\}/g, '').trim();
+                return {
+                  answer: replyText || `Which wallet should I add **${actionData.note || 'Expense'} (₹${actionData.amount})** to?`,
+                  walletPrompt: {
+                    amount: actionData.amount,
+                    category: actionData.category || 'Dining',
+                    note: actionData.note || 'Expense'
+                  }
+                };
+              }
+
               if (actionData && actionData.ACTION === 'ADD_EXPENSE' && actionData.amount > 0) {
                 const defaultWallet = contextData?.wallets?.[0]?.id || undefined;
                 await api.addExpense({

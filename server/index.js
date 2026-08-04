@@ -618,15 +618,24 @@ ABOUT EXPENSEHUB & CREATOR INFORMATION:
 - Why ExpenseHub Was Built: Created by Mohamed Rashid to solve complex real-world money tracking challenges—eliminating tedious manual entry, messy trip/group bill splitting, and providing effortless, instant financial clarity.
 
 REAL ACTION LOGGING INSTRUCTIONS:
-- If the user asks to add an expense, create a wallet, or create a trip, you MUST include a JSON action block in your response formatted EXACTLY like one of these:
+- If the user asks to add an expense (e.g. "add cake 40", "spent 200 on fuel") AND has 2 or more active wallets AND did NOT specify a wallet name:
+  MUST return a JSON action block like this:
+\`\`\`json
+{
+  "ACTION": "SELECT_WALLET_FOR_EXPENSE",
+  "amount": 40,
+  "category": "Dining",
+  "note": "cake"
+}
+\`\`\`
 
-1. Add Single Expense:
+- If the user specified a wallet OR has only 1 wallet, return standard ADD_EXPENSE:
 \`\`\`json
 {
   "ACTION": "ADD_EXPENSE",
-  "amount": 50,
-  "category": "Groceries",
-  "note": "milk"
+  "amount": 40,
+  "category": "Dining",
+  "note": "cake"
 }
 \`\`\`
 
@@ -723,6 +732,18 @@ Instructions:
         const actionData = JSON.parse(jsonMatch[1] || jsonMatch[0]);
         const dateStr = new Date().toISOString().split('T')[0];
         const defaultWallet = wallets.length > 0 ? wallets[0]._id : null;
+
+        if (actionData && actionData.ACTION === 'SELECT_WALLET_FOR_EXPENSE') {
+          replyText = replyText.replace(/```json[\s\S]*?```/g, '').replace(/\{[\s\S]*?"ACTION"\s*:\s*".*?"[\s\S]*?\}/g, '').trim();
+          return res.json({
+            answer: replyText || `Which wallet should I add **${actionData.note || 'Expense'} (₹${actionData.amount})** to?`,
+            walletPrompt: {
+              amount: actionData.amount,
+              category: actionData.category || 'Dining',
+              note: actionData.note || 'Expense'
+            }
+          });
+        }
 
         if (actionData && actionData.ACTION === 'ADD_EXPENSE' && actionData.amount > 0) {
           await Expense.create({

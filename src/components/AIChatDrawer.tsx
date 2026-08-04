@@ -9,6 +9,7 @@ interface ChatMessage {
   sender: 'user' | 'ai';
   text: string;
   timestamp: string;
+  walletPrompt?: { amount: number; category: string; note: string };
 }
 
 const STORAGE_KEY = 'expensehub_ai_chat_messages';
@@ -66,6 +67,33 @@ export function AIChatDrawer() {
     return () => window.removeEventListener('open-ai-chat', handleOpen);
   }, []);
 
+  const handleSelectWallet = async (msgId: string, wallet: any, prompt: { amount: number; category: string; note: string }) => {
+    try {
+      const walletId = wallet.id || wallet._id;
+      await api.addExpense({
+        amount: prompt.amount,
+        category: prompt.category,
+        note: prompt.note,
+        walletId
+      });
+
+      await fetchData();
+
+      setMessages(prev => prev.map(m => {
+        if (m.id === msgId) {
+          return {
+            ...m,
+            walletPrompt: undefined,
+            text: `✅ **Successfully Recorded in ${wallet.name}!**\n- **Amount:** ₹${prompt.amount}\n- **Category:** ${prompt.category}\n- **Item:** ${prompt.note}\n- **Wallet:** ${wallet.name}`
+          };
+        }
+        return m;
+      }));
+    } catch (err: any) {
+      alert(err.message || 'Failed to record expense');
+    }
+  };
+
   const handleSend = async (textToSend?: string) => {
     const query = textToSend || inputMsg;
     if (!query.trim() || isLoading) return;
@@ -104,6 +132,7 @@ export function AIChatDrawer() {
         id: (Date.now() + 1).toString(),
         sender: 'ai',
         text: res.answer,
+        walletPrompt: res.walletPrompt,
         timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
       };
 
@@ -212,6 +241,24 @@ export function AIChatDrawer() {
                       }`}
                     >
                       <div className="whitespace-pre-wrap">{msg.text}</div>
+
+                      {/* 1-Click Interactive Wallet Selection Buttons */}
+                      {msg.walletPrompt && wallets.length > 0 && (
+                        <div className="mt-3 pt-2.5 border-t border-gray-200 dark:border-white/10 space-y-2">
+                          <p className="text-[11px] font-bold text-gray-500 dark:text-white/60 uppercase tracking-wider">Select Wallet (1-Click):</p>
+                          <div className="flex flex-wrap gap-2">
+                            {wallets.map(w => (
+                              <button
+                                key={w.id || (w as any)._id}
+                                onClick={() => handleSelectWallet(msg.id, w, msg.walletPrompt!)}
+                                className="px-3 py-2 bg-gradient-to-r from-purple-600 to-blue-600 dark:from-brand-neon dark:to-brand-purple text-white dark:text-black font-bold text-xs rounded-xl shadow-md hover:scale-105 transition-all flex items-center gap-1.5 active:scale-95"
+                              >
+                                👛 {w.name} (₹{w.balance.toLocaleString('en-IN')})
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+                      )}
                     </div>
                     <span className="text-[10px] text-gray-400 dark:text-white/30 mt-1 px-1 font-mono">
                       {msg.timestamp}
