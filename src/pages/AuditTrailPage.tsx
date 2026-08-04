@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useAppStore } from '../store';
-import { FiSearch, FiTrash2, FiFileText, FiFilter, FiCalendar, FiTag, FiShoppingBag, FiTruck } from 'react-icons/fi';
+import { FiSearch, FiTrash2, FiFileText, FiCalendar, FiTag, FiShoppingBag, FiTruck } from 'react-icons/fi';
 
 export function AuditTrailPage() {
   const { expenses, deleteExpense } = useAppStore();

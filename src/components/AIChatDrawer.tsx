@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { FiX, FiSend, FiZap, FiTrash2, FiCpu } from 'react-icons/fi';
+import { FiX, FiSend, FiZap, FiTrash2 } from 'react-icons/fi';
 import { useAppStore } from '../store';
 import { api } from '../api';
 
