@@ -14,6 +14,14 @@ interface ChatMessage {
 
 const STORAGE_KEY = 'expensehub_ai_chat_messages';
 
+const quickPrompts = [
+  'spent 50 coffee',
+  'delete spent 50 coffee',
+  'How much spent this month?',
+  'Which wallet has highest balance?',
+  'Who created ExpenseHub?'
+];
+
 export function AIChatDrawer() {
   const [isOpen, setIsOpen] = useState(false);
   const [inputMsg, setInputMsg] = useState('');
@@ -33,7 +41,7 @@ export function AIChatDrawer() {
       {
         id: 'welcome',
         sender: 'ai',
-        text: "👋 Hi! I'm **ExpenseHub AI**, your personal financial assistant created by Mohamed Rashid. Ask me anything about your expenses, budgets, wallets, or trip splits!",
+        text: `👋 **Welcome to ExpenseHub AI!**\nYour 24/7 Executive Financial Assistant created by **Mohamed Rashid**.\n\n⚡ **How to use me efficiently:**\n• ➕ **Add Expenses:** Type \`spent 50 coffee\` or \`add cake 40\`\n• 🗑️ **Delete Expenses:** Type \`delete spent 50 coffee\` or \`remove petrol 250\`\n• 👛 **Multi-Wallet Support:** I will prompt 1-Click buttons to choose your wallet!\n• 📊 **Analytics:** Ask \`How much did I spend this week?\` or \`Show budget\`\n• 👑 **About App:** Ask me about Mohamed Rashid or ExpenseHub specialties!`,
         timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
       }
     ];
@@ -109,7 +117,53 @@ export function AIChatDrawer() {
     setMessages(prev => [...prev, userMessage]);
     if (!textToSend) setInputMsg('');
 
-    // Instant 1-Click Wallet Selector Check for 2+ Wallets
+    // Check 1: Expense Deletion Intent (e.g. "delete spent 50 coffee", "remove coffee 50")
+    const isDeleteIntent = /\b(delete|remove|cancel|undo|erase|drop)\b/i.test(query);
+    if (isDeleteIntent) {
+      const numMatch = query.match(/(\d+)/);
+      const amount = numMatch ? Number(numMatch[1]) : null;
+      let cleanNote = query.replace(/(\d+)/g, '').replace(/\b(delete|remove|cancel|undo|erase|drop|spent|add|log|bought|paid|on|for|rupees|rs|₹|expense|last|latest|item)\b/gi, '').trim();
+
+      let target = expenses.find(e => {
+        const matchAmount = amount ? e.amount === amount : true;
+        const matchNote = cleanNote ? e.note.toLowerCase().includes(cleanNote.toLowerCase()) : true;
+        return matchAmount && matchNote;
+      });
+
+      if (!target && amount) {
+        target = expenses.find(e => e.amount === amount);
+      }
+
+      if (target) {
+        try {
+          const targetId = target.id || (target as any)._id;
+          await api.deleteExpense(targetId);
+          await fetchData(true);
+
+          const aiMessage: ChatMessage = {
+            id: (Date.now() + 1).toString(),
+            sender: 'ai',
+            text: `✅ **Successfully Deleted Expense!**\n- **Item:** ${target.note || 'Expense'}\n- **Amount:** ₹${target.amount}\n- **Category:** ${target.category}`,
+            timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+          };
+          setMessages(prev => [...prev, aiMessage]);
+          return;
+        } catch (err: any) {
+          alert(err.message || 'Failed to delete expense');
+        }
+      } else {
+        const aiMessage: ChatMessage = {
+          id: (Date.now() + 1).toString(),
+          sender: 'ai',
+          text: `⚠️ **Couldn't find an expense to delete.**\nSearched for: ${cleanNote ? `"${cleanNote}"` : ''} ${amount ? `₹${amount}` : ''}\n\n*Tip: Check your Audit Trail for full item details or exact amounts.*`,
+          timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+        };
+        setMessages(prev => [...prev, aiMessage]);
+        return;
+      }
+    }
+
+    // Check 2: Instant 1-Click Wallet Selector Check for 2+ Wallets
     const numMatch = query.match(/(\d+)/);
     if (numMatch && wallets.length >= 2) {
       const amount = Number(numMatch[1]);
