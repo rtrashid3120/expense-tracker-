@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { FiX, FiCheck, FiSearch, FiCopy, FiLink, FiUser, FiMaximize2 } from 'react-icons/fi';
+import { FiX, FiCheck, FiSearch, FiCopy, FiUser } from 'react-icons/fi';
 import { QRCodeSVG } from 'qrcode.react';
 import { useAppStore } from '../store';
 import { api } from '../api';
