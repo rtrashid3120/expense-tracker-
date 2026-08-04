@@ -37,6 +37,12 @@ export function AIChatDrawer() {
     }
   }, [messages, isOpen]);
 
+  useEffect(() => {
+    const handleOpen = () => setIsOpen(true);
+    window.addEventListener('open-ai-chat', handleOpen);
+    return () => window.removeEventListener('open-ai-chat', handleOpen);
+  }, []);
+
   const handleSend = async (textToSend?: string) => {
     const query = textToSend || inputMsg;
     if (!query.trim() || isLoading) return;
