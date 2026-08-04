@@ -92,7 +92,7 @@ interface AppState {
   // Actions
   initAuth: () => void;
   signOut: () => Promise<void>;
-  fetchData: () => Promise<void>;
+  fetchData: (silent?: boolean) => Promise<void>;
   updateProfile: (updates: any) => Promise<void>;
   sendFriendRequest: (receiverId: string) => Promise<void>;
   acceptFriendRequest: (requestId: string) => Promise<void>;
