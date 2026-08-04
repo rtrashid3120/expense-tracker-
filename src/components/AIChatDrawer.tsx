@@ -230,6 +230,8 @@ export function AIChatDrawer() {
                 </button>
               </form>
             </motion.div>
+          </>
+        )}
       </AnimatePresence>
   );
 }
