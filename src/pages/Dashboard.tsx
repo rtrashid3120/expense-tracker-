@@ -18,7 +18,7 @@ export function Dashboard() {
   
   // Interactive States
   const [chartView, setChartView] = useState<'Week' | 'Month'>('Week');
-  const [activeTab, setActiveTab] = useState<'Subscriptions' | 'Bills'>('Bills');
+
   const [searchQuery, setSearchQuery] = useState('');
   const [isWalletModalOpen, setIsWalletModalOpen] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
@@ -100,8 +100,7 @@ export function Dashboard() {
   };
   const dynamicChartData = getChartData();
 
-  // Filter real recurring expenses
-  const recurringExpenses = activeExpenses.filter(e => e.category === 'Rent' || e.category === 'Medical');
+
 
   // Search logic for Audit Trail
   const filteredExpenses = activeExpenses.filter(e => {
@@ -250,52 +249,8 @@ export function Dashboard() {
               </div>
             </div>
 
-            {/* Schedule / Sidebar Card */}
-            <div className="glass-card">
-              <div className="flex justify-between items-center mb-6">
-                <h3 className="font-bold text-gray-900 dark:text-white text-lg">Upcoming Recurring</h3>
-              </div>
-              
-              <div className="flex bg-gray-100 dark:bg-white/5 rounded-xl p-1 mb-6 border border-gray-200 dark:border-white/10">
-                <button 
-                  onClick={() => setActiveTab('Subscriptions')}
-                  className={`flex-1 py-1.5 text-xs font-bold rounded-lg transition-all ${activeTab === 'Subscriptions' ? 'bg-white dark:bg-brand-neon text-blue-700 dark:text-dark-bg shadow-sm dark:shadow-[0_0_10px_rgba(0,240,255,0.5)]' : 'text-gray-500 dark:text-white/50 hover:text-gray-700 dark:hover:text-white/80'}`}
-                >
-                  Active
-                </button>
-                <button 
-                  onClick={() => setActiveTab('Bills')}
-                  className={`flex-1 py-1.5 text-xs font-bold rounded-lg transition-all ${activeTab === 'Bills' ? 'bg-white dark:bg-brand-neon text-blue-700 dark:text-dark-bg shadow-sm dark:shadow-[0_0_10px_rgba(0,240,255,0.5)]' : 'text-gray-500 dark:text-white/50 hover:text-gray-700 dark:hover:text-white/80'}`}
-                >
-                  History
-                </button>
-              </div>
 
-              <div className="space-y-4">
-                {recurringExpenses.length > 0 ? (
-                  recurringExpenses.slice(0, 3).map((sub, i) => {
-                    const colorClass = iconMap[sub.category] || 'bg-gray-100 dark:bg-white/10 text-gray-600 dark:text-white/60 border border-gray-200 dark:border-white/10';
-                    return (
-                      <div key={i} className="flex items-center gap-3 p-3 hover:bg-gray-50 dark:hover:bg-white/5 rounded-xl border border-transparent hover:border-gray-100 dark:hover:border-white/10 transition-colors cursor-pointer active:scale-95">
-                        <div className={`w-10 h-10 rounded-full flex items-center justify-center font-bold flex-shrink-0 ${colorClass}`}>
-                          {sub.category.charAt(0)}
-                        </div>
-                        <div>
-                          <h4 className="text-sm font-bold text-gray-900 dark:text-white">{sub.category}</h4>
-                          <p className="text-xs text-gray-500 dark:text-white/50">₹{sub.amount} • {sub.date}</p>
-                        </div>
-                      </div>
-                    )
-                  })
-                ) : (
-                  <div className="py-8 text-center bg-gray-50 dark:bg-white/5 rounded-xl border border-dashed border-gray-200 dark:border-white/10">
-                    <p className="text-sm font-bold text-gray-400 dark:text-white/40">No recurring expenses</p>
-                    <p className="text-xs text-gray-400 dark:text-white/30 mt-1">Your schedules will appear here.</p>
-                  </div>
-                )}
-              </div>
-            </div>
-            
+
             {/* Table / Transactions Card */}
             <div className="glass-card lg:col-span-3">
                <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4 mb-6">
