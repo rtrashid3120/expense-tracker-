@@ -211,7 +211,7 @@ export function Dashboard() {
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
             
             {/* Chart Card */}
-            <div className="glass-card lg:col-span-2">
+            <div className="glass-card lg:col-span-3">
               <div className="flex justify-between items-center mb-8">
                 <h3 className="font-bold text-gray-900 dark:text-white text-lg">Spending Velocity</h3>
                 <button 
@@ -249,7 +249,65 @@ export function Dashboard() {
               </div>
             </div>
 
+            {/* Top Expenses (Highest Value First) */}
+            {(() => {
+              const topExpenses = [...activeExpenses].sort((a, b) => b.amount - a.amount).slice(0, 5);
+              const totalSpentForTop = activeExpenses.reduce((sum, e) => sum + e.amount, 0) || 1;
 
+              return (
+                <div className="glass-card lg:col-span-3 mb-6">
+                  <div className="flex justify-between items-center mb-4">
+                    <div>
+                      <h3 className="font-bold text-gray-900 dark:text-white text-lg flex items-center gap-2">
+                        🔥 Top Expenses <span className="text-xs font-normal text-gray-400 dark:text-white/40">(Highest Value First)</span>
+                      </h3>
+                      <p className="text-xs text-gray-500 dark:text-white/50 mt-0.5">Your highest spending items at a glance.</p>
+                    </div>
+                  </div>
+
+                  {topExpenses.length === 0 ? (
+                    <div className="py-6 text-center text-xs text-gray-400 dark:text-white/40 border border-dashed border-gray-200 dark:border-white/10 rounded-2xl">
+                      No expenses logged yet.
+                    </div>
+                  ) : (
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
+                      {topExpenses.map((exp, index) => {
+                        const percent = Math.round((exp.amount / totalSpentForTop) * 100);
+                        return (
+                          <div key={exp.id || index} className="p-3.5 bg-white/60 dark:bg-white/5 border border-gray-200 dark:border-white/10 rounded-2xl flex flex-col justify-between hover:border-brand-neon/40 transition-all shadow-sm relative overflow-hidden group">
+                            <div className="flex items-center justify-between gap-2 mb-2">
+                              <span className="w-6 h-6 rounded-lg bg-blue-600/10 dark:bg-brand-neon/20 text-blue-600 dark:text-brand-neon text-xs font-black flex items-center justify-center shrink-0">
+                                #{index + 1}
+                              </span>
+                              <span className="px-2 py-0.5 bg-gray-100 dark:bg-white/10 text-gray-600 dark:text-white/60 text-[10px] font-bold rounded-full truncate">
+                                {exp.category}
+                              </span>
+                            </div>
+                            <div>
+                              <p className="font-bold text-sm text-gray-900 dark:text-white truncate" title={exp.note || exp.category}>
+                                {exp.note || exp.category}
+                              </p>
+                              <p className="text-base font-black text-blue-600 dark:text-brand-neon mt-1">
+                                ₹{exp.amount.toLocaleString('en-IN')}
+                              </p>
+                            </div>
+                            <div className="mt-3">
+                              <div className="flex justify-between text-[10px] text-gray-400 dark:text-white/40 font-semibold mb-1">
+                                <span>Share</span>
+                                <span>{percent}%</span>
+                              </div>
+                              <div className="w-full h-1.5 bg-gray-100 dark:bg-white/10 rounded-full overflow-hidden">
+                                <div className="h-full bg-gradient-to-r from-blue-500 to-purple-500 dark:from-brand-neon dark:to-brand-purple rounded-full" style={{ width: `${Math.min(percent, 100)}%` }} />
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+              );
+            })()}
 
             {/* Table / Transactions Card */}
             <div className="glass-card lg:col-span-3">
