@@ -1,8 +1,8 @@
-import { useState } from 'react';
-import { motion } from 'framer-motion';
+import { useState, useMemo } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
 import { useAppStore } from '../store';
 import { CreateWalletModal } from '../components/CreateWalletModal';
-import { FiTrash2 } from 'react-icons/fi';
+import { FiTrash2, FiSearch, FiX, FiCalendar, FiClock } from 'react-icons/fi';
 
 const iconMap: Record<string, string> = {
   Groceries: 'bg-brand-neon/20 text-brand-neon border border-brand-neon/30',
@@ -23,12 +23,81 @@ export function Dashboard() {
   const [isWalletModalOpen, setIsWalletModalOpen] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
 
+  // Top Expenses Tracker States
+  const [trackedKeywords, setTrackedKeywords] = useState<string[]>([]);
+  const [trackerSearch, setTrackerSearch] = useState('');
+  const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+  const [selectedDetailKeyword, setSelectedDetailKeyword] = useState<string | null>(null);
+
   const userName = profile?.full_name?.split(' ')[0] || profile?.username?.replace('@', '') || 'Executive';
 
   // Filter expenses by active wallet (excluding trip expenses)
   const activeWallet = wallets.find(w => w.id === activeWalletId);
   const activeExpenses = expenses.filter(e => e.walletId === activeWalletId && !(e as any).tripId);
   const totalSpend = activeExpenses.reduce((sum, e) => sum + e.amount, 0);
+
+  // Unique keywords derived from active expenses (notes & categories)
+  const availableKeywords = useMemo(() => {
+    const set = new Set<string>();
+    activeExpenses.forEach(e => {
+      if (e.note && e.note.trim()) set.add(e.note.trim());
+      if (e.category) set.add(e.category);
+    });
+    return Array.from(set);
+  }, [activeExpenses]);
+
+  // Dynamic or user-configured tracked items list
+  const activeTrackedList = useMemo(() => {
+    if (trackedKeywords.length > 0) {
+      return trackedKeywords.filter(k => k !== '__empty__');
+    }
+    // Default: group by note/category and pick top items by spending
+    const itemTotals: Record<string, number> = {};
+    activeExpenses.forEach(e => {
+      const key = (e.note && e.note.trim()) ? e.note.trim() : e.category;
+      itemTotals[key] = (itemTotals[key] || 0) + e.amount;
+    });
+    return Object.keys(itemTotals).sort((a, b) => itemTotals[b] - itemTotals[a]).slice(0, 5);
+  }, [trackedKeywords, activeExpenses]);
+
+  const addTrackedItem = (keyword: string) => {
+    const clean = keyword.trim();
+    if (!clean) return;
+    const currentList = trackedKeywords.length > 0 ? trackedKeywords.filter(k => k !== '__empty__') : activeTrackedList;
+    if (!currentList.some(k => k.toLowerCase() === clean.toLowerCase())) {
+      setTrackedKeywords([...currentList, clean]);
+    }
+    setTrackerSearch('');
+    setIsDropdownOpen(false);
+  };
+
+  const removeTrackedItem = (keyword: string) => {
+    const currentList = trackedKeywords.length > 0 ? trackedKeywords.filter(k => k !== '__empty__') : activeTrackedList;
+    const updated = currentList.filter(k => k.toLowerCase() !== keyword.toLowerCase());
+    setTrackedKeywords(updated.length === 0 ? ['__empty__'] : updated);
+  };
+
+  const searchSuggestions = useMemo(() => {
+    if (!trackerSearch.trim()) return availableKeywords.filter(k => !activeTrackedList.some(tk => tk.toLowerCase() === k.toLowerCase()));
+    return availableKeywords.filter(k => 
+      k.toLowerCase().includes(trackerSearch.toLowerCase()) &&
+      !activeTrackedList.some(tk => tk.toLowerCase() === k.toLowerCase())
+    );
+  }, [trackerSearch, availableKeywords, activeTrackedList]);
+
+  // Detail Modal Data (Expenses and Total for selected keyword)
+  const selectedKeywordExpenses = useMemo(() => {
+    if (!selectedDetailKeyword) return [];
+    const k = selectedDetailKeyword.toLowerCase();
+    return activeExpenses.filter(e => 
+      (e.note && e.note.toLowerCase().includes(k)) || 
+      e.category.toLowerCase().includes(k)
+    ).sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+  }, [selectedDetailKeyword, activeExpenses]);
+
+  const selectedKeywordTotal = useMemo(() => {
+    return selectedKeywordExpenses.reduce((sum, e) => sum + e.amount, 0);
+  }, [selectedKeywordExpenses]);
 
   // Derived balance from wallet (or fallback to 0)
   const balance = activeWallet ? activeWallet.balance : 0;
@@ -249,65 +318,135 @@ export function Dashboard() {
               </div>
             </div>
 
-            {/* Top Expenses (Highest Value First) */}
-            {(() => {
-              const topExpenses = [...activeExpenses].sort((a, b) => b.amount - a.amount).slice(0, 5);
-              const totalSpentForTop = activeExpenses.reduce((sum, e) => sum + e.amount, 0) || 1;
+            {/* Top Expenses Tracker Card */}
+            <div className="glass-card lg:col-span-3 mb-6 relative overflow-visible">
+              <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
+                <div>
+                  <h3 className="font-bold text-gray-900 dark:text-white text-lg flex items-center gap-2">
+                    🔥 Top Expenses Tracker
+                  </h3>
+                  <p className="text-xs text-gray-500 dark:text-white/50 mt-0.5">
+                    Search & track custom items. Click any card to view date breakdown.
+                  </p>
+                </div>
 
-              return (
-                <div className="glass-card lg:col-span-3 mb-6">
-                  <div className="flex justify-between items-center mb-4">
-                    <div>
-                      <h3 className="font-bold text-gray-900 dark:text-white text-lg flex items-center gap-2">
-                        🔥 Top Expenses <span className="text-xs font-normal text-gray-400 dark:text-white/40">(Highest Value First)</span>
-                      </h3>
-                      <p className="text-xs text-gray-500 dark:text-white/50 mt-0.5">Your highest spending items at a glance.</p>
+                {/* Search & Add Category/Item Bar */}
+                <div className="relative w-full sm:w-80">
+                  <div className="flex items-center gap-2">
+                    <div className="relative flex-1">
+                      <FiSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 dark:text-white/40" size={14} />
+                      <input
+                        type="text"
+                        value={trackerSearch}
+                        onChange={(e) => {
+                          setTrackerSearch(e.target.value);
+                          setIsDropdownOpen(true);
+                        }}
+                        onFocus={() => setIsDropdownOpen(true)}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter' && trackerSearch.trim()) {
+                            addTrackedItem(trackerSearch);
+                          }
+                        }}
+                        placeholder="Search item (e.g. chicken, fuel)..."
+                        className="w-full bg-white/70 dark:bg-white/5 border border-gray-200 dark:border-white/10 rounded-xl py-2 pl-8 pr-3 text-xs font-bold text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-white/40 outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-brand-neon transition-all"
+                      />
                     </div>
+                    {trackerSearch.trim() && (
+                      <button
+                        onClick={() => addTrackedItem(trackerSearch)}
+                        className="px-3 py-2 bg-gradient-to-r from-blue-600 to-purple-600 dark:from-brand-neon dark:to-brand-purple text-white dark:text-black rounded-xl text-xs font-bold shrink-0 hover:scale-105 transition-all shadow-sm cursor-pointer"
+                      >
+                        + Track
+                      </button>
+                    )}
                   </div>
 
-                  {topExpenses.length === 0 ? (
-                    <div className="py-6 text-center text-xs text-gray-400 dark:text-white/40 border border-dashed border-gray-200 dark:border-white/10 rounded-2xl">
-                      No expenses logged yet.
-                    </div>
-                  ) : (
-                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
-                      {topExpenses.map((exp, index) => {
-                        const percent = Math.round((exp.amount / totalSpentForTop) * 100);
-                        return (
-                          <div key={exp.id || index} className="p-3.5 bg-white/60 dark:bg-white/5 border border-gray-200 dark:border-white/10 rounded-2xl flex flex-col justify-between hover:border-brand-neon/40 transition-all shadow-sm relative overflow-hidden group">
-                            <div className="flex items-center justify-between gap-2 mb-2">
-                              <span className="w-6 h-6 rounded-lg bg-blue-600/10 dark:bg-brand-neon/20 text-blue-600 dark:text-brand-neon text-xs font-black flex items-center justify-center shrink-0">
-                                #{index + 1}
-                              </span>
-                              <span className="px-2 py-0.5 bg-gray-100 dark:bg-white/10 text-gray-600 dark:text-white/60 text-[10px] font-bold rounded-full truncate">
-                                {exp.category}
-                              </span>
-                            </div>
-                            <div>
-                              <p className="font-bold text-sm text-gray-900 dark:text-white truncate" title={exp.note || exp.category}>
-                                {exp.note || exp.category}
-                              </p>
-                              <p className="text-base font-black text-blue-600 dark:text-brand-neon mt-1">
-                                ₹{exp.amount.toLocaleString('en-IN')}
-                              </p>
-                            </div>
-                            <div className="mt-3">
-                              <div className="flex justify-between text-[10px] text-gray-400 dark:text-white/40 font-semibold mb-1">
-                                <span>Share</span>
-                                <span>{percent}%</span>
-                              </div>
-                              <div className="w-full h-1.5 bg-gray-100 dark:bg-white/10 rounded-full overflow-hidden">
-                                <div className="h-full bg-gradient-to-r from-blue-500 to-purple-500 dark:from-brand-neon dark:to-brand-purple rounded-full" style={{ width: `${Math.min(percent, 100)}%` }} />
-                              </div>
-                            </div>
-                          </div>
-                        );
-                      })}
+                  {/* Dropdown Suggestions */}
+                  {isDropdownOpen && searchSuggestions.length > 0 && (
+                    <div className="absolute left-0 right-0 top-full mt-1 bg-white dark:bg-[#13192b] border border-gray-200 dark:border-white/15 rounded-xl shadow-xl z-50 max-h-48 overflow-y-auto p-1.5 scrollbar-hide">
+                      <div className="text-[10px] font-bold text-gray-400 dark:text-white/40 px-2 py-1 uppercase tracking-wider">Suggested Items</div>
+                      {searchSuggestions.map((item) => (
+                        <button
+                          key={item}
+                          onClick={() => addTrackedItem(item)}
+                          className="w-full text-left px-3 py-2 text-xs font-bold text-gray-800 dark:text-white hover:bg-gray-100 dark:hover:bg-white/10 rounded-lg transition-colors flex justify-between items-center cursor-pointer"
+                        >
+                          <span>{item}</span>
+                          <span className="text-[10px] text-blue-600 dark:text-brand-neon font-normal">+ Add to top bar</span>
+                        </button>
+                      ))}
                     </div>
                   )}
                 </div>
-              );
-            })()}
+              </div>
+
+              {/* Cards Grid */}
+              {activeTrackedList.length === 0 ? (
+                <div className="py-8 text-center bg-gray-50/50 dark:bg-white/5 rounded-2xl border border-dashed border-gray-200 dark:border-white/10">
+                  <p className="text-xs font-bold text-gray-400 dark:text-white/40">No tracked items selected.</p>
+                  <p className="text-[11px] text-gray-400 dark:text-white/30 mt-1">Use the search bar above to search & add chicken, fuel, groceries, etc.</p>
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
+                  {activeTrackedList.map((keyword, index) => {
+                    const matchingExps = activeExpenses.filter(e => {
+                      const k = keyword.toLowerCase();
+                      return (e.note && e.note.toLowerCase().includes(k)) || e.category.toLowerCase().includes(k);
+                    });
+                    const totalAmount = matchingExps.reduce((sum, e) => sum + e.amount, 0);
+                    const percent = totalSpend > 0 ? Math.round((totalAmount / totalSpend) * 100) : 0;
+
+                    return (
+                      <motion.div
+                        key={keyword}
+                        initial={{ opacity: 0, scale: 0.95 }}
+                        animate={{ opacity: 1, scale: 1 }}
+                        onClick={() => setSelectedDetailKeyword(keyword)}
+                        className="p-3.5 bg-white/70 dark:bg-white/5 border border-gray-200 dark:border-white/10 hover:border-blue-500/50 dark:hover:border-brand-neon/60 rounded-2xl flex flex-col justify-between transition-all shadow-sm relative group cursor-pointer hover:shadow-md hover:scale-[1.02] backdrop-blur-md"
+                      >
+                        {/* Top row: Rank badge + Delete/Remove button */}
+                        <div className="flex items-center justify-between gap-2 mb-2">
+                          <span className="w-6 h-6 rounded-lg bg-blue-600/10 dark:bg-brand-neon/20 text-blue-600 dark:text-brand-neon text-xs font-black flex items-center justify-center shrink-0">
+                            #{index + 1}
+                          </span>
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              removeTrackedItem(keyword);
+                            }}
+                            className="w-6 h-6 rounded-full hover:bg-red-500/10 text-gray-400 hover:text-red-500 flex items-center justify-center transition-colors cursor-pointer"
+                            title="Remove from top expenses"
+                          >
+                            <FiX size={14} />
+                          </button>
+                        </div>
+
+                        <div>
+                          <p className="font-bold text-sm text-gray-900 dark:text-white capitalize truncate" title={keyword}>
+                            {keyword}
+                          </p>
+                          <p className="text-base font-black text-blue-600 dark:text-brand-neon mt-0.5">
+                            ₹{totalAmount.toLocaleString('en-IN')}
+                          </p>
+                        </div>
+
+                        <div className="mt-3">
+                          <div className="flex justify-between text-[10px] text-gray-400 dark:text-white/40 font-semibold mb-1">
+                            <span>Share</span>
+                            <span>{percent}%</span>
+                          </div>
+                          <div className="w-full h-1.5 bg-gray-100 dark:bg-white/10 rounded-full overflow-hidden">
+                            <div className="h-full bg-gradient-to-r from-blue-500 to-purple-500 dark:from-brand-neon dark:to-brand-purple rounded-full" style={{ width: `${Math.min(percent, 100)}%` }} />
+                          </div>
+                        </div>
+                      </motion.div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
 
             {/* Table / Transactions Card */}
             <div className="glass-card lg:col-span-3">
@@ -442,6 +581,78 @@ export function Dashboard() {
           </div>
         </>
       )}
+
+      {/* Date History Breakdown Modal */}
+      <AnimatePresence>
+        {selectedDetailKeyword && (
+          <>
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setSelectedDetailKeyword(null)}
+              className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[150]"
+            />
+            <motion.div
+              initial={{ opacity: 0, scale: 0.9, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.9, y: 20 }}
+              className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[92%] max-w-md max-h-[80vh] overflow-y-auto bg-white dark:bg-[#0f1423] border border-gray-200 dark:border-white/10 rounded-3xl p-5 sm:p-6 z-[151] shadow-2xl scrollbar-hide flex flex-col"
+            >
+              <div className="flex justify-between items-center mb-4">
+                <div>
+                  <h3 className="text-lg font-black text-gray-900 dark:text-white capitalize flex items-center gap-2">
+                    <FiCalendar className="text-blue-600 dark:text-brand-neon" />
+                    {selectedDetailKeyword} History
+                  </h3>
+                  <p className="text-xs text-gray-500 dark:text-white/50 mt-0.5">
+                    Total: <span className="font-bold text-blue-600 dark:text-brand-neon">₹{selectedKeywordTotal.toLocaleString('en-IN')}</span> ({selectedKeywordExpenses.length} transactions)
+                  </p>
+                </div>
+                <button
+                  onClick={() => setSelectedDetailKeyword(null)}
+                  className="p-2 bg-gray-100 dark:bg-white/10 rounded-full text-gray-500 dark:text-white/60 hover:bg-gray-200 dark:hover:bg-white/20 transition-colors shrink-0 cursor-pointer"
+                >
+                  <FiX size={18} />
+                </button>
+              </div>
+
+              {selectedKeywordExpenses.length === 0 ? (
+                <div className="py-8 text-center text-gray-400 dark:text-white/40 font-medium text-xs">
+                  No transaction records found for "{selectedDetailKeyword}".
+                </div>
+              ) : (
+                <div className="space-y-2.5 overflow-y-auto max-h-[50vh] pr-1">
+                  {selectedKeywordExpenses.map((exp) => (
+                    <div
+                      key={exp.id}
+                      className="p-3.5 bg-gray-50 dark:bg-white/5 border border-gray-100 dark:border-white/10 rounded-2xl flex justify-between items-center"
+                    >
+                      <div>
+                        <p className="font-bold text-xs sm:text-sm text-gray-900 dark:text-white">
+                          {exp.note || exp.category}
+                        </p>
+                        <div className="flex items-center gap-2 mt-1">
+                          <span className="text-[10px] font-semibold text-gray-400 dark:text-white/40 flex items-center gap-1">
+                            <FiClock size={10} />
+                            {new Date(exp.date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}
+                          </span>
+                          <span className="text-[9px] px-2 py-0.2 rounded-full bg-blue-50 dark:bg-brand-neon/20 text-blue-600 dark:text-brand-neon font-bold">
+                            {exp.category}
+                          </span>
+                        </div>
+                      </div>
+                      <span className="font-black text-sm sm:text-base text-gray-900 dark:text-white">
+                        ₹{exp.amount.toLocaleString('en-IN')}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
 
       <CreateWalletModal isOpen={isWalletModalOpen} onClose={() => setIsWalletModalOpen(false)} />
     </div>
