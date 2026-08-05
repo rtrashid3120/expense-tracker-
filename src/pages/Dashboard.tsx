@@ -285,37 +285,37 @@ export function Dashboard() {
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
             
             {/* Chart Card */}
-            <div className="glass-card lg:col-span-3">
-              <div className="flex justify-between items-center mb-8">
-                <h3 className="font-bold text-gray-900 dark:text-white text-lg">Spending Velocity</h3>
+            <div className="glass-card lg:col-span-3 p-4 sm:p-5">
+              <div className="flex flex-wrap justify-between items-center gap-2 mb-3">
+                <div className="flex items-center gap-2.5">
+                  <h3 className="font-bold text-gray-900 dark:text-white text-base">Spending Velocity</h3>
+                  <span className="text-xs font-bold text-blue-600 dark:text-brand-neon bg-blue-50 dark:bg-brand-neon/10 px-2.5 py-0.5 rounded-full border border-blue-100 dark:border-brand-neon/20 flex items-center gap-1">
+                    {new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 }).format(chartView === 'Week' ? totalSpend / 4 : totalSpend)}
+                    <span className="text-[10px] text-gray-400 dark:text-white/40 font-normal">/ {chartView.toLowerCase()} avg</span>
+                  </span>
+                </div>
+                
                 <button 
                   onClick={() => setChartView(v => v === 'Week' ? 'Month' : 'Week')}
-                  className="text-xs font-bold text-gray-500 dark:text-white/70 border border-gray-200 dark:border-white/10 px-3 py-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-white/10 transition-colors active:scale-95 bg-white/60 dark:bg-white/5"
+                  className="text-xs font-bold text-gray-500 dark:text-white/70 border border-gray-200 dark:border-white/10 px-2.5 py-1 rounded-lg hover:bg-gray-100 dark:hover:bg-white/10 transition-colors active:scale-95 bg-white/60 dark:bg-white/5"
                 >
-                  View by {chartView} v
+                  View by {chartView}
                 </button>
               </div>
-              
-              <div className="flex items-end gap-2 font-bold text-gray-900 dark:text-white mb-8">
-                <span className="text-3xl text-gradient">
-                  {new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 }).format(chartView === 'Week' ? totalSpend / 4 : totalSpend)}
-                </span> 
-                <span className="text-sm text-gray-400 dark:text-white/40 mb-1 font-medium">/ {chartView.toLowerCase()} avg</span>
-              </div>
 
-              <div className="h-48 w-full flex items-end justify-between gap-2 md:gap-4 relative">
+              <div className="h-28 w-full flex items-end justify-between gap-2 md:gap-4 relative pt-2">
                 <div className="absolute w-full h-[1px] border-dashed border-t border-gray-200 dark:border-white/10 top-1/2 -z-10" />
                 
                 {chartView === 'Week' 
                   ? dynamicChartData.map((h, i) => (
-                      <div key={i} className="flex-1 flex flex-col justify-end items-center gap-2 group relative">
-                        <motion.div initial={{ height: 0 }} animate={{ height: `${h}%` }} transition={{ delay: i * 0.05, type: 'spring' }} className="w-full md:w-10 bg-gradient-to-t from-blue-500 to-purple-500 dark:from-brand-purple dark:to-brand-neon rounded-t-lg hover:brightness-125 cursor-pointer transition-all shadow-sm dark:shadow-[0_0_15px_rgba(0,240,255,0.3)]" />
+                      <div key={i} className="flex-1 flex flex-col justify-end items-center gap-1.5 group relative">
+                        <motion.div initial={{ height: 0 }} animate={{ height: `${h}%` }} transition={{ delay: i * 0.04, type: 'spring' }} className="w-full md:w-8 bg-gradient-to-t from-blue-500 to-purple-500 dark:from-brand-purple dark:to-brand-neon rounded-t-md hover:brightness-125 cursor-pointer transition-all shadow-sm dark:shadow-[0_0_10px_rgba(0,240,255,0.3)]" />
                         <span className="text-[10px] text-gray-400 dark:text-white/40 font-medium">Day {i + 1}</span>
                       </div>
                     ))
                   : dynamicChartData.map((h, i) => (
-                      <div key={i} className="flex-1 flex flex-col justify-end items-center gap-2 group relative">
-                        <motion.div initial={{ height: 0 }} animate={{ height: `${h}%` }} transition={{ delay: i * 0.05, type: 'spring' }} className="w-full md:w-16 bg-gradient-to-t from-blue-500 to-purple-500 dark:from-brand-purple dark:to-brand-neon rounded-t-lg hover:brightness-125 cursor-pointer transition-all shadow-sm dark:shadow-[0_0_15px_rgba(0,240,255,0.3)]" />
+                      <div key={i} className="flex-1 flex flex-col justify-end items-center gap-1.5 group relative">
+                        <motion.div initial={{ height: 0 }} animate={{ height: `${h}%` }} transition={{ delay: i * 0.04, type: 'spring' }} className="w-full md:w-12 bg-gradient-to-t from-blue-500 to-purple-500 dark:from-brand-purple dark:to-brand-neon rounded-t-md hover:brightness-125 cursor-pointer transition-all shadow-sm dark:shadow-[0_0_10px_rgba(0,240,255,0.3)]" />
                         <span className="text-[10px] text-gray-400 dark:text-white/40 font-medium">Week {i + 1}</span>
                       </div>
                     ))
