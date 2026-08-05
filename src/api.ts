@@ -149,7 +149,22 @@ export const api = {
   getTrips: async (): Promise<Trip[]> => {
     const res = await fetch(`${API_BASE_URL}/trips`, { headers: getHeaders() });
     if (!res.ok) return [];
-    return await res.json();
+    const data = await res.json();
+    // Sanitize: ensure all rendered values are primitives (not MongoDB ObjectId objects)
+    return (Array.isArray(data) ? data : []).map((t: any) => ({
+      id: String(t._id || t.id || ''),
+      name: String(t.name || 'Untitled Trip'),
+      totalBudget: Number(t.totalBudget) || 0,
+      spent: Number(t.spent) || 0,
+      groupSize: Number(t.groupSize) || 1,
+      image: String(t.image || ''),
+      balances: Array.isArray(t.balances)
+        ? t.balances.map((b: any) => ({
+            userId: String(b.userId || ''),
+            balance: Number(b.balance) || 0,
+          })).filter((b: any) => b.userId)
+        : [],
+    }));
   },
 
   createTrip: async (tripData: Omit<Trip, 'id' | 'spent'>): Promise<Trip> => {
