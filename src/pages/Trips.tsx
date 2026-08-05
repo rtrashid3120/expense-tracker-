@@ -19,6 +19,7 @@ export function Trips() {
   const [isAddExpenseOpen, setIsAddExpenseOpen] = useState(false);
   const { friends, profile } = useAppStore();
   const [selectedUser, setSelectedUser] = useState<any>(null);
+  const [selectedTripForExpense, setSelectedTripForExpense] = useState<string | null>(null);
   const removeMemberFromTrip = useAppStore(state => state.removeMemberFromTrip);
 
   const getMemberDetails = (userId: string) => {
@@ -305,8 +306,6 @@ export function Trips() {
       </motion.div>
     );
   }
-
-  const [selectedTripForExpense, setSelectedTripForExpense] = useState<string | null>(null);
 
   return (
     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="p-4 md:p-6 pb-24 max-w-5xl mx-auto">
