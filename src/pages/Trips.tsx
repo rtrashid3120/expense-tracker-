@@ -303,6 +303,8 @@ export function Trips() {
     );
   }
 
+  const [selectedTripForExpense, setSelectedTripForExpense] = useState<string | null>(null);
+
   return (
     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="p-4 md:p-6 pb-24 max-w-5xl mx-auto">
       <h1 className="text-3xl font-black text-gray-900 dark:text-white mb-8 mt-4 tracking-tight">Groups & Trips</h1>
@@ -325,7 +327,22 @@ export function Trips() {
               {/* Colorful Glow Blob */}
               <div className={`absolute -right-10 -top-10 w-48 h-48 rounded-full blur-3xl opacity-20 group-hover:opacity-40 transition-opacity ${i % 2 === 0 ? 'bg-blue-500 dark:bg-brand-neon' : 'bg-pink-500 dark:bg-brand-fuchsia'}`} />
               
-              <h2 className="text-xl sm:text-2xl font-black text-gray-900 dark:text-white mb-3 relative z-10">{trip.name}</h2>
+              {/* Title Row with + Add Expense Button */}
+              <div className="flex items-start justify-between mb-3 relative z-10">
+                <h2 className="text-xl sm:text-2xl font-black text-gray-900 dark:text-white">{trip.name}</h2>
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setSelectedTripForExpense(trip.id);
+                  }}
+                  className="w-9 h-9 rounded-xl bg-gradient-to-br from-blue-600 to-purple-600 dark:from-brand-neon dark:to-brand-purple text-white dark:text-black flex items-center justify-center text-lg font-black shadow-md hover:scale-110 active:scale-95 transition-all shrink-0"
+                  title="Add expense to this trip"
+                >
+                  +
+                </button>
+              </div>
+
               <div className="flex flex-col sm:flex-row sm:justify-between sm:items-end gap-3 relative z-10">
                 <div className="bg-white/80 dark:bg-black/30 px-3.5 py-2.5 rounded-xl border border-gray-200 dark:border-white/10 space-y-0.5 max-w-full overflow-hidden">
                   <p className="text-[10px] sm:text-xs text-gray-500 dark:text-white/60 font-semibold uppercase tracking-wider">Budget: ₹{trip.totalBudget.toLocaleString('en-IN')}</p>
@@ -354,6 +371,14 @@ export function Trips() {
       </button>
       
       <CreateGroupModal isOpen={isCreateOpen} onClose={() => setIsCreateOpen(false)} />
+
+      {/* Add Expense Modal for quick-add from trip cards */}
+      <AddExpenseModal
+        isOpen={!!selectedTripForExpense}
+        onClose={() => setSelectedTripForExpense(null)}
+        initialCategory="Travel"
+        initialTripId={selectedTripForExpense || undefined}
+      />
       
       <UserProfileModal
         isOpen={!!selectedUser}
