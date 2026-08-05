@@ -4,6 +4,11 @@ import { FiX, FiSend, FiZap, FiTrash2 } from 'react-icons/fi';
 import { useAppStore } from '../store';
 import { api } from '../api';
 
+interface OptionGroup {
+  title: string;
+  options: { label: string; prompt: string }[];
+}
+
 interface ChatMessage {
   id: string;
   sender: 'user' | 'ai';
@@ -11,6 +16,7 @@ interface ChatMessage {
   timestamp: string;
   walletPrompt?: { amount: number; category: string; note: string };
   periodPrompts?: string[];
+  optionGroups?: OptionGroup[];
 }
 
 const STORAGE_KEY = 'expensehub_ai_chat_messages';
@@ -118,6 +124,10 @@ export function AIChatDrawer() {
     setMessages(prev => [...prev, userMessage]);
     if (!textToSend) setInputMsg('');
 
+    // Filter out expenses belonging to deleted / inactive wallets
+    const activeWalletIds = new Set(wallets.map(w => w.id || (w as any)._id));
+    const validExpenses = expenses.filter(e => e.walletId && activeWalletIds.has(e.walletId));
+
     // Check 1: Expense Deletion Intent (e.g. "delete spent 50 coffee", "remove coffee 50")
     const isDeleteIntent = /\b(delete|remove|cancel|undo|erase|drop)\b/i.test(query);
     if (isDeleteIntent) {
@@ -125,14 +135,14 @@ export function AIChatDrawer() {
       const amount = numMatch ? Number(numMatch[1]) : null;
       let cleanNote = query.replace(/(\d+)/g, '').replace(/\b(delete|remove|cancel|undo|erase|drop|spent|add|log|bought|paid|on|for|rupees|rs|₹|expense|last|latest|item)\b/gi, '').trim();
 
-      let target = expenses.find(e => {
+      let target = validExpenses.find(e => {
         const matchAmount = amount ? e.amount === amount : true;
         const matchNote = cleanNote ? (e.note || '').toLowerCase().includes(cleanNote.toLowerCase()) : true;
         return matchAmount && matchNote;
       });
 
       if (!target && amount) {
-        target = expenses.find(e => e.amount === amount);
+        target = validExpenses.find(e => e.amount === amount);
       }
 
       if (target) {
@@ -144,7 +154,7 @@ export function AIChatDrawer() {
           const aiMessage: ChatMessage = {
             id: (Date.now() + 1).toString(),
             sender: 'ai',
-            text: `✅ **Successfully Deleted Expense!**\n- **Item:** ${target.note || 'Expense'}\n- **Amount:** ₹${target.amount}\n- **Category:** ${target.category}`,
+            text: `✅ Successfully Deleted Expense!\n- Item: ${target.note || 'Expense'}\n- Amount: ₹${target.amount}\n- Category: ${target.category}`,
             timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
           };
           setMessages(prev => [...prev, aiMessage]);
@@ -156,7 +166,7 @@ export function AIChatDrawer() {
         const aiMessage: ChatMessage = {
           id: (Date.now() + 1).toString(),
           sender: 'ai',
-          text: `⚠️ **Couldn't find an expense to delete.**\nSearched for: ${cleanNote ? `"${cleanNote}"` : ''} ${amount ? `₹${amount}` : ''}\n\n*Tip: Check your Audit Trail for full item details or exact amounts.*`,
+          text: `⚠️ Couldn't find an expense to delete.\nSearched for: ${cleanNote ? `"${cleanNote}"` : ''} ${amount ? `₹${amount}` : ''}\n\nTip: Check your Audit Trail for full item details or exact amounts.`,
           timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
         };
         setMessages(prev => [...prev, aiMessage]);
@@ -164,84 +174,137 @@ export function AIChatDrawer() {
       }
     }
 
-    // Check 1.5: Period Detail Drill-down Query (e.g. "Show Grocery expenses this week")
-    const isPeriodDetailIntent = query.match(/Show\s+(.*?)\s+expenses\s+(this week|this month|all time)/i);
-    if (isPeriodDetailIntent) {
-      const subject = isPeriodDetailIntent[1].trim();
-      const timeframe = isPeriodDetailIntent[2].toLowerCase();
-      
-      const k = subject.toLowerCase();
-      let list = expenses.filter(e => (e.note && e.note.toLowerCase().includes(k)) || e.category.toLowerCase().includes(k));
-      
-      const now = new Date();
-      if (timeframe === 'this week') {
-        const startOfWeek = new Date(now.getFullYear(), now.getMonth(), now.getDate() - now.getDay());
-        list = list.filter(e => new Date(e.date) >= startOfWeek);
-      } else if (timeframe === 'this month') {
-        const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
-        list = list.filter(e => new Date(e.date) >= startOfMonth);
+    // Check 1.5: Flexible Multi-Filter Query Parser (e.g. "Show Fuel expenses in aug(15000) wallet this week")
+    const isFilterIntent = query.toLowerCase().startsWith('show ') && query.toLowerCase().includes('expenses');
+    if (isFilterIntent) {
+      const subjectMatch = query.match(/Show\s+(.*?)\s+expenses/i);
+      const subject = subjectMatch ? subjectMatch[1].trim() : '';
+
+      const walletMatch = query.match(/in\s+(.*?)\s+wallet/i);
+      let rawWalletName = walletMatch ? walletMatch[1].trim() : '';
+
+      const timeframeMatch = query.match(/(this week|this month|all time)/i);
+      const timeframe = timeframeMatch ? timeframeMatch[1].toLowerCase() : '';
+
+      if (subject) {
+        const k = subject.toLowerCase();
+        let list = validExpenses.filter(e => (e.note && e.note.toLowerCase().includes(k)) || e.category.toLowerCase().includes(k));
+
+        let walletDisplayName = '';
+        let targetWallet: any = null;
+
+        if (rawWalletName && rawWalletName.toLowerCase() !== 'all wallets') {
+          // Clean out amounts in parentheses like aug(15000) -> aug
+          const cleanSearch = rawWalletName.replace(/\(.*?\)/g, '').trim().toLowerCase();
+          targetWallet = wallets.find(w => 
+            w.name.toLowerCase() === cleanSearch ||
+            w.name.toLowerCase().includes(cleanSearch) || 
+            cleanSearch.includes(w.name.toLowerCase())
+          );
+
+          if (targetWallet) {
+            walletDisplayName = targetWallet.name;
+            const targetWId = targetWallet.id || targetWallet._id;
+            list = list.filter(e => e.walletId === targetWId);
+          }
+        }
+
+        const now = new Date();
+        if (timeframe === 'this week') {
+          const startOfWeek = new Date(now.getFullYear(), now.getMonth(), now.getDate() - now.getDay());
+          list = list.filter(e => new Date(e.date) >= startOfWeek);
+        } else if (timeframe === 'this month') {
+          const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+          list = list.filter(e => new Date(e.date) >= startOfMonth);
+        }
+
+        const totalAmount = list.reduce((sum, e) => sum + e.amount, 0);
+
+        let replyText = `📊 ${subject} Expenses`;
+        if (walletDisplayName) replyText += ` in "${walletDisplayName}" Wallet`;
+        if (timeframe) replyText += ` (${timeframe.toUpperCase()})`;
+        replyText += `:\n\nTotal Spent: ₹${totalAmount.toLocaleString('en-IN')} (${list.length} transactions)\n\n`;
+
+        if (list.length > 0) {
+          replyText += list.map(e => `• ₹${e.amount.toLocaleString('en-IN')} - ${e.note || e.category} (${new Date(e.date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })})`).join('\n');
+        } else {
+          replyText += `No transactions found for this selection.`;
+        }
+
+        // Step 2 prompt: If timeframe wasn't chosen yet (user just clicked a wallet), present period options for THAT wallet!
+        if (!timeframe) {
+          replyText += `\n\n🗓️ Step 2: Now select the Time Period for ${walletDisplayName ? `"${walletDisplayName}"` : 'this'} Wallet:`;
+          const currentMonthName = new Date().toLocaleString('en-IN', { month: 'long' });
+          const walletPart = targetWallet ? `in ${targetWallet.name} wallet ` : '';
+
+          const periodOptions = [
+            { label: `🗓️ This Week`, prompt: `Show ${subject} expenses ${walletPart}this week` },
+            { label: `📅 ${currentMonthName} (This Month)`, prompt: `Show ${subject} expenses ${walletPart}this month` },
+            { label: `♾️ All Time`, prompt: `Show ${subject} expenses ${walletPart}all time` }
+          ];
+
+          const aiMsg: ChatMessage = {
+            id: (Date.now() + 1).toString(),
+            sender: 'ai',
+            text: replyText,
+            optionGroups: [
+              { title: `Select Time Period for ${walletDisplayName ? `"${walletDisplayName}" Wallet` : 'selection'}:`, options: periodOptions }
+            ],
+            timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+          };
+          setMessages(prev => [...prev, aiMsg]);
+          return;
+        }
+
+        const aiMsg: ChatMessage = {
+          id: (Date.now() + 1).toString(),
+          sender: 'ai',
+          text: replyText,
+          timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+        };
+        setMessages(prev => [...prev, aiMsg]);
+        return;
       }
-
-      const periodTotal = list.reduce((sum, e) => sum + e.amount, 0);
-
-      let replyText = `📅 **${subject} Expenses (${timeframe.toUpperCase()}):**\n\n`;
-      replyText += `Total Spent: **₹${periodTotal.toLocaleString('en-IN')}** (${list.length} transactions)\n\n`;
-      if (list.length > 0) {
-        replyText += list.map(e => `• **₹${e.amount.toLocaleString('en-IN')}** - ${e.note || e.category} (${new Date(e.date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })})`).join('\n');
-      } else {
-        replyText += `*No transactions logged for this timeframe.*`;
-      }
-
-      const aiMsg: ChatMessage = {
-        id: (Date.now() + 1).toString(),
-        sender: 'ai',
-        text: replyText,
-        timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-      };
-      setMessages(prev => [...prev, aiMsg]);
-      return;
     }
 
-    // Check 1.8: General Category / Item Spending Query (e.g. "how much i spent on grocery")
-    const isSpendQuery = /\b(how much|how many|spending|spent|cost)\b/i.test(query);
+    // Check 1.8: General Spending / Category Inquiry (Step 1: User asks "show fuel expenses" or "how much i spent on grocery")
+    const isSpendingQuery = /\b(show|view|how much|how many|spending|spent|cost|fuel|grocery|groceries|coffee|food|rent|dining)\b/i.test(query) && !isDeleteIntent;
     const cleanSubject = query
-      .replace(/\b(how|much|many|did|i|my|you|we|spent|spend|spending|cost|on|for|in|total|all|the|a|an|please|tell|me|about|show|amount|value)\b/gi, '')
+      .replace(/\b(show|view|find|check|get|details|breakdown|expenses|expense|how|much|many|did|i|my|you|we|spent|spend|spending|cost|on|for|in|total|all|the|a|an|please|tell|me|about|amount|value)\b/gi, '')
       .trim();
 
-    if (isSpendQuery && cleanSubject.length > 1) {
+    if (isSpendingQuery && cleanSubject.length > 1) {
       const k = cleanSubject.toLowerCase();
-      const matching = expenses.filter(e => 
+      const matching = validExpenses.filter(e => 
         (e.note && e.note.toLowerCase().includes(k)) || 
         e.category.toLowerCase().includes(k)
       );
 
-      const now = new Date();
-      const startOfWeek = new Date(now.getFullYear(), now.getMonth(), now.getDate() - now.getDay());
-      const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
-
-      const weekExpenses = matching.filter(e => new Date(e.date) >= startOfWeek);
-      const monthExpenses = matching.filter(e => new Date(e.date) >= startOfMonth);
-
-      const weekTotal = weekExpenses.reduce((sum, e) => sum + e.amount, 0);
-      const monthTotal = monthExpenses.reduce((sum, e) => sum + e.amount, 0);
-      const allTimeTotal = matching.reduce((sum, e) => sum + e.amount, 0);
-
+      const totalAll = matching.reduce((sum, e) => sum + e.amount, 0);
       const formattedSubject = cleanSubject.charAt(0).toUpperCase() + cleanSubject.slice(1);
 
-      let replyText = `📊 **Spending Breakdown for "${formattedSubject}":**\n\n`;
-      replyText += `• 🗓️ **This Week:** ₹${weekTotal.toLocaleString('en-IN')} (${weekExpenses.length} items)\n`;
-      replyText += `• 📅 **This Month:** ₹${monthTotal.toLocaleString('en-IN')} (${monthExpenses.length} items)\n`;
-      replyText += `• ♾️ **All-Time Total:** ₹${allTimeTotal.toLocaleString('en-IN')} (${matching.length} items)\n\n`;
-      replyText += `Which period option would you like to view in detail? Click below:`;
+      let replyText = `🤔 Step 1: Which Wallet do you want to view for "${formattedSubject}"?\n\n`;
+      replyText += `Total Spent across active wallets: ₹${totalAll.toLocaleString('en-IN')} (${matching.length} transactions)\n\n`;
+      replyText += `Select a Wallet option below to proceed:`;
+
+      const walletOptions = [
+        { label: `👛 All Active Wallets (₹${totalAll.toLocaleString('en-IN')})`, prompt: `Show ${formattedSubject} expenses in All Wallets` },
+        ...wallets.map(w => {
+          const wId = w.id || (w as any)._id;
+          const wTotal = matching.filter(e => e.walletId === wId).reduce((sum, e) => sum + e.amount, 0);
+          return {
+            label: `👛 ${w.name} (₹${wTotal.toLocaleString('en-IN')})`,
+            prompt: `Show ${formattedSubject} expenses in ${w.name} wallet`
+          };
+        })
+      ];
 
       const aiMsg: ChatMessage = {
         id: (Date.now() + 1).toString(),
         sender: 'ai',
         text: replyText,
-        periodPrompts: [
-          `Show ${formattedSubject} expenses this week`,
-          `Show ${formattedSubject} expenses this month`,
-          `Show ${formattedSubject} expenses all time`
+        optionGroups: [
+          { title: "Select Wallet First:", options: walletOptions }
         ],
         timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
       };
@@ -436,6 +499,25 @@ export function AIChatDrawer() {
                           </div>
                         </div>
                       )}
+
+                      {/* Interactive Grouped Option Buttons (Wallets & Time Periods) */}
+                      {msg.optionGroups && msg.optionGroups.map((group, idx) => (
+                        <div key={idx} className="mt-3 pt-2 border-t border-gray-200 dark:border-white/10 space-y-1.5">
+                          <p className="text-[10px] font-bold text-gray-500 dark:text-white/60 uppercase tracking-wider">{group.title}</p>
+                          <div className="flex flex-wrap gap-1.5">
+                            {group.options.map(opt => (
+                              <button
+                                type="button"
+                                key={opt.label}
+                                onClick={() => handleSend(opt.prompt)}
+                                className="px-3 py-1.5 bg-gradient-to-r from-blue-600/10 to-purple-600/10 dark:from-brand-neon/15 dark:to-brand-purple/15 hover:from-blue-600/20 hover:to-purple-600/20 dark:hover:from-brand-neon/30 dark:hover:to-brand-purple/30 border border-blue-200 dark:border-white/20 text-blue-700 dark:text-brand-neon font-bold text-xs rounded-xl shadow-sm transition-all active:scale-95 cursor-pointer flex items-center gap-1"
+                              >
+                                {opt.label}
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+                      ))}
                     </div>
                     <span className="text-[10px] text-gray-400 dark:text-white/30 mt-1 px-1 font-mono">
                       {msg.timestamp}
