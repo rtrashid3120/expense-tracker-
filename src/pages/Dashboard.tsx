@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useAppStore } from '../store';
 import { CreateWalletModal } from '../components/CreateWalletModal';
@@ -13,6 +13,8 @@ const iconMap: Record<string, string> = {
   Personal: 'bg-brand-purple/20 text-brand-purple border border-brand-purple/30',
 };
 
+const PINNED_STORAGE_KEY = 'expensehub_pinned_top_expenses';
+
 export function Dashboard() {
   const { expenses, wallets, activeWalletId, setActiveWallet, deleteWallet, profile } = useAppStore();
   
@@ -23,11 +25,31 @@ export function Dashboard() {
   const [isWalletModalOpen, setIsWalletModalOpen] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
 
-  // Top Expenses Tracker States
-  const [trackedKeywords, setTrackedKeywords] = useState<string[]>([]);
+  // Top Expenses Tracker States - loaded strictly from localStorage (no auto-defaults!)
+  const [trackedKeywords, setTrackedKeywords] = useState<string[]>(() => {
+    try {
+      const saved = localStorage.getItem(PINNED_STORAGE_KEY);
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed)) return parsed;
+      }
+    } catch (e) {
+      console.error('Failed to load pinned top expenses:', e);
+    }
+    return [];
+  });
   const [trackerSearch, setTrackerSearch] = useState('');
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const [selectedDetailKeyword, setSelectedDetailKeyword] = useState<string | null>(null);
+
+  // Save pinned items to localStorage whenever user modifies them
+  useEffect(() => {
+    try {
+      localStorage.setItem(PINNED_STORAGE_KEY, JSON.stringify(trackedKeywords));
+    } catch (e) {
+      console.error('Failed to save pinned top expenses:', e);
+    }
+  }, [trackedKeywords]);
 
   const userName = profile?.full_name?.split(' ')[0] || profile?.username?.replace('@', '') || 'Executive';
 
@@ -46,44 +68,27 @@ export function Dashboard() {
     return Array.from(set);
   }, [activeExpenses]);
 
-  // Dynamic or user-configured tracked items list
-  const activeTrackedList = useMemo(() => {
-    if (trackedKeywords.length > 0) {
-      return trackedKeywords.filter(k => k !== '__empty__');
-    }
-    // Default: group by note/category and pick top items by spending
-    const itemTotals: Record<string, number> = {};
-    activeExpenses.forEach(e => {
-      const key = (e.note && e.note.trim()) ? e.note.trim() : e.category;
-      itemTotals[key] = (itemTotals[key] || 0) + e.amount;
-    });
-    return Object.keys(itemTotals).sort((a, b) => itemTotals[b] - itemTotals[a]).slice(0, 5);
-  }, [trackedKeywords, activeExpenses]);
-
   const addTrackedItem = (keyword: string) => {
     const clean = keyword.trim();
     if (!clean) return;
-    const currentList = trackedKeywords.length > 0 ? trackedKeywords.filter(k => k !== '__empty__') : activeTrackedList;
-    if (!currentList.some(k => k.toLowerCase() === clean.toLowerCase())) {
-      setTrackedKeywords([...currentList, clean]);
+    if (!trackedKeywords.some(k => k.toLowerCase() === clean.toLowerCase())) {
+      setTrackedKeywords(prev => [...prev, clean]);
     }
     setTrackerSearch('');
     setIsDropdownOpen(false);
   };
 
   const removeTrackedItem = (keyword: string) => {
-    const currentList = trackedKeywords.length > 0 ? trackedKeywords.filter(k => k !== '__empty__') : activeTrackedList;
-    const updated = currentList.filter(k => k.toLowerCase() !== keyword.toLowerCase());
-    setTrackedKeywords(updated.length === 0 ? ['__empty__'] : updated);
+    setTrackedKeywords(prev => prev.filter(k => k.toLowerCase() !== keyword.toLowerCase()));
   };
 
   const searchSuggestions = useMemo(() => {
-    if (!trackerSearch.trim()) return availableKeywords.filter(k => !activeTrackedList.some(tk => tk.toLowerCase() === k.toLowerCase()));
+    if (!trackerSearch.trim()) return availableKeywords.filter(k => !trackedKeywords.some(tk => tk.toLowerCase() === k.toLowerCase()));
     return availableKeywords.filter(k => 
       k.toLowerCase().includes(trackerSearch.toLowerCase()) &&
-      !activeTrackedList.some(tk => tk.toLowerCase() === k.toLowerCase())
+      !trackedKeywords.some(tk => tk.toLowerCase() === k.toLowerCase())
     );
-  }, [trackerSearch, availableKeywords, activeTrackedList]);
+  }, [trackerSearch, availableKeywords, trackedKeywords]);
 
   // Detail Modal Data (Expenses and Total for selected keyword)
   const selectedKeywordExpenses = useMemo(() => {
@@ -382,14 +387,14 @@ export function Dashboard() {
               </div>
 
               {/* Cards Grid */}
-              {activeTrackedList.length === 0 ? (
+              {trackedKeywords.length === 0 ? (
                 <div className="py-8 text-center bg-gray-50/50 dark:bg-white/5 rounded-2xl border border-dashed border-gray-200 dark:border-white/10">
-                  <p className="text-xs font-bold text-gray-400 dark:text-white/40">No tracked items selected.</p>
+                  <p className="text-xs font-bold text-gray-400 dark:text-white/40">No tracked items added yet.</p>
                   <p className="text-[11px] text-gray-400 dark:text-white/30 mt-1">Use the search bar above to search & add chicken, fuel, groceries, etc.</p>
                 </div>
               ) : (
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
-                  {activeTrackedList.map((keyword, index) => {
+                  {trackedKeywords.map((keyword, index) => {
                     const matchingExps = activeExpenses.filter(e => {
                       const k = keyword.toLowerCase();
                       return (e.note && e.note.toLowerCase().includes(k)) || e.category.toLowerCase().includes(k);
