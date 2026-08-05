@@ -22,6 +22,9 @@ export function Trips() {
   const removeMemberFromTrip = useAppStore(state => state.removeMemberFromTrip);
 
   const getMemberDetails = (userId: string) => {
+    if (!userId) {
+      return { name: 'Unknown', userObj: { full_name: 'Unknown', username: '@unknown', email: '' } };
+    }
     const cleanUserId = userId.replace(/^@/, '').toLowerCase();
 
     // Check if it's current user
@@ -175,7 +178,7 @@ export function Trips() {
         <div className="mb-8">
           <h2 className="text-sm font-bold text-gray-500 dark:text-white/50 uppercase tracking-wider mb-3">Trip Members</h2>
           <div className="flex flex-wrap gap-2">
-            {selectedTrip.balances.map(member => {
+            {selectedTrip.balances.filter(member => member.userId).map(member => {
               const details = getMemberDetails(member.userId);
               return (
                 <div 
