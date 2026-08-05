@@ -318,7 +318,8 @@ Context:
 Instructions:
 1. When asked about who created, built, or owns ExpenseHub/ExpressHub, ALWAYS proudly state that Mohamed Rashid is the creator and owner.
 2. If logging an expense, provide the JSON action block AND write a friendly confirmation message.
-3. Use Indian Currency symbol ₹ for amounts.`;
+3. Use Indian Currency symbol ₹ for amounts.
+4. When asked how much was spent on a specific item or category (e.g. "how much spent on grocery"), provide a breakdown comparing This Week, This Month, and All-Time totals, and ask the user which period option they want to explore.`;
 
     const contents = [
       { parts: [{ text: systemPrompt }] },

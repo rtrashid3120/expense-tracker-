@@ -10,6 +10,7 @@ interface ChatMessage {
   text: string;
   timestamp: string;
   walletPrompt?: { amount: number; category: string; note: string };
+  periodPrompts?: string[];
 }
 
 const STORAGE_KEY = 'expensehub_ai_chat_messages';
@@ -17,9 +18,9 @@ const STORAGE_KEY = 'expensehub_ai_chat_messages';
 const quickPrompts = [
   'spent 50 coffee',
   'delete spent 50 coffee',
+  'how much i spent on grocery',
   'How much spent this month?',
-  'Which wallet has highest balance?',
-  'Who created ExpenseHub?'
+  'Which wallet has highest balance?'
 ];
 
 export function AIChatDrawer() {
@@ -41,7 +42,7 @@ export function AIChatDrawer() {
       {
         id: 'welcome',
         sender: 'ai',
-        text: `👋 **Welcome to ExpenseHub AI!**\nYour 24/7 Executive Financial Assistant created by **Mohamed Rashid**.\n\n⚡ **How to use me efficiently:**\n• ➕ **Add Expenses:** Type \`spent 50 coffee\` or \`add cake 40\`\n• 🗑️ **Delete Expenses:** Type \`delete spent 50 coffee\` or \`remove petrol 250\`\n• 👛 **Multi-Wallet Support:** I will prompt 1-Click buttons to choose your wallet!\n• 📊 **Analytics:** Ask \`How much did I spend this week?\` or \`Show budget\`\n• 👑 **About App:** Ask me about Mohamed Rashid or ExpenseHub specialties!`,
+        text: `👋 **Welcome to ExpenseHub AI!**\nYour 24/7 Executive Financial Assistant created by **Mohamed Rashid**.\n\n⚡ **How to use me efficiently:**\n• ➕ **Add Expenses:** Type \`spent 50 coffee\` or \`add cake 40\`\n• 🗑️ **Delete Expenses:** Type \`delete spent 50 coffee\` or \`remove petrol 250\`\n• 📊 **Period Breakdowns:** Ask \`how much I spent on grocery\` and I will present Weekly, Monthly & All-Time period options!\n• 👛 **Multi-Wallet Support:** 1-Click buttons to choose your wallet!\n• 👑 **About App:** Ask me about Mohamed Rashid or ExpenseHub specialties!`,
         timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
       }
     ];
@@ -161,6 +162,92 @@ export function AIChatDrawer() {
         setMessages(prev => [...prev, aiMessage]);
         return;
       }
+    }
+
+    // Check 1.5: Period Detail Drill-down Query (e.g. "Show Grocery expenses this week")
+    const isPeriodDetailIntent = query.match(/Show\s+(.*?)\s+expenses\s+(this week|this month|all time)/i);
+    if (isPeriodDetailIntent) {
+      const subject = isPeriodDetailIntent[1].trim();
+      const timeframe = isPeriodDetailIntent[2].toLowerCase();
+      
+      const k = subject.toLowerCase();
+      let list = expenses.filter(e => (e.note && e.note.toLowerCase().includes(k)) || e.category.toLowerCase().includes(k));
+      
+      const now = new Date();
+      if (timeframe === 'this week') {
+        const startOfWeek = new Date(now.getFullYear(), now.getMonth(), now.getDate() - now.getDay());
+        list = list.filter(e => new Date(e.date) >= startOfWeek);
+      } else if (timeframe === 'this month') {
+        const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+        list = list.filter(e => new Date(e.date) >= startOfMonth);
+      }
+
+      const periodTotal = list.reduce((sum, e) => sum + e.amount, 0);
+
+      let replyText = `📅 **${subject} Expenses (${timeframe.toUpperCase()}):**\n\n`;
+      replyText += `Total Spent: **₹${periodTotal.toLocaleString('en-IN')}** (${list.length} transactions)\n\n`;
+      if (list.length > 0) {
+        replyText += list.map(e => `• **₹${e.amount.toLocaleString('en-IN')}** - ${e.note || e.category} (${new Date(e.date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })})`).join('\n');
+      } else {
+        replyText += `*No transactions logged for this timeframe.*`;
+      }
+
+      const aiMsg: ChatMessage = {
+        id: (Date.now() + 1).toString(),
+        sender: 'ai',
+        text: replyText,
+        timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+      };
+      setMessages(prev => [...prev, aiMsg]);
+      return;
+    }
+
+    // Check 1.8: General Category / Item Spending Query (e.g. "how much i spent on grocery")
+    const isSpendQuery = /\b(how much|how many|spending|spent|cost)\b/i.test(query);
+    const cleanSubject = query
+      .replace(/\b(how|much|many|did|i|my|you|we|spent|spend|spending|cost|on|for|in|total|all|the|a|an|please|tell|me|about|show|amount|value)\b/gi, '')
+      .trim();
+
+    if (isSpendQuery && cleanSubject.length > 1) {
+      const k = cleanSubject.toLowerCase();
+      const matching = expenses.filter(e => 
+        (e.note && e.note.toLowerCase().includes(k)) || 
+        e.category.toLowerCase().includes(k)
+      );
+
+      const now = new Date();
+      const startOfWeek = new Date(now.getFullYear(), now.getMonth(), now.getDate() - now.getDay());
+      const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+
+      const weekExpenses = matching.filter(e => new Date(e.date) >= startOfWeek);
+      const monthExpenses = matching.filter(e => new Date(e.date) >= startOfMonth);
+
+      const weekTotal = weekExpenses.reduce((sum, e) => sum + e.amount, 0);
+      const monthTotal = monthExpenses.reduce((sum, e) => sum + e.amount, 0);
+      const allTimeTotal = matching.reduce((sum, e) => sum + e.amount, 0);
+
+      const formattedSubject = cleanSubject.charAt(0).toUpperCase() + cleanSubject.slice(1);
+
+      let replyText = `📊 **Spending Breakdown for "${formattedSubject}":**\n\n`;
+      replyText += `• 🗓️ **This Week:** ₹${weekTotal.toLocaleString('en-IN')} (${weekExpenses.length} items)\n`;
+      replyText += `• 📅 **This Month:** ₹${monthTotal.toLocaleString('en-IN')} (${monthExpenses.length} items)\n`;
+      replyText += `• ♾️ **All-Time Total:** ₹${allTimeTotal.toLocaleString('en-IN')} (${matching.length} items)\n\n`;
+      replyText += `Which period option would you like to view in detail? Click below:`;
+
+      const aiMsg: ChatMessage = {
+        id: (Date.now() + 1).toString(),
+        sender: 'ai',
+        text: replyText,
+        periodPrompts: [
+          `Show ${formattedSubject} expenses this week`,
+          `Show ${formattedSubject} expenses this month`,
+          `Show ${formattedSubject} expenses all time`
+        ],
+        timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+      };
+
+      setMessages(prev => [...prev, aiMsg]);
+      return;
     }
 
     // Check 2: Instant 1-Click Wallet Selector Check for 2+ Wallets
@@ -325,6 +412,25 @@ export function AIChatDrawer() {
                                 className="px-3 py-2 bg-gradient-to-r from-purple-600 to-blue-600 dark:from-brand-neon dark:to-brand-purple text-white dark:text-black font-bold text-xs rounded-xl shadow-md hover:scale-105 transition-all flex items-center gap-1.5 active:scale-95 cursor-pointer"
                               >
                                 👛 {w.name} (₹{w.balance.toLocaleString('en-IN')})
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Interactive Timeframe Option Buttons */}
+                      {msg.periodPrompts && msg.periodPrompts.length > 0 && (
+                        <div className="mt-3 pt-2.5 border-t border-gray-200 dark:border-white/10 space-y-2">
+                          <p className="text-[11px] font-bold text-gray-500 dark:text-white/60 uppercase tracking-wider">Select Period Option (1-Click):</p>
+                          <div className="flex flex-wrap gap-2">
+                            {msg.periodPrompts.map(p => (
+                              <button
+                                type="button"
+                                key={p}
+                                onClick={() => handleSend(p)}
+                                className="px-3 py-2 bg-blue-50 dark:bg-white/10 hover:bg-blue-100 dark:hover:bg-white/20 border border-blue-200 dark:border-white/20 text-blue-700 dark:text-brand-neon font-bold text-xs rounded-xl shadow-sm transition-all active:scale-95 cursor-pointer flex items-center gap-1"
+                              >
+                                ⏱️ {p}
                               </button>
                             ))}
                           </div>
