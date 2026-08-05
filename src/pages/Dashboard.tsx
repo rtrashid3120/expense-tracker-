@@ -132,27 +132,25 @@ export function Dashboard() {
         </p>
       </div>
 
-      {/* Wallet Selector Carousel */}
-      <div className="flex overflow-x-auto gap-4 pb-4 scrollbar-hide pt-2 snap-x">
+      {/* Wallet Selector Pills */}
+      <div className="flex overflow-x-auto gap-2 pb-3 scrollbar-hide pt-1 snap-x">
         {wallets.map(wallet => (
           <button
             key={wallet.id}
             onClick={() => setActiveWallet(wallet.id)}
-            className={`flex-shrink-0 snap-start rounded-[1.5rem] px-6 py-4 flex flex-col items-start gap-1 transition-all border ${activeWalletId === wallet.id ? 'border-brand-neon/60 bg-white/40 dark:bg-brand-neon/10 shadow-[0_8px_32px_rgba(0,240,255,0.3),inset_0_1px_1px_rgba(255,255,255,0.5)] backdrop-blur-2xl scale-105' : 'border-white/40 dark:border-white/10 bg-white/20 dark:bg-white/5 shadow-[0_8px_32px_rgba(0,0,0,0.05),inset_0_1px_1px_rgba(255,255,255,0.2)] hover:bg-white/40 dark:hover:bg-white/10 backdrop-blur-xl hover:scale-105'}`}
+            className={`flex-shrink-0 snap-start rounded-xl px-3.5 py-2 flex items-center gap-2 transition-all border text-sm ${activeWalletId === wallet.id ? 'border-brand-neon/60 bg-white/50 dark:bg-brand-neon/10 shadow-md backdrop-blur-2xl' : 'border-gray-200/60 dark:border-white/10 bg-white/30 dark:bg-white/5 hover:bg-white/50 dark:hover:bg-white/10 backdrop-blur-xl'}`}
           >
-            <div className="flex items-center gap-2 mb-2">
-              <div className="w-3 h-3 rounded-full shadow-sm dark:shadow-[0_0_10px_currentColor]" style={{ backgroundColor: wallet.color, color: wallet.color }} />
-              <span className="font-bold text-gray-900 dark:text-white">{wallet.name}</span>
-            </div>
-            <span className="text-xl font-black text-gray-900 dark:text-white">₹{wallet.balance.toLocaleString('en-IN')}</span>
+            <div className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: wallet.color }} />
+            <span className="font-bold text-gray-900 dark:text-white whitespace-nowrap">{wallet.name}</span>
+            <span className="font-black text-gray-700 dark:text-white/80 whitespace-nowrap">₹{wallet.balance.toLocaleString('en-IN')}</span>
           </button>
         ))}
         
         <button
           onClick={() => setIsWalletModalOpen(true)}
-          className="flex-shrink-0 snap-start rounded-[1.5rem] px-8 py-4 border-2 border-dashed border-gray-300 dark:border-white/20 text-gray-500 dark:text-white/50 font-bold flex items-center justify-center hover:bg-gray-100 dark:hover:bg-white/5 hover:text-gray-900 dark:hover:text-white/80 transition-colors backdrop-blur-md"
+          className="flex-shrink-0 snap-start rounded-xl px-4 py-2 border border-dashed border-gray-300 dark:border-white/20 text-gray-400 dark:text-white/40 text-xs font-bold flex items-center justify-center hover:bg-gray-100 dark:hover:bg-white/5 transition-colors whitespace-nowrap"
         >
-          + New Wallet
+          + Wallet
         </button>
       </div>
 
