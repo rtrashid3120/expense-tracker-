@@ -174,6 +174,61 @@ export function AIChatDrawer() {
       }
     }
 
+    // Check 1.2: Add Expense Intent (e.g. "spent 50 on coffee", "50 coffee", "paid 200 fuel")
+    const numMatch = query.match(/(\d+)/);
+    const isExplicitViewQuery = /^(show|view|how much|how many|what is|check|list|find|get)\b/i.test(query.trim());
+    const isAddExpenseIntent = numMatch && !isExplicitViewQuery && !isDeleteIntent;
+
+    if (isAddExpenseIntent) {
+      const amount = Number(numMatch[1]);
+      let note = query.replace(/(\d+)/g, '').replace(/\b(spent|add|log|bought|paid|on|for|rupees|rs|₹)\b/gi, '').trim();
+      if (!note) note = 'Expense';
+
+      // Infer category from note
+      let category = 'Other';
+      const cleanNoteLower = note.toLowerCase();
+      if (/coffee|tea|cafe|starbucks|dining|food|lunch|dinner|restaurant|pizza|burger|snack|chicken/i.test(cleanNoteLower)) category = 'Dining';
+      else if (/fuel|petrol|diesel|cab|uber|ola|bus|train|flight|auto/i.test(cleanNoteLower)) category = 'Transport';
+      else if (/grocery|groceries|supermarket|vegetables|milk|fruits|rice/i.test(cleanNoteLower)) category = 'Groceries';
+      else if (/rent|flat|electricity|water|wifi|bill/i.test(cleanNoteLower)) category = 'Rent';
+      else if (/shopping|cloth|clothes|shoes|amazon|flipkart/i.test(cleanNoteLower)) category = 'Shopping';
+
+      if (wallets.length >= 2) {
+        const aiMessage: ChatMessage = {
+          id: (Date.now() + 1).toString(),
+          sender: 'ai',
+          text: `Which wallet should I add **${note} (₹${amount})** to?`,
+          walletPrompt: { amount, category, note },
+          timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+        };
+        setMessages(prev => [...prev, aiMessage]);
+        return;
+      } else if (wallets.length === 1) {
+        try {
+          const targetW = wallets[0];
+          const targetWId = targetW.id || (targetW as any)._id;
+          await api.addExpense({
+            walletId: targetWId,
+            amount,
+            category,
+            note
+          });
+          await fetchData(true);
+
+          const aiMessage: ChatMessage = {
+            id: (Date.now() + 1).toString(),
+            sender: 'ai',
+            text: `✅ Added ₹${amount} for "${note}" (${category}) to "${targetW.name}" wallet!`,
+            timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+          };
+          setMessages(prev => [...prev, aiMessage]);
+          return;
+        } catch (err: any) {
+          alert(err.message || 'Failed to add expense');
+        }
+      }
+    }
+
     // Check 1.5: Flexible Multi-Filter Query Parser (e.g. "Show Fuel expenses in aug(15000) wallet this week")
     const isFilterIntent = query.toLowerCase().startsWith('show ') && query.toLowerCase().includes('expenses');
     if (isFilterIntent) {
@@ -313,24 +368,7 @@ export function AIChatDrawer() {
       return;
     }
 
-    // Check 2: Instant 1-Click Wallet Selector Check for 2+ Wallets
-    const numMatch = query.match(/(\d+)/);
-    if (numMatch && wallets.length >= 2) {
-      const amount = Number(numMatch[1]);
-      let note = query.replace(/(\d+)/g, '').replace(/\b(spent|add|log|bought|paid|on|for|rupees|rs|₹)\b/gi, '').trim();
-      if (!note) note = 'Expense';
 
-      const aiMessage: ChatMessage = {
-        id: (Date.now() + 1).toString(),
-        sender: 'ai',
-        text: `Which wallet should I add **${note} (₹${amount})** to?`,
-        walletPrompt: { amount, category: 'Dining', note },
-        timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-      };
-
-      setMessages(prev => [...prev, aiMessage]);
-      return;
-    }
 
     setIsLoading(true);
 
