@@ -188,7 +188,7 @@ export function Trips() {
                     {details.userObj?.avatar_url ? (
                       <img src={details.userObj.avatar_url} className="w-full h-full object-cover" />
                     ) : (
-                      details.name.charAt(0).toUpperCase()
+                      (details.name || '?').charAt(0).toUpperCase()
                     )}
                   </div>
                   <span className="text-sm font-bold text-gray-900 dark:text-white">{details.name}</span>
@@ -351,9 +351,9 @@ export function Trips() {
                   </p>
                 </div>
                 <div className="flex -space-x-2.5 self-end sm:self-auto shrink-0">
-                  {trip.balances.map((m, idx) => (
+                  {trip.balances.filter(m => m.userId).map((m, idx) => (
                     <div key={m.userId} className="w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-gray-100 dark:bg-dark-surface text-blue-600 dark:text-brand-neon flex items-center justify-center text-xs sm:text-sm font-black border-2 border-white dark:border-white/10 z-10 shadow-sm" style={{ zIndex: 10 - idx }}>
-                      {m.userId.charAt(0)}
+                      {(m.userId || '?').charAt(0)}
                     </div>
                   ))}
                 </div>
