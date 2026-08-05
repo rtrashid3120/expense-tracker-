@@ -393,7 +393,7 @@ export function Dashboard() {
                   <p className="text-[11px] text-gray-400 dark:text-white/30 mt-1">Use the search bar above to search & add chicken, fuel, groceries, etc.</p>
                 </div>
               ) : (
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
+                <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2.5 sm:gap-3">
                   {trackedKeywords.map((keyword, index) => {
                     const matchingExps = activeExpenses.filter(e => {
                       const k = keyword.toLowerCase();
