@@ -170,51 +170,88 @@ export function AIChatDrawer() {
       }
     }
 
-    // Check 1.5: Detailed Specific Filter Query (e.g. "Show Fuel expenses in aug wallet" or "Show Grocery expenses this week")
-    const isSpecificFilterIntent = query.match(/Show\s+(.*?)\s+expenses(?:\s+in\s+(.*?)\s+wallet|\s+(this week|this month|all time))?/i);
-    if (isSpecificFilterIntent && (query.toLowerCase().includes('in ') || query.toLowerCase().includes('this ') || query.toLowerCase().includes('all time'))) {
-      const subject = isSpecificFilterIntent[1].trim();
-      const walletName = isSpecificFilterIntent[2]?.trim();
-      const timeframe = isSpecificFilterIntent[3]?.toLowerCase();
+    // Check 1.5: Flexible Multi-Filter Query Parser (e.g. "Show Fuel expenses in aug(15000) wallet this week")
+    const isFilterIntent = query.toLowerCase().startsWith('show ') && query.toLowerCase().includes('expenses');
+    if (isFilterIntent) {
+      // Extract subject (between 'Show' and 'expenses')
+      const subjectMatch = query.match(/Show\s+(.*?)\s+expenses/i);
+      const subject = subjectMatch ? subjectMatch[1].trim() : '';
 
-      const k = subject.toLowerCase();
-      let list = expenses.filter(e => (e.note && e.note.toLowerCase().includes(k)) || e.category.toLowerCase().includes(k));
+      // Extract wallet name if 'in ... wallet' exists
+      const walletMatch = query.match(/in\s+(.*?)\s+wallet/i);
+      let rawWalletName = walletMatch ? walletMatch[1].trim() : '';
 
-      if (walletName && walletName.toLowerCase() !== 'all wallets') {
-        const foundWallet = wallets.find(w => w.name.toLowerCase().includes(walletName.toLowerCase()));
-        if (foundWallet) {
-          const targetWId = foundWallet.id || (foundWallet as any)._id;
-          list = list.filter(e => e.walletId === targetWId);
+      // Extract timeframe if 'this week', 'this month', or 'all time' exists
+      const timeframeMatch = query.match(/(this week|this month|all time)/i);
+      const timeframe = timeframeMatch ? timeframeMatch[1].toLowerCase() : '';
+
+      if (subject) {
+        const k = subject.toLowerCase();
+        let list = expenses.filter(e => (e.note && e.note.toLowerCase().includes(k)) || e.category.toLowerCase().includes(k));
+
+        let walletDisplayName = '';
+        let targetWallet: any = null;
+
+        if (rawWalletName && rawWalletName.toLowerCase() !== 'all wallets') {
+          // Clean out amounts in parentheses like aug(15000) -> aug
+          const cleanSearch = rawWalletName.replace(/\(.*?\)/g, '').trim().toLowerCase();
+          targetWallet = wallets.find(w => 
+            w.name.toLowerCase() === cleanSearch ||
+            w.name.toLowerCase().includes(cleanSearch) || 
+            cleanSearch.includes(w.name.toLowerCase())
+          );
+
+          if (targetWallet) {
+            walletDisplayName = targetWallet.name;
+            const targetWId = targetWallet.id || targetWallet._id;
+            list = list.filter(e => e.walletId === targetWId);
+          }
         }
+
+        const now = new Date();
+        if (timeframe === 'this week') {
+          const startOfWeek = new Date(now.getFullYear(), now.getMonth(), now.getDate() - now.getDay());
+          list = list.filter(e => new Date(e.date) >= startOfWeek);
+        } else if (timeframe === 'this month') {
+          const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+          list = list.filter(e => new Date(e.date) >= startOfMonth);
+        }
+
+        const totalAmount = list.reduce((sum, e) => sum + e.amount, 0);
+
+        let replyText = `📊 ${subject} Expenses`;
+        if (walletDisplayName) replyText += ` in "${walletDisplayName}" Wallet`;
+        if (timeframe) replyText += ` (${timeframe.toUpperCase()})`;
+        replyText += `:\n\nTotal Spent: ₹${totalAmount.toLocaleString('en-IN')} (${list.length} transactions)\n\n`;
+
+        if (list.length > 0) {
+          replyText += list.map(e => `• ₹${e.amount.toLocaleString('en-IN')} - ${e.note || e.category} (${new Date(e.date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })})`).join('\n');
+        } else {
+          replyText += `No transactions found for this selection.`;
+        }
+
+        const currentMonthName = new Date().toLocaleString('en-IN', { month: 'long' });
+        const walletPart = targetWallet ? `in ${targetWallet.name} wallet ` : '';
+
+        const followUpOptions = [
+          { label: `🗓️ This Week`, prompt: `Show ${subject} expenses ${walletPart}this week` },
+          { label: `📅 ${currentMonthName} (This Month)`, prompt: `Show ${subject} expenses ${walletPart}this month` },
+          { label: `♾️ All Time`, prompt: `Show ${subject} expenses ${walletPart}all time` }
+        ];
+
+        const aiMsg: ChatMessage = {
+          id: (Date.now() + 1).toString(),
+          sender: 'ai',
+          text: replyText,
+          optionGroups: [
+            { title: `Filter ${subject} ${walletDisplayName ? `("${walletDisplayName}" Wallet)` : ''} by Time Period:`, options: followUpOptions }
+          ],
+          timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+        };
+
+        setMessages(prev => [...prev, aiMsg]);
+        return;
       }
-
-      const now = new Date();
-      if (timeframe === 'this week') {
-        const startOfWeek = new Date(now.getFullYear(), now.getMonth(), now.getDate() - now.getDay());
-        list = list.filter(e => new Date(e.date) >= startOfWeek);
-      } else if (timeframe === 'this month') {
-        const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
-        list = list.filter(e => new Date(e.date) >= startOfMonth);
-      }
-
-      const totalAmount = list.reduce((sum, e) => sum + e.amount, 0);
-
-      let replyText = `📊 **${subject} Expenses** ${walletName ? `in **${walletName}**` : ''} ${timeframe ? `(${timeframe.toUpperCase()})` : ''}:\n\n`;
-      replyText += `Total Spent: **₹${totalAmount.toLocaleString('en-IN')}** (${list.length} transactions)\n\n`;
-      if (list.length > 0) {
-        replyText += list.map(e => `• **₹${e.amount.toLocaleString('en-IN')}** - ${e.note || e.category} (${new Date(e.date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })})`).join('\n');
-      } else {
-        replyText += `*No transactions found for this selection.*`;
-      }
-
-      const aiMsg: ChatMessage = {
-        id: (Date.now() + 1).toString(),
-        sender: 'ai',
-        text: replyText,
-        timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-      };
-      setMessages(prev => [...prev, aiMsg]);
-      return;
     }
 
     // Check 1.8: General Spending / Category Inquiry (e.g. "show fuel expenses", "how much i spent on grocery")
@@ -234,9 +271,9 @@ export function AIChatDrawer() {
       const formattedSubject = cleanSubject.charAt(0).toUpperCase() + cleanSubject.slice(1);
       const currentMonthName = new Date().toLocaleString('en-IN', { month: 'long' });
 
-      let replyText = `🤔 **Which Wallet or Period do you want to view for "${formattedSubject}"?**\n\n`;
-      replyText += `Total All-Time Spent: **₹${totalAll.toLocaleString('en-IN')}** (${matching.length} transactions)\n\n`;
-      replyText += `Choose a **Wallet** or **Timeframe** option below to view exact details:`;
+      let replyText = `🤔 Which Wallet or Period do you want to view for "${formattedSubject}"?\n\n`;
+      replyText += `Total All-Time Spent: ₹${totalAll.toLocaleString('en-IN')} (${matching.length} transactions)\n\n`;
+      replyText += `Choose a Wallet or Timeframe option below to view exact details:`;
 
       const walletOptions = [
         { label: `👛 All Wallets (₹${totalAll.toLocaleString('en-IN')})`, prompt: `Show ${formattedSubject} expenses in All Wallets` },
@@ -418,7 +455,7 @@ export function AIChatDrawer() {
                           : 'bg-gray-100 dark:bg-white/5 border border-gray-200 dark:border-white/10 text-gray-800 dark:text-white/90 rounded-bl-none shadow-sm'
                       }`}
                     >
-                      <div className="whitespace-pre-wrap">{msg.text}</div>
+                      <div className="whitespace-pre-wrap">{msg.text.replace(/\*\*/g, '').replace(/#/g, '')}</div>
 
                       {/* 1-Click Interactive Wallet Selection Buttons */}
                       {msg.walletPrompt && wallets.length > 0 && (
