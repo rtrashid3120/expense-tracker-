@@ -44,7 +44,7 @@ class ErrorBoundary extends Component<{children: React.ReactNode}, {hasError: bo
 }
 
 function Layout({ children, onAddClick }: { children: React.ReactNode; onAddClick: () => void }) {
-  const { signOut, balance } = useAppStore();
+  const { signOut } = useAppStore();
   
   return (
     <div className="flex h-screen w-full bg-transparent overflow-hidden">
@@ -59,19 +59,13 @@ function Layout({ children, onAddClick }: { children: React.ReactNode; onAddClic
             <span className="font-black text-base text-gray-900 dark:text-white tracking-tight">Expense<span className="text-gradient">Hub</span></span>
           </div>
 
-          <div className="flex items-center gap-2">
-            <div className="bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-500/30 px-2.5 py-1 rounded-full text-[11px] font-extrabold text-emerald-700 dark:text-emerald-400">
-              ₹{balance.toLocaleString('en-IN')}
-            </div>
-
-            <button 
-              onClick={signOut}
-              title="Log Out"
-              className="w-8 h-8 rounded-full bg-red-500/10 border border-red-500/20 flex items-center justify-center text-red-600 dark:text-red-400"
-            >
-              <FiLogOut size={14} />
-            </button>
-          </div>
+          <button 
+            onClick={signOut}
+            title="Log Out"
+            className="w-8 h-8 rounded-full bg-red-500/10 border border-red-500/20 flex items-center justify-center text-red-600 dark:text-red-400"
+          >
+            <FiLogOut size={14} />
+          </button>
         </header>
 
         {/* Top Header for Desktop */}
