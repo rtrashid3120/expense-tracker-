@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { FiX, FiCheck, FiPlus, FiMic, FiTrash2, FiLayers, FiList } from 'react-icons/fi';
+import { FiX, FiCheck, FiPlus, FiMinus, FiMic, FiTrash2, FiLayers, FiList } from 'react-icons/fi';
 import { useAppStore } from '../store';
 import type { Category } from '../store';
 
@@ -126,6 +126,78 @@ export function AddExpenseModal({
     } else {
       const existing = categories.find(c => c.toLowerCase() === categoryName.toLowerCase());
       if (existing) setCategory(existing as any);
+    }
+  };
+
+  const handleAddCustomCategoryForBatch = (rowId: string) => {
+    const name = window.prompt("Enter new Category Domain name (e.g. Chappals, Hotel, Food, Bike, Household):");
+    if (!name || !name.trim()) return;
+    
+    const formattedName = name.trim();
+    const categoryName = formattedName.charAt(0).toUpperCase() + formattedName.slice(1);
+
+    if (!categories.some(c => c.toLowerCase() === categoryName.toLowerCase())) {
+      const updated = [...customCategories, categoryName];
+      setCustomCategories(updated);
+      try {
+        localStorage.setItem('custom_category_domains', JSON.stringify(updated));
+      } catch (e) {
+        console.error(e);
+      }
+    }
+
+    const matchedCategory = categories.find(c => c.toLowerCase() === categoryName.toLowerCase()) || categoryName;
+    handleMultiRowChange(rowId, 'category', matchedCategory as any);
+  };
+
+  const handleDeleteCustomCategory = (categoryName: string) => {
+    if (defaultCategories.some(c => c.toLowerCase() === categoryName.toLowerCase())) {
+      alert("Default categories cannot be deleted.");
+      return;
+    }
+
+    if (window.confirm(`Are you sure you want to delete category "${categoryName}"?`)) {
+      const updated = customCategories.filter(c => c.toLowerCase() !== categoryName.toLowerCase());
+      setCustomCategories(updated);
+      try {
+        localStorage.setItem('custom_category_domains', JSON.stringify(updated));
+      } catch (e) {
+        console.error(e);
+      }
+
+      if (category.toLowerCase() === categoryName.toLowerCase()) {
+        setCategory('Personal');
+      }
+
+      setMultiItems(prev => prev.map(item => 
+        item.category.toLowerCase() === categoryName.toLowerCase() ? { ...item, category: 'Groceries' as any } : item
+      ));
+    }
+  };
+
+  const handlePromptDeleteCategory = () => {
+    if (customCategories.length === 0) {
+      alert("No custom categories to delete.");
+      return;
+    }
+    const catListStr = customCategories.map((c, i) => `${i + 1}. ${c}`).join('\n');
+    const selected = window.prompt(`Enter category name or number to DELETE:\n\n${catListStr}`);
+    if (!selected || !selected.trim()) return;
+
+    const trimmed = selected.trim();
+    const num = parseInt(trimmed, 10);
+    let targetCategory = '';
+    if (!isNaN(num) && num >= 1 && num <= customCategories.length) {
+      targetCategory = customCategories[num - 1];
+    } else {
+      const found = customCategories.find(c => c.toLowerCase() === trimmed.toLowerCase());
+      if (found) targetCategory = found;
+    }
+
+    if (targetCategory) {
+      handleDeleteCustomCategory(targetCategory);
+    } else {
+      alert("Category not found.");
     }
   };
 
@@ -462,7 +534,7 @@ export function AddExpenseModal({
                           )}
                         </div>
 
-                        <div className="flex items-center gap-2 pt-1">
+                        <div className="flex items-center gap-1.5 pt-1">
                           <span className="text-[10px] font-bold text-gray-400 dark:text-white/40 uppercase">Category:</span>
                           <select 
                             value={item.category}
@@ -473,6 +545,28 @@ export function AddExpenseModal({
                               <option key={c} value={c} className="bg-white dark:bg-dark-surface">{c}</option>
                             ))}
                           </select>
+
+                          {/* + Add New Category Button */}
+                          <button
+                            type="button"
+                            onClick={() => handleAddCustomCategoryForBatch(item.id)}
+                            className="p-1 bg-blue-50 dark:bg-brand-neon/10 hover:bg-blue-100 dark:hover:bg-brand-neon/20 border border-blue-200 dark:border-brand-neon/30 text-blue-600 dark:text-brand-neon rounded-lg transition-colors cursor-pointer shrink-0"
+                            title="Add New Category Domain"
+                          >
+                            <FiPlus size={14} />
+                          </button>
+
+                          {/* - Delete Unneeded Custom Category Button */}
+                          {customCategories.length > 0 && (
+                            <button
+                              type="button"
+                              onClick={handlePromptDeleteCategory}
+                              className="p-1 bg-red-50 dark:bg-red-500/10 hover:bg-red-100 dark:hover:bg-red-500/20 border border-red-200 dark:border-red-500/30 text-red-500 rounded-lg transition-colors cursor-pointer shrink-0"
+                              title="Delete Unneeded Custom Category"
+                            >
+                              <FiMinus size={14} />
+                            </button>
+                          )}
                         </div>
                       </div>
                     ))}
@@ -564,20 +658,36 @@ export function AddExpenseModal({
                   <div>
                     <label className="text-xs sm:text-sm font-bold text-gray-500 dark:text-white/60 block mb-2 uppercase tracking-wider">Category Domain</label>
                     <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide">
-                      {categories.map(cat => (
-                        <button
-                          key={cat}
-                          type="button"
-                          onClick={() => setCategory(cat as any)}
-                          className={`px-4 py-2.5 sm:px-5 sm:py-3 rounded-2xl whitespace-nowrap text-xs sm:text-sm font-bold transition-all border ${
-                            category === cat 
-                              ? 'bg-blue-50 dark:bg-brand-neon/20 border-blue-600 dark:border-brand-neon text-blue-700 dark:text-brand-neon shadow-sm dark:shadow-[0_0_15px_rgba(0,240,255,0.3)]' 
-                              : 'bg-gray-50 dark:bg-white/5 border-gray-200 dark:border-white/10 text-gray-500 dark:text-white/50 hover:bg-gray-100 dark:hover:bg-white/10 hover:text-gray-900 dark:hover:text-white/80'
-                          }`}
-                        >
-                          {cat}
-                        </button>
-                      ))}
+                      {categories.map(cat => {
+                        const isCustom = customCategories.some(c => c.toLowerCase() === cat.toLowerCase());
+                        return (
+                          <div key={cat} className="relative group shrink-0">
+                            <button
+                              type="button"
+                              onClick={() => setCategory(cat as any)}
+                              className={`px-4 py-2.5 sm:px-5 sm:py-3 rounded-2xl whitespace-nowrap text-xs sm:text-sm font-bold transition-all border flex items-center gap-1.5 ${
+                                category === cat 
+                                  ? 'bg-blue-50 dark:bg-brand-neon/20 border-blue-600 dark:border-brand-neon text-blue-700 dark:text-brand-neon shadow-sm dark:shadow-[0_0_15px_rgba(0,240,255,0.3)]' 
+                                  : 'bg-gray-50 dark:bg-white/5 border-gray-200 dark:border-white/10 text-gray-500 dark:text-white/50 hover:bg-gray-100 dark:hover:bg-white/10 hover:text-gray-900 dark:hover:text-white/80'
+                              }`}
+                            >
+                              {cat}
+                              {isCustom && (
+                                <span
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleDeleteCustomCategory(cat);
+                                  }}
+                                  className="ml-1 w-4 h-4 rounded-full bg-red-500/10 hover:bg-red-500 text-red-500 hover:text-white flex items-center justify-center text-xs font-bold transition-colors cursor-pointer"
+                                  title="Delete this custom category"
+                                >
+                                  ×
+                                </span>
+                              )}
+                            </button>
+                          </div>
+                        );
+                      })}
                       <button
                         type="button"
                         onClick={handleAddCustomCategory}
@@ -588,6 +698,7 @@ export function AddExpenseModal({
                       </button>
                     </div>
                   </div>
+
 
                   {/* Dynamic Domain Forms */}
                   <AnimatePresence mode="popLayout">
