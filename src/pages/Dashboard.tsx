@@ -147,32 +147,68 @@ export function Dashboard() {
     }
   };
 
-  // Calculate real chart data from expenses
-  const getChartData = () => {
-    if (activeExpenses.length === 0) return chartView === 'Week' ? Array(7).fill(0) : Array(4).fill(0);
-    
+  // Calculate real chart data with guaranteed bar visibility and accurate date matching
+  const dynamicChartData = useMemo(() => {
+    const today = new Date();
+
     if (chartView === 'Week') {
-      const days = Array(7).fill(0);
-      const today = new Date();
+      // Last 7 days (including today)
+      const dayData = Array.from({ length: 7 }, (_, i) => {
+        const d = new Date(today);
+        d.setDate(today.getDate() - (6 - i));
+        const dateStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+        const dayName = d.toLocaleDateString('en-US', { weekday: 'short' });
+        const dayExpenses = activeExpenses.filter(e => e.date === dateStr);
+        const total = dayExpenses.reduce((sum, e) => sum + e.amount, 0);
+        return { label: dayName, dateStr, amount: total };
+      });
+
+      const maxSpend = Math.max(...dayData.map(d => d.amount)) || 1;
+
+      return dayData.map(d => {
+        const rawPct = d.amount > 0 ? (d.amount / maxSpend) * 100 : 0;
+        // Minimum 10% height for visual bar visibility even on 0-spend days
+        const heightPct = Math.max(10, rawPct);
+        return {
+          label: d.label,
+          dateStr: d.dateStr,
+          amount: d.amount,
+          heightPct,
+          hasSpend: d.amount > 0
+        };
+      });
+    } else {
+      // 4 Weeks of Current Month
+      const currentYear = today.getFullYear();
+      const currentMonth = today.getMonth();
+
+      const weekSums = [0, 0, 0, 0];
       activeExpenses.forEach(exp => {
         const expDate = new Date(exp.date);
-        const diffTime = Math.abs(today.getTime() - expDate.getTime());
-        const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-        if (diffDays <= 7 && diffDays > 0) days[7 - diffDays] += exp.amount;
-        else if (diffDays === 0) days[6] += exp.amount;
+        if (expDate.getFullYear() === currentYear && expDate.getMonth() === currentMonth) {
+          const dateNum = expDate.getDate();
+          if (dateNum <= 7) weekSums[0] += exp.amount;
+          else if (dateNum <= 14) weekSums[1] += exp.amount;
+          else if (dateNum <= 21) weekSums[2] += exp.amount;
+          else weekSums[3] += exp.amount;
+        }
       });
-      const max = Math.max(...days) || 1;
-      return days.map(d => (d / max) * 100);
-    } else {
-      const weeks = Array(4).fill(0);
-      activeExpenses.forEach(exp => {
-        weeks[Math.floor(Math.random() * 4)] += exp.amount;
+
+      const maxSpend = Math.max(...weekSums) || 1;
+
+      return weekSums.map((sum, i) => {
+        const rawPct = sum > 0 ? (sum / maxSpend) * 100 : 0;
+        const heightPct = Math.max(10, rawPct);
+        return {
+          label: `W${i + 1}`,
+          dateStr: `Week ${i + 1}`,
+          amount: sum,
+          heightPct,
+          hasSpend: sum > 0
+        };
       });
-      const max = Math.max(...weeks) || 1;
-      return weeks.map(w => (w / max) * 100);
     }
-  };
-  const dynamicChartData = getChartData();
+  }, [activeExpenses, chartView]);
 
 
 
@@ -306,20 +342,28 @@ export function Dashboard() {
               <div className="h-28 w-full flex items-end justify-between gap-2 md:gap-4 relative pt-2">
                 <div className="absolute w-full h-[1px] border-dashed border-t border-gray-200 dark:border-white/10 top-1/2 -z-10" />
                 
-                {chartView === 'Week' 
-                  ? dynamicChartData.map((h, i) => (
-                      <div key={i} className="flex-1 flex flex-col justify-end items-center gap-1.5 group relative">
-                        <motion.div initial={{ height: 0 }} animate={{ height: `${h}%` }} transition={{ delay: i * 0.04, type: 'spring' }} className="w-full md:w-8 bg-gradient-to-t from-blue-500 to-purple-500 dark:from-brand-purple dark:to-brand-neon rounded-t-md hover:brightness-125 cursor-pointer transition-all shadow-sm dark:shadow-[0_0_10px_rgba(0,240,255,0.3)]" />
-                        <span className="text-[10px] text-gray-400 dark:text-white/40 font-medium">Day {i + 1}</span>
-                      </div>
-                    ))
-                  : dynamicChartData.map((h, i) => (
-                      <div key={i} className="flex-1 flex flex-col justify-end items-center gap-1.5 group relative">
-                        <motion.div initial={{ height: 0 }} animate={{ height: `${h}%` }} transition={{ delay: i * 0.04, type: 'spring' }} className="w-full md:w-12 bg-gradient-to-t from-blue-500 to-purple-500 dark:from-brand-purple dark:to-brand-neon rounded-t-md hover:brightness-125 cursor-pointer transition-all shadow-sm dark:shadow-[0_0_10px_rgba(0,240,255,0.3)]" />
-                        <span className="text-[10px] text-gray-400 dark:text-white/40 font-medium">Week {i + 1}</span>
-                      </div>
-                    ))
-                }
+                {dynamicChartData.map((item, i) => (
+                  <div key={i} className="flex-1 flex flex-col justify-end items-center gap-1.5 group relative h-full">
+                    {/* Tooltip on hover */}
+                    <div className="absolute -top-7 opacity-0 group-hover:opacity-100 transition-all pointer-events-none bg-black/90 dark:bg-white text-white dark:text-black text-[10px] font-bold px-2 py-0.5 rounded-md shadow-lg z-30 whitespace-nowrap">
+                      {item.label}: ₹{item.amount.toLocaleString('en-IN')}
+                    </div>
+
+                    <div className="w-full md:w-8 h-full flex items-end justify-center rounded-t-md bg-gray-100 dark:bg-white/5 p-0.5">
+                      <motion.div 
+                        initial={{ height: 0 }} 
+                        animate={{ height: `${item.heightPct}%` }} 
+                        transition={{ delay: i * 0.04, type: 'spring' }} 
+                        className={`w-full rounded-t-md cursor-pointer transition-all shadow-sm ${
+                          item.hasSpend 
+                            ? 'bg-gradient-to-t from-blue-500 to-purple-500 dark:from-brand-purple dark:to-brand-neon hover:brightness-125 shadow-blue-500/20 dark:shadow-[0_0_12px_rgba(0,240,255,0.4)]' 
+                            : 'bg-gray-300 dark:bg-white/10 hover:bg-gray-400 dark:hover:bg-white/20'
+                        }`} 
+                      />
+                    </div>
+                    <span className="text-[10px] text-gray-500 dark:text-white/50 font-bold">{item.label}</span>
+                  </div>
+                ))}
               </div>
             </div>
 
