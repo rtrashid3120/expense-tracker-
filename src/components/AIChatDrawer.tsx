@@ -238,19 +238,20 @@ export function AIChatDrawer() {
     if (isSpendingOrFilterQuery) {
       // Extract optional wallet and timeframe parameters first
       const walletMatch = query.match(/in\s+(.*?)\s+wallet/i);
-      let rawWalletName = walletMatch ? walletMatch[1].trim() : '';
+      let rawWalletName = walletMatch ? walletMatch[1].replace(/\(.*?\)/g, '').trim() : '';
 
       const timeframeMatch = query.match(/(this week|this month|all time)/i);
       const timeframe = timeframeMatch ? timeframeMatch[1].toLowerCase() : '';
 
-      // Clean filler words from the query subject
+      // Clean filler words, analytical terms, and punctuation from the query subject
       let rawSubject = query
         .replace(/in\s+.*?\s+wallet/gi, '')
         .replace(/\b(this week|this month|all time)\b/gi, '')
-        .replace(/\b(show|view|find|check|get|details|breakdown|expenses|expense|how|much|many|did|i|my|you|we|spent|spend|spending|cost|on|for|in|total|all|the|a|an|please|tell|me|about|amount|value)\b/gi, '')
+        .replace(/\b(show|view|find|check|get|details|breakdown|expenses|expense|how|much|many|did|i|my|you|we|spent|spend|spending|cost|on|for|in|total|all|the|a|an|please|tell|me|about|amount|value|velocity|is|what|which)\b/gi, '')
+        .replace(/[\?\!\.,]/g, '')
         .trim();
 
-      const subject = (rawSubject.length > 1 && !/^(me|the|my|all|wallet|expenses)$/i.test(rawSubject))
+      const subject = (rawSubject.length > 1 && !/^(me|the|my|all|wallet|expenses|velocity|is|what)$/i.test(rawSubject))
         ? rawSubject.charAt(0).toUpperCase() + rawSubject.slice(1)
         : 'All Expenses';
 
