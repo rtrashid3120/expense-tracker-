@@ -14,7 +14,7 @@ interface ChatMessage {
   sender: 'user' | 'ai';
   text: string;
   timestamp: string;
-  walletPrompt?: { amount: number; category: string; note: string };
+  walletPrompt?: { amount: number; category: string; note: string; date?: string; dateLabel?: string };
   periodPrompts?: string[];
   optionGroups?: OptionGroup[];
 }
@@ -82,14 +82,15 @@ export function AIChatDrawer() {
     return () => window.removeEventListener('open-ai-chat', handleOpen);
   }, []);
 
-  const handleSelectWallet = async (msgId: string, wallet: any, prompt: { amount: number; category: string; note: string }) => {
+  const handleSelectWallet = async (msgId: string, wallet: any, prompt: { amount: number; category: string; note: string; date?: string; dateLabel?: string }) => {
     try {
       const walletId = wallet.id || wallet._id;
       await api.addExpense({
         amount: prompt.amount,
         category: prompt.category,
         note: prompt.note,
-        walletId
+        walletId,
+        ...(prompt.date ? { date: prompt.date } : {})
       });
 
       // Silent refetch without page loading spinner or re-mount
@@ -100,7 +101,7 @@ export function AIChatDrawer() {
           return {
             ...m,
             walletPrompt: undefined,
-            text: `✅ **Successfully Recorded in ${wallet.name}!**\n- **Amount:** ₹${prompt.amount}\n- **Category:** ${prompt.category}\n- **Item:** ${prompt.note}\n- **Wallet:** ${wallet.name}`
+            text: `✅ **Successfully Recorded in ${wallet.name}!**\n- **Amount:** ₹${prompt.amount}\n- **Category:** ${prompt.category}\n- **Item:** ${prompt.note}${prompt.dateLabel ? `\n- **Date:** ${prompt.dateLabel}` : ''}\n- **Wallet:** ${wallet.name}`
           };
         }
         return m;
@@ -174,14 +175,75 @@ export function AIChatDrawer() {
       }
     }
 
-    // Check 1.2: Add Expense Intent (e.g. "spent 50 on coffee", "50 coffee", "paid 200 fuel")
+    // Check 1.2: Add Expense Intent (e.g. "spent 50 on coffee yesterday", "spent 200 fuel on 10 aug")
     const numMatch = query.match(/(\d+)/);
     const isExplicitViewQuery = /^(show|view|how much|how many|what is|check|list|find|get)\b/i.test(query.trim());
     const isAddExpenseIntent = numMatch && !isExplicitViewQuery && !isDeleteIntent;
 
     if (isAddExpenseIntent) {
       const amount = Number(numMatch[1]);
-      let note = query.replace(/(\d+)/g, '').replace(/\b(spent|add|log|bought|paid|on|for|rupees|rs|₹)\b/gi, '').trim();
+      
+      // Parse custom date from query if user specifies "yesterday", "10 aug", "2 days ago", etc.
+      let targetDateStr = new Date().toISOString().split('T')[0];
+      let dateDisplayLabel = '';
+      const now = new Date();
+
+      let cleanedQuery = query.toLowerCase();
+
+      // Check relative day keywords
+      if (/\b(yesterday)\b/i.test(cleanedQuery)) {
+        const d = new Date();
+        d.setDate(now.getDate() - 1);
+        targetDateStr = d.toISOString().split('T')[0];
+        dateDisplayLabel = `Yesterday (${d.toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })})`;
+        cleanedQuery = cleanedQuery.replace(/\b(yesterday)\b/gi, '');
+      } else if (/\b(day before yesterday)\b/i.test(cleanedQuery)) {
+        const d = new Date();
+        d.setDate(now.getDate() - 2);
+        targetDateStr = d.toISOString().split('T')[0];
+        dateDisplayLabel = `Day before yesterday (${d.toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })})`;
+        cleanedQuery = cleanedQuery.replace(/\b(day before yesterday)\b/gi, '');
+      } else if (/(\d+)\s+days?\s+ago/i.test(cleanedQuery)) {
+        const daysMatch = cleanedQuery.match(/(\d+)\s+days?\s+ago/i);
+        if (daysMatch) {
+          const daysAgo = parseInt(daysMatch[1]);
+          const d = new Date();
+          d.setDate(now.getDate() - daysAgo);
+          targetDateStr = d.toISOString().split('T')[0];
+          dateDisplayLabel = `${daysAgo} days ago (${d.toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })})`;
+          cleanedQuery = cleanedQuery.replace(/(\d+)\s+days?\s+ago/gi, '');
+        }
+      } else {
+        const months = ["jan", "feb", "mar", "apr", "may", "jun", "jul", "aug", "sep", "oct", "nov", "dec"];
+        const dayMonthMatch = cleanedQuery.match(/\b(?:on\s+)?(\d{1,2})(?:st|nd|rd|th)?\s+(jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|may|jun(?:e)?|jul(?:y)?|aug(?:ust)?|sep(?:tember)?|oct(?:ober)?|nov(?:ember)?|dec(?:ember)?)(?:\s+(\d{4}))?\b/i);
+        const monthDayMatch = cleanedQuery.match(/\b(?:on\s+)?(jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|may|jun(?:e)?|jul(?:y)?|aug(?:ust)?|sep(?:tember)?|oct(?:ober)?|nov(?:ember)?|dec(?:ember)?)\s+(\d{1,2})(?:st|nd|rd|th)?(?:\s+(\d{4}))?\b/i);
+
+        let matchedMonth = -1;
+        let day = -1;
+        let year = now.getFullYear();
+
+        if (dayMonthMatch) {
+          day = parseInt(dayMonthMatch[1]);
+          const mStr = dayMonthMatch[2].toLowerCase();
+          matchedMonth = months.findIndex(m => mStr.startsWith(m));
+          if (dayMonthMatch[3]) year = parseInt(dayMonthMatch[3]);
+          cleanedQuery = cleanedQuery.replace(dayMonthMatch[0], '');
+        } else if (monthDayMatch) {
+          const mStr = monthDayMatch[1].toLowerCase();
+          matchedMonth = months.findIndex(m => mStr.startsWith(m));
+          day = parseInt(monthDayMatch[2]);
+          if (monthDayMatch[3]) year = parseInt(monthDayMatch[3]);
+          cleanedQuery = cleanedQuery.replace(monthDayMatch[0], '');
+        }
+
+        if (matchedMonth !== -1 && day > 0 && day <= 31) {
+          const d = new Date(year, matchedMonth, day);
+          targetDateStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+          dateDisplayLabel = d.toLocaleDateString('en-IN', { day: 'numeric', month: 'short' });
+        }
+      }
+
+      let note = cleanedQuery.replace(/(\d+)/g, '').replace(/\b(spent|add|log|bought|paid|on|for|rupees|rs|₹)\b/gi, '').trim();
       if (!note) note = 'Expense';
 
       // Infer category from note
@@ -197,8 +259,8 @@ export function AIChatDrawer() {
         const aiMessage: ChatMessage = {
           id: (Date.now() + 1).toString(),
           sender: 'ai',
-          text: `Which wallet should I add **${note} (₹${amount})** to?`,
-          walletPrompt: { amount, category, note },
+          text: `Which wallet should I add **${note} (₹${amount})**${dateDisplayLabel ? ` for **${dateDisplayLabel}**` : ''} to?`,
+          walletPrompt: { amount, category, note, date: targetDateStr, dateLabel: dateDisplayLabel },
           timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
         };
         setMessages(prev => [...prev, aiMessage]);
@@ -211,14 +273,15 @@ export function AIChatDrawer() {
             walletId: targetWId,
             amount,
             category,
-            note
+            note,
+            date: targetDateStr
           });
           await fetchData(true);
 
           const aiMessage: ChatMessage = {
             id: (Date.now() + 1).toString(),
             sender: 'ai',
-            text: `✅ Added ₹${amount} for "${note}" (${category}) to "${targetW.name}" wallet!`,
+            text: `✅ Added ₹${amount} for "${note}" (${category})${dateDisplayLabel ? ` on ${dateDisplayLabel}` : ''} to "${targetW.name}" wallet!`,
             timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
           };
           setMessages(prev => [...prev, aiMessage]);

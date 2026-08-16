@@ -123,7 +123,7 @@ export const api = {
     return await res.json();
   },
 
-  addExpense: async (expense: Omit<Expense, 'id' | 'date'>): Promise<Expense> => {
+  addExpense: async (expense: Partial<Expense> & { amount: number; category: string }): Promise<Expense> => {
     const res = await fetch(`${API_BASE_URL}/expenses`, {
       method: 'POST',
       headers: getHeaders(),
