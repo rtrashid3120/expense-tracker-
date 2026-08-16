@@ -436,7 +436,27 @@ export function AIChatDrawer() {
   };
 
   return (
-    <AnimatePresence>
+    <>
+      {/* Floating AI Trigger Button (Always Visible on Screen) */}
+      {!isOpen && (
+        <motion.button
+          type="button"
+          initial={{ scale: 0, opacity: 0 }}
+          animate={{ scale: 1, opacity: 1 }}
+          whileHover={{ scale: 1.08 }}
+          whileTap={{ scale: 0.92 }}
+          onClick={() => setIsOpen(true)}
+          className="fixed bottom-20 right-4 sm:bottom-6 sm:right-6 z-[90] bg-gradient-to-r from-blue-600 to-purple-600 dark:from-brand-neon dark:to-brand-purple text-white dark:text-black font-black p-3.5 sm:px-5 sm:py-3.5 rounded-full shadow-[0_0_25px_rgba(0,240,255,0.5)] hover:shadow-[0_0_35px_rgba(0,240,255,0.8)] flex items-center gap-2 transition-all cursor-pointer border border-white/20"
+          title="Open ExpenseHub AI Chatbot"
+        >
+          <div className="w-6 h-6 rounded-full bg-white dark:bg-black/80 flex items-center justify-center text-blue-600 dark:text-brand-neon">
+            <FiZap size={14} />
+          </div>
+          <span className="text-xs font-black tracking-tight hidden sm:inline">ExpenseHub AI</span>
+        </motion.button>
+      )}
+
+      <AnimatePresence>
         {isOpen && (
           <>
             <motion.div
@@ -619,5 +639,6 @@ export function AIChatDrawer() {
           </>
         )}
       </AnimatePresence>
+    </>
   );
 }
