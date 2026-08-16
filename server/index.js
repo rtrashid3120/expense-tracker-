@@ -22,6 +22,11 @@ const MONGODB_URI = process.env.MONGODB_URI || 'mongodb://127.0.0.1:27017/expens
 app.use(cors());
 app.use(express.json());
 
+// Health Check / Ping Endpoint for Keep-Alive Monitors
+app.get('/api/health', (req, res) => {
+  res.json({ status: 'ok', time: new Date().toISOString() });
+});
+
 // Connect to MongoDB
 mongoose.connect(MONGODB_URI)
   .then(() => console.log('✅ Connected to MongoDB database successfully!'))
