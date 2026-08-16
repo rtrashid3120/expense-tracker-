@@ -578,11 +578,11 @@ export function AddExpenseModal({
                                 />
                                 <div className="absolute left-0 top-full mt-1 bg-white dark:bg-[#182035] border border-gray-200 dark:border-white/15 rounded-xl shadow-2xl z-50 p-1.5 min-w-[190px] space-y-1 max-h-52 overflow-y-auto scrollbar-hide">
                                   <div className="text-[9px] font-bold text-gray-400 dark:text-white/40 uppercase px-2 py-1">Select Category</div>
-                                  {categories.map(c => {
+                                  {categories.map((c, cIdx) => {
                                     const isCustom = customCategories.some(cc => cc.toLowerCase() === c.toLowerCase());
                                     return (
                                       <div
-                                        key={c}
+                                        key={`${c}-${cIdx}`}
                                         onClick={() => {
                                           handleMultiRowChange(item.id, 'category', c as any);
                                           setOpenCategoryRowId(null);
@@ -754,10 +754,10 @@ export function AddExpenseModal({
                   <div>
                     <label className="text-xs sm:text-sm font-bold text-gray-500 dark:text-white/60 block mb-2 uppercase tracking-wider">Category Domain</label>
                     <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide">
-                      {categories.map(cat => {
+                      {categories.map((cat, catIdx) => {
                         const isCustom = customCategories.some(c => c.toLowerCase() === cat.toLowerCase());
                         return (
-                          <div key={cat} className="relative group shrink-0">
+                          <div key={`${cat}-${catIdx}`} className="relative group shrink-0">
                             <button
                               type="button"
                               onClick={() => setCategory(cat as any)}
