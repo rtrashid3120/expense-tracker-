@@ -328,8 +328,8 @@ app.get('/api/expenses', authenticateToken, async (req, res) => {
 
 app.post('/api/expenses', authenticateToken, async (req, res) => {
   try {
-    const { amount, category, note, walletId, tripId, ...details } = req.body;
-    const date = new Date().toISOString().split('T')[0];
+    const { amount, category, note, walletId, tripId, date: customDate, ...details } = req.body;
+    const date = customDate || new Date().toISOString().split('T')[0];
 
     const expense = await Expense.create({
       user_id: req.user.id,

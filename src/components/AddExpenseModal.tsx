@@ -27,6 +27,16 @@ export function AddExpenseModal({
   // Mode state: 'single' or 'batch'
   const [entryMode, setEntryMode] = useState<'single' | 'batch'>('single');
 
+  // Date state
+  const todayStr = new Date().toISOString().split('T')[0];
+  const getYesterdayStr = () => {
+    const d = new Date();
+    d.setDate(d.getDate() - 1);
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+  };
+  const yesterdayStr = getYesterdayStr();
+  const [selectedDate, setSelectedDate] = useState<string>(todayStr);
+
   // Single item state
   const [amount, setAmount] = useState('');
   const [category, setCategory] = useState<Category>(initialCategory);
@@ -226,6 +236,7 @@ export function AddExpenseModal({
           category: item.category,
           note: item.name || `${item.category} Expense`,
           walletId: targetTripId ? undefined : walletId,
+          date: selectedDate,
           ...(targetTripId ? { tripId: targetTripId } : {})
         };
         await addExpense(expenseData);
@@ -276,7 +287,8 @@ export function AddExpenseModal({
       amount: parsedAmount,
       category,
       note,
-      walletId: targetTripId ? undefined : walletId
+      walletId: targetTripId ? undefined : walletId,
+      date: selectedDate
     };
 
     if (category === 'Fuel') {
@@ -444,7 +456,47 @@ export function AddExpenseModal({
                       </div>
                       <span className="text-[10px] font-bold bg-brand-100 dark:bg-brand-neon/20 text-brand-700 dark:text-brand-neon px-2.5 py-1 rounded-full">Trip Mode</span>
                     </div>
-                  ) : (
+                  ) : null}
+                                 {/* Transaction Date Selector */}
+                  <div>
+                    <label className="text-xs sm:text-sm font-bold text-gray-500 dark:text-white/60 block mb-2 uppercase tracking-wider">Transaction Date</label>
+                    <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-hide">
+                      <button
+                        type="button"
+                        onClick={() => setSelectedDate(todayStr)}
+                        className={`px-3.5 py-2 rounded-xl text-xs font-bold transition-all whitespace-nowrap shrink-0 border cursor-pointer ${
+                          selectedDate === todayStr
+                            ? 'bg-blue-600 dark:bg-brand-neon text-white dark:text-black border-transparent shadow-sm'
+                            : 'bg-gray-50 dark:bg-white/5 border-gray-200 dark:border-white/10 text-gray-700 dark:text-white/70 hover:bg-gray-100 dark:hover:bg-white/10'
+                        }`}
+                      >
+                        📅 Today
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setSelectedDate(yesterdayStr)}
+                        className={`px-3.5 py-2 rounded-xl text-xs font-bold transition-all whitespace-nowrap shrink-0 border cursor-pointer ${
+                          selectedDate === yesterdayStr
+                            ? 'bg-purple-600 dark:bg-brand-neon text-white dark:text-black border-transparent shadow-sm'
+                            : 'bg-gray-50 dark:bg-white/5 border-gray-200 dark:border-white/10 text-gray-700 dark:text-white/70 hover:bg-gray-100 dark:hover:bg-white/10'
+                        }`}
+                      >
+                        ⏪ Yesterday
+                      </button>
+
+                      <div className="shrink-0 flex items-center">
+                        <input
+                          type="date"
+                          max={todayStr}
+                          value={selectedDate}
+                          onChange={(e) => setSelectedDate(e.target.value)}
+                          className="bg-gray-50 dark:bg-white/5 border border-gray-200 dark:border-white/10 text-xs font-bold text-gray-800 dark:text-white rounded-xl px-3 py-2 outline-none cursor-pointer focus:ring-2 focus:ring-blue-500 dark:focus:ring-brand-neon"
+                        />
+                      </div>
+                    </div>
+                  </div>
+
+                  {!initialTripId && (
                     <div>
                       <label className="text-xs font-bold text-gray-500 dark:text-white/60 block mb-2 uppercase tracking-wider">Source Wallet</label>
                       <div className="flex gap-2">
@@ -621,8 +673,48 @@ export function AddExpenseModal({
                       </div>
                       <span className="text-[10px] sm:text-xs font-bold bg-brand-100 dark:bg-brand-neon/20 text-brand-700 dark:text-brand-neon px-2.5 py-1 rounded-full">Trip Mode</span>
                     </div>
-                  ) : (
-                    category !== 'Travel' && (
+                  ) : null}
+
+                  {/* Transaction Date Selector */}
+                  <div>
+                    <label className="text-xs sm:text-sm font-bold text-gray-500 dark:text-white/60 block mb-2 uppercase tracking-wider">Transaction Date</label>
+                    <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-hide">
+                      <button
+                        type="button"
+                        onClick={() => setSelectedDate(todayStr)}
+                        className={`px-3.5 py-2 rounded-xl text-xs font-bold transition-all whitespace-nowrap shrink-0 border cursor-pointer ${
+                          selectedDate === todayStr
+                            ? 'bg-blue-600 dark:bg-brand-neon text-white dark:text-black border-transparent shadow-sm'
+                            : 'bg-gray-50 dark:bg-white/5 border-gray-200 dark:border-white/10 text-gray-700 dark:text-white/70 hover:bg-gray-100 dark:hover:bg-white/10'
+                        }`}
+                      >
+                        📅 Today
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setSelectedDate(yesterdayStr)}
+                        className={`px-3.5 py-2 rounded-xl text-xs font-bold transition-all whitespace-nowrap shrink-0 border cursor-pointer ${
+                          selectedDate === yesterdayStr
+                            ? 'bg-purple-600 dark:bg-brand-neon text-white dark:text-black border-transparent shadow-sm'
+                            : 'bg-gray-50 dark:bg-white/5 border-gray-200 dark:border-white/10 text-gray-700 dark:text-white/70 hover:bg-gray-100 dark:hover:bg-white/10'
+                        }`}
+                      >
+                        ⏪ Yesterday
+                      </button>
+
+                      <div className="shrink-0 flex items-center">
+                        <input
+                          type="date"
+                          max={todayStr}
+                          value={selectedDate}
+                          onChange={(e) => setSelectedDate(e.target.value)}
+                          className="bg-gray-50 dark:bg-white/5 border border-gray-200 dark:border-white/10 text-xs font-bold text-gray-800 dark:text-white rounded-xl px-3 py-2 outline-none cursor-pointer focus:ring-2 focus:ring-blue-500 dark:focus:ring-brand-neon"
+                        />
+                      </div>
+                    </div>
+                  </div>
+
+                  {!initialTripId && category !== 'Travel' && (
                       <div>
                         <label className="text-xs sm:text-sm font-bold text-gray-500 dark:text-white/60 block mb-2 uppercase tracking-wider">Source Wallet</label>
                         <div className="flex gap-2">
@@ -641,8 +733,7 @@ export function AddExpenseModal({
                           </button>
                         </div>
                       </div>
-                    )
-                  )}
+                    )}
 
                   <div>
                     <label className="text-xs sm:text-sm font-bold text-gray-500 dark:text-white/60 block mb-2 uppercase tracking-wider">Amount</label>
