@@ -56,7 +56,8 @@ app.post('/api/auth/signup', async (req, res) => {
     const { email, password, username, full_name } = req.body;
     if (!email || !password) return res.status(400).json({ error: 'Email and password required' });
 
-    const existingUser = await User.findOne({ email });
+    const cleanEmail = email.trim().toLowerCase();
+    const existingUser = await User.findOne({ email: cleanEmail });
     if (existingUser) return res.status(400).json({ error: 'Email already registered' });
 
     const cleanUsername = username ? (username.startsWith('@') ? username : `@${username}`) : `@user_${generateShortId()}`;
@@ -64,7 +65,7 @@ app.post('/api/auth/signup', async (req, res) => {
     const short_id = generateShortId();
 
     const newUser = await User.create({
-      email,
+      email: cleanEmail,
       password_hash,
       username: cleanUsername,
       full_name: full_name || 'ExpenseHub User',
@@ -93,7 +94,10 @@ app.post('/api/auth/signup', async (req, res) => {
 app.post('/api/auth/login', async (req, res) => {
   try {
     const { email, password } = req.body;
-    const user = await User.findOne({ email });
+    if (!email) return res.status(400).json({ error: 'Email required' });
+
+    const cleanEmail = email.trim().toLowerCase();
+    const user = await User.findOne({ email: cleanEmail });
     if (!user) return res.status(400).json({ error: 'Invalid email or password' });
 
     const isValid = await bcrypt.compare(password, user.password_hash);
@@ -123,7 +127,8 @@ app.post('/api/auth/google', async (req, res) => {
     const { email, full_name, avatar_url } = req.body;
     if (!email) return res.status(400).json({ error: 'Email required' });
 
-    let user = await User.findOne({ email });
+    const cleanEmail = email.trim().toLowerCase();
+    let user = await User.findOne({ email: cleanEmail });
     
     if (!user) {
       // Create new user for Google login

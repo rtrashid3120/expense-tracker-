@@ -18,11 +18,12 @@ export function Login() {
     setIsLoading(true);
     setError(null);
 
+    const cleanEmail = email.trim().toLowerCase();
     try {
       if (isLogin) {
-        await api.login(email, password);
+        await api.login(cleanEmail, password);
       } else {
-        await api.signup(email, password);
+        await api.signup(cleanEmail, password);
       }
       await initAuth();
     } catch (err: any) {
