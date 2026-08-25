@@ -46,23 +46,54 @@ export function Login() {
     const cleanEmail = email.trim().toLowerCase();
     try {
       if (isLogin) {
-        await api.login(cleanEmail, password);
+        // 1. Try MongoDB backend login first
+        try {
+          await api.login(cleanEmail, password);
+        } catch (mongoErr: any) {
+          // 2. Fallback: Try Supabase Auth login if registered on Supabase
+          try {
+            const { data, error: supaErr } = await supabase.auth.signInWithPassword({
+              email: cleanEmail,
+              password: password
+            });
+            if (supaErr || !data?.user) {
+              throw mongoErr;
+            }
+            // Auto-sync Supabase user session to backend API
+            await api.googleLogin(cleanEmail, data.user.user_metadata?.full_name);
+          } catch (e) {
+            throw mongoErr;
+          }
+        }
       } else {
+        // Sign Up Mode
         try {
           await api.signup(cleanEmail, password);
         } catch (signupErr: any) {
-          // If email is already registered, automatically switch to sign-in mode and authenticate!
           if (signupErr.message && (signupErr.message.toLowerCase().includes('already registered') || signupErr.message.toLowerCase().includes('already exists'))) {
             setIsLogin(true);
             await api.login(cleanEmail, password);
           } else {
-            throw signupErr;
+            // Also try Supabase SignUp if MongoDB signup returns an error
+            try {
+              const { data, error: supaErr } = await supabase.auth.signUp({
+                email: cleanEmail,
+                password: password
+              });
+              if (!supaErr && data?.user) {
+                await api.googleLogin(cleanEmail);
+              } else {
+                throw signupErr;
+              }
+            } catch (e) {
+              throw signupErr;
+            }
           }
         }
       }
       await initAuth();
     } catch (err: any) {
-      setError(err.message || 'An error occurred during authentication');
+      setError(err.message || 'Invalid email or password. Please check your credentials.');
     } finally {
       setIsLoading(false);
     }
