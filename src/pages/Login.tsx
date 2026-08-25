@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { api } from '../api';
 import { useAppStore } from '../store';
@@ -12,6 +12,17 @@ export function Login() {
   const [error, setError] = useState<string | null>(null);
 
   const { initAuth } = useAppStore();
+
+  // Safety timeout: Auto-reset isLoading back to false after 8 seconds if stuck
+  useEffect(() => {
+    let timer: any;
+    if (isLoading) {
+      timer = setTimeout(() => {
+        setIsLoading(false);
+      }, 8000);
+    }
+    return () => clearTimeout(timer);
+  }, [isLoading]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -48,7 +59,8 @@ export function Login() {
       });
       if (error) throw error;
     } catch (err: any) {
-      setError(err.message || 'An error occurred during Google authentication');
+      setError(err.message || 'Google Auth service is currently unavailable. Please use Instant Demo or Email login below.');
+    } finally {
       setIsLoading(false);
     }
   };
