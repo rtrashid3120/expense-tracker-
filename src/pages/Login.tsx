@@ -24,6 +24,20 @@ export function Login() {
     return () => clearTimeout(timer);
   }, [isLoading]);
 
+  // Reset loading state when page is restored from Back button (BFCache) or tab focus
+  useEffect(() => {
+    const resetLoading = () => {
+      setIsLoading(false);
+    };
+
+    window.addEventListener('pageshow', resetLoading);
+    window.addEventListener('focus', resetLoading);
+    return () => {
+      window.removeEventListener('pageshow', resetLoading);
+      window.removeEventListener('focus', resetLoading);
+    };
+  }, []);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
