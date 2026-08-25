@@ -24,10 +24,35 @@ const STORAGE_KEY = 'expensehub_ai_chat_messages';
 const quickPrompts = [
   'spent 50 coffee',
   'delete spent 50 coffee',
-  'how much i spent on grocery',
   'How much spent this month?',
   'Which wallet has highest balance?'
 ];
+
+const getCategoryKeywords = (querySubject: string): string[] => {
+  const k = querySubject.toLowerCase().trim();
+  
+  if (/grocery|groceries|vegetable|veg|milk|fruit|supermarket|biscuit|snack/i.test(k)) {
+    return ['grocery', 'groceries', 'food', 'vegetable', 'milk', 'fruit', 'snack', 'biscuit'];
+  }
+  if (/coffee|tea|cafe|starbucks|dining|food|lunch|dinner|restaurant|pizza|burger|swiggy|zomato/i.test(k)) {
+    return ['coffee', 'tea', 'dining', 'food', 'lunch', 'dinner', 'restaurant', 'pizza', 'burger', 'cafe'];
+  }
+  if (/fuel|petrol|diesel|cab|uber|ola|bus|train|flight|auto|transport|travel/i.test(k)) {
+    return ['fuel', 'petrol', 'diesel', 'cab', 'transport', 'travel', 'uber', 'ola', 'auto'];
+  }
+  if (/rent|flat|electricity|water|wifi|bill|maintenance/i.test(k)) {
+    return ['rent', 'bill', 'electricity', 'water', 'wifi'];
+  }
+  if (/medical|doctor|medicine|hospital|pharmacy|tablet/i.test(k)) {
+    return ['medical', 'doctor', 'medicine', 'hospital', 'tablet'];
+  }
+  if (/shopping|cloth|clothes|shoes|amazon|flipkart/i.test(k)) {
+    return ['shopping', 'cloth', 'clothes', 'shoes', 'amazon', 'flipkart'];
+  }
+
+  const singular = k.replace(/(es|s)$/i, '');
+  return [k, singular];
+};
 
 export function AIChatDrawer() {
   const [isOpen, setIsOpen] = useState(false);
@@ -125,9 +150,17 @@ export function AIChatDrawer() {
     setMessages(prev => [...prev, userMessage]);
     if (!textToSend) setInputMsg('');
 
-    // Filter out expenses belonging to deleted / inactive wallets
-    const activeWalletIds = new Set(wallets.map(w => w.id || (w as any)._id));
-    const validExpenses = expenses.filter(e => e.walletId && activeWalletIds.has(e.walletId));
+    // Re-fetch fresh store state
+    const storeState = useAppStore.getState();
+    const currentWallets = storeState.wallets.length > 0 ? storeState.wallets : wallets;
+    const currentExpenses = storeState.expenses.length > 0 ? storeState.expenses : expenses;
+
+    // Filter out expenses belonging to deleted / inactive wallets with string ID normalization
+    const activeWalletIds = new Set(currentWallets.map(w => String(w.id || (w as any)._id)));
+    const validExpenses = currentExpenses.filter(e => {
+      if (!e.walletId) return true;
+      return activeWalletIds.has(String(e.walletId));
+    });
 
     // Check 1: Expense Deletion Intent (e.g. "delete spent 50 coffee", "remove coffee 50")
     const isDeleteIntent = /\b(delete|remove|cancel|undo|erase|drop)\b/i.test(query);
@@ -255,7 +288,7 @@ export function AIChatDrawer() {
       else if (/rent|flat|electricity|water|wifi|bill/i.test(cleanNoteLower)) category = 'Rent';
       else if (/shopping|cloth|clothes|shoes|amazon|flipkart/i.test(cleanNoteLower)) category = 'Shopping';
 
-      if (wallets.length >= 2) {
+      if (currentWallets.length >= 2) {
         const aiMessage: ChatMessage = {
           id: (Date.now() + 1).toString(),
           sender: 'ai',
@@ -265,9 +298,9 @@ export function AIChatDrawer() {
         };
         setMessages(prev => [...prev, aiMessage]);
         return;
-      } else if (wallets.length === 1) {
+      } else if (currentWallets.length === 1) {
         try {
-          const targetW = wallets[0];
+          const targetW = currentWallets[0];
           const targetWId = targetW.id || (targetW as any)._id;
           await api.addExpense({
             walletId: targetWId,
@@ -318,11 +351,15 @@ export function AIChatDrawer() {
         ? rawSubject.charAt(0).toUpperCase() + rawSubject.slice(1)
         : 'All Expenses';
 
-      // Base list filtered by subject
+      // Base list filtered by subject using fuzzy keywords
       let matching = validExpenses;
       if (subject !== 'All Expenses') {
-        const k = subject.toLowerCase();
-        matching = validExpenses.filter(e => (e.note && e.note.toLowerCase().includes(k)) || e.category.toLowerCase().includes(k));
+        const keywords = getCategoryKeywords(subject);
+        matching = validExpenses.filter(e => {
+          const noteLower = (e.note || '').toLowerCase();
+          const catLower = (e.category || '').toLowerCase();
+          return keywords.some(kw => noteLower.includes(kw) || catLower.includes(kw));
+        });
       }
 
       // STEP 1: If user has NOT specified a wallet yet, ALWAYS prompt Step 1: Select Wallet First!
@@ -335,9 +372,9 @@ export function AIChatDrawer() {
 
         const walletOptions = [
           { label: `👛 All Active Wallets (₹${totalAll.toLocaleString('en-IN')})`, prompt: `Show ${subject} expenses in All Wallets` },
-          ...wallets.map(w => {
-            const wId = w.id || (w as any)._id;
-            const wTotal = matching.filter(e => e.walletId === wId).reduce((sum, e) => sum + e.amount, 0);
+          ...currentWallets.map(w => {
+            const wId = String(w.id || (w as any)._id);
+            const wTotal = matching.filter(e => String(e.walletId) === wId).reduce((sum, e) => sum + e.amount, 0);
             return {
               label: `👛 ${w.name} (₹${wTotal.toLocaleString('en-IN')})`,
               prompt: `Show ${subject} expenses in ${w.name} wallet`
@@ -364,7 +401,7 @@ export function AIChatDrawer() {
 
       if (rawWalletName.toLowerCase() !== 'all wallets') {
         const cleanSearch = rawWalletName.replace(/\(.*?\)/g, '').trim().toLowerCase();
-        targetWallet = wallets.find(w => 
+        targetWallet = currentWallets.find(w => 
           w.name.toLowerCase() === cleanSearch ||
           w.name.toLowerCase().includes(cleanSearch) || 
           cleanSearch.includes(w.name.toLowerCase())
@@ -372,8 +409,8 @@ export function AIChatDrawer() {
 
         if (targetWallet) {
           walletDisplayName = targetWallet.name;
-          const targetWId = targetWallet.id || targetWallet._id;
-          matching = matching.filter(e => e.walletId === targetWId);
+          const targetWId = String(targetWallet.id || (targetWallet as any)._id);
+          matching = matching.filter(e => String(e.walletId) === targetWId);
         }
       }
 
