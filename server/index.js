@@ -60,9 +60,10 @@ app.post('/api/auth/signup', async (req, res) => {
     const existingUser = await User.findOne({ email: cleanEmail });
     if (existingUser) return res.status(400).json({ error: 'Email already registered' });
 
-    const cleanUsername = username ? (username.startsWith('@') ? username : `@${username}`) : `@user_${generateShortId()}`;
-    const password_hash = await bcrypt.hash(password, 10);
     const short_id = generateShortId();
+    const emailPrefix = cleanEmail.split('@')[0].replace(/[^a-z0-9_]/g, '');
+    const cleanUsername = username ? (username.startsWith('@') ? username : `@${username}`) : `@${emailPrefix || 'user'}_${short_id.slice(-4)}`;
+    const password_hash = await bcrypt.hash(password, 10);
 
     const newUser = await User.create({
       email: cleanEmail,
