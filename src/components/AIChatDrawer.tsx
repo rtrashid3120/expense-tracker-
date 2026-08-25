@@ -473,6 +473,119 @@ export function AIChatDrawer() {
       return;
     }
 
+    // Check 1.6: Wallet Balances Query Intent
+    const isWalletQuery = /\b(wallet balance|highest balance|which wallet|all wallets|wallet total|wallet list|my wallets|top wallet)\b/i.test(query);
+    if (isWalletQuery && !isDeleteIntent && !isAddExpenseIntent) {
+      let replyText = `👛 **Active Wallets & Balances**:\n\n`;
+      const sortedWallets = [...currentWallets].sort((a, b) => b.balance - a.balance);
+      
+      sortedWallets.forEach((w, idx) => {
+        const topBadge = idx === 0 ? ' 👑 (Highest Balance)' : '';
+        replyText += `• **${w.name}**: ₹${w.balance.toLocaleString('en-IN')}${topBadge}\n`;
+      });
+
+      const totalBalance = currentWallets.reduce((sum, w) => sum + w.balance, 0);
+      replyText += `\n💰 **Total Across Wallets**: ₹${totalBalance.toLocaleString('en-IN')}`;
+
+      const aiMsg: ChatMessage = {
+        id: (Date.now() + 1).toString(),
+        sender: 'ai',
+        text: replyText,
+        timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+      };
+      setMessages(prev => [...prev, aiMsg]);
+      return;
+    }
+
+    // Check 1.7: Highest / Largest Expense Query Intent
+    const isHighestExpenseQuery = /\b(highest expense|biggest spend|largest expense|max spend|top expense|biggest expense|highest item)\b/i.test(query);
+    if (isHighestExpenseQuery && !isDeleteIntent && !isAddExpenseIntent) {
+      if (validExpenses.length === 0) {
+        const aiMsg: ChatMessage = {
+          id: (Date.now() + 1).toString(),
+          sender: 'ai',
+          text: `ℹ️ You haven't recorded any expenses yet!`,
+          timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+        };
+        setMessages(prev => [...prev, aiMsg]);
+        return;
+      }
+
+      const topExp = [...validExpenses].sort((a, b) => b.amount - a.amount)[0];
+      const walletName = currentWallets.find(w => String(w.id || (w as any)._id) === String(topExp.walletId))?.name || 'Wallet';
+
+      let replyText = `🏆 **Highest Recorded Expense**:\n\n`;
+      replyText += `- **Amount**: ₹${topExp.amount.toLocaleString('en-IN')}\n`;
+      replyText += `- **Item**: ${topExp.note || topExp.category}\n`;
+      replyText += `- **Category**: ${topExp.category}\n`;
+      replyText += `- **Wallet**: ${walletName}\n`;
+      replyText += `- **Date**: ${new Date(topExp.date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}`;
+
+      const aiMsg: ChatMessage = {
+        id: (Date.now() + 1).toString(),
+        sender: 'ai',
+        text: replyText,
+        timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+      };
+      setMessages(prev => [...prev, aiMsg]);
+      return;
+    }
+
+    // Check 1.8: Spending Velocity / Daily Average Intent
+    const isVelocityQuery = /\b(spending velocity|velocity|how fast|daily average|burn rate|daily spend|average daily)\b/i.test(query);
+    if (isVelocityQuery && !isDeleteIntent && !isAddExpenseIntent) {
+      const now = new Date();
+      const currentMonthExpenses = validExpenses.filter(e => {
+        const d = new Date(e.date);
+        return d.getFullYear() === now.getFullYear() && d.getMonth() === now.getMonth();
+      });
+
+      const totalThisMonth = currentMonthExpenses.reduce((sum, e) => sum + e.amount, 0);
+      const dayOfMonth = now.getDate();
+      const dailyAverage = Math.round(totalThisMonth / (dayOfMonth || 1));
+      const projectedMonth = dailyAverage * 30;
+
+      let replyText = `⚡ **Your Spending Velocity Insights**:\n\n`;
+      replyText += `• **Spent This Month**: ₹${totalThisMonth.toLocaleString('en-IN')}\n`;
+      replyText += `• **Daily Average Pace**: ₹${dailyAverage.toLocaleString('en-IN')} / day\n`;
+      replyText += `• **Projected Month End**: ₹${projectedMonth.toLocaleString('en-IN')}\n\n`;
+      if (monthlyBudget > 0) {
+        const percentUsed = Math.round((totalThisMonth / monthlyBudget) * 100);
+        replyText += `📊 **Budget Usage**: ${percentUsed}% of your ₹${monthlyBudget.toLocaleString('en-IN')} monthly budget used.`;
+      }
+
+      const aiMsg: ChatMessage = {
+        id: (Date.now() + 1).toString(),
+        sender: 'ai',
+        text: replyText,
+        timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+      };
+      setMessages(prev => [...prev, aiMsg]);
+      return;
+    }
+
+    // Check 1.9: Greeting & Help Intent
+    const isGreetingQuery = /^(hi|hello|hey|help|commands|what can you do|who created this|who made you|about)\b/i.test(query.trim());
+    if (isGreetingQuery && !isDeleteIntent && !isAddExpenseIntent) {
+      let replyText = `👋 **Hi there! I'm ExpenseHub AI**, your 24/7 financial assistant.\n\n`;
+      replyText += `Here are things you can ask me:\n`;
+      replyText += `• 📝 **Add Expenses**: *"spent 50 coffee yesterday"*, *"paid 200 petrol on 10 aug"*\n`;
+      replyText += `• 🗑️ **Delete Expenses**: *"delete spent 50 coffee"*, *"remove 200 fuel"*\n`;
+      replyText += `• 📊 **Check Spending**: *"how much i spent on grocery"*, *"show fuel expenses"*\n`;
+      replyText += `• 👛 **Wallet Balances**: *"which wallet has highest balance"*, *"show wallet total"*\n`;
+      replyText += `• ⚡ **Spending Velocity**: *"how fast am i spending"*, *"highest expense"*\n\n`;
+      replyText += `💡 *Crafted with ❤️ for ExpenseHub by Mohamed Rashid.*`;
+
+      const aiMsg: ChatMessage = {
+        id: (Date.now() + 1).toString(),
+        sender: 'ai',
+        text: replyText,
+        timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+      };
+      setMessages(prev => [...prev, aiMsg]);
+      return;
+    }
+
 
 
     setIsLoading(true);
