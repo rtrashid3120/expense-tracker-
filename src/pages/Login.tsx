@@ -48,7 +48,17 @@ export function Login() {
       if (isLogin) {
         await api.login(cleanEmail, password);
       } else {
-        await api.signup(cleanEmail, password);
+        try {
+          await api.signup(cleanEmail, password);
+        } catch (signupErr: any) {
+          // If email is already registered, automatically switch to sign-in mode and authenticate!
+          if (signupErr.message && (signupErr.message.toLowerCase().includes('already registered') || signupErr.message.toLowerCase().includes('already exists'))) {
+            setIsLogin(true);
+            await api.login(cleanEmail, password);
+          } else {
+            throw signupErr;
+          }
+        }
       }
       await initAuth();
     } catch (err: any) {
