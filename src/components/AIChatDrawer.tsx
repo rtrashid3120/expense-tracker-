@@ -658,6 +658,113 @@ export function AIChatDrawer() {
       return;
     }
 
+    // Check 1.85: Category Breakdown & Percentage Distribution Intent
+    const isCategoryBreakdownQuery = /\b(category breakdown|top categories|category distribution|where is my money going|spending by category|categories summary)\b/i.test(query);
+    if (isCategoryBreakdownQuery && !isDeleteIntent && !isAddExpenseIntent) {
+      if (validExpenses.length === 0) {
+        const aiMsg: ChatMessage = {
+          id: (Date.now() + 1).toString(),
+          sender: 'ai',
+          text: `ℹ️ No expenses recorded yet to analyze categories!`,
+          timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+        };
+        setMessages(prev => [...prev, aiMsg]);
+        return;
+      }
+
+      const catMap: Record<string, number> = {};
+      let totalAll = 0;
+      validExpenses.forEach(e => {
+        const cat = e.category || 'Other';
+        catMap[cat] = (catMap[cat] || 0) + e.amount;
+        totalAll += e.amount;
+      });
+
+      const sortedCats = Object.entries(catMap).sort((a, b) => b[1] - a[1]);
+
+      let replyText = `📊 **Category Spending Breakdown**:\n\n`;
+      sortedCats.forEach(([cat, amt], idx) => {
+        const percent = Math.round((amt / (totalAll || 1)) * 100);
+        const topBadge = idx === 0 ? ' 👑 (Highest Spend)' : '';
+        replyText += `• **${cat}**: ₹${amt.toLocaleString('en-IN')} (${percent}%)${topBadge}\n`;
+      });
+      replyText += `\n💰 **Total Expenditure**: ₹${totalAll.toLocaleString('en-IN')}`;
+
+      const aiMsg: ChatMessage = {
+        id: (Date.now() + 1).toString(),
+        sender: 'ai',
+        text: replyText,
+        timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+      };
+      setMessages(prev => [...prev, aiMsg]);
+      return;
+    }
+
+    // Check 1.86: Safe to Spend / Daily Budget Advice Intent
+    const isSafeToSpendQuery = /\b(safe to spend|can i spend|how much can i spend|budget advice|budget health|daily limit|available budget)\b/i.test(query);
+    if (isSafeToSpendQuery && !isDeleteIntent && !isAddExpenseIntent) {
+      const now = new Date();
+      const daysInMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
+      const daysRemaining = daysInMonth - now.getDate() + 1;
+
+      const totalBalance = currentWallets.reduce((sum, w) => sum + w.balance, 0);
+      const safeDailyLimit = Math.max(0, Math.round(totalBalance / (daysRemaining || 1)));
+
+      let replyText = `💡 **Financial Health & Safe-to-Spend Advice**:\n\n`;
+      replyText += `• **Total Wallet Cash Available**: ₹${totalBalance.toLocaleString('en-IN')}\n`;
+      replyText += `• **Days Remaining in Month**: ${daysRemaining} days\n`;
+      replyText += `• **Recommended Daily Allowance**: ₹${safeDailyLimit.toLocaleString('en-IN')} / day\n\n`;
+
+      const numMatch = query.match(/(\d+)/);
+      if (numMatch) {
+        const proposedAmount = Number(numMatch[1]);
+        if (proposedAmount <= safeDailyLimit) {
+          replyText += `✅ **Yes! Spending ₹${proposedAmount} is within your safe daily limit of ₹${safeDailyLimit}.**`;
+        } else {
+          replyText += `⚠️ **Caution**: Spending ₹${proposedAmount} exceeds your safe daily limit of ₹${safeDailyLimit}. Consider pacing your expenses.`;
+        }
+      } else {
+        replyText += `Stay under ₹${safeDailyLimit} per day to keep your wallets healthy until the end of the month!`;
+      }
+
+      const aiMsg: ChatMessage = {
+        id: (Date.now() + 1).toString(),
+        sender: 'ai',
+        text: replyText,
+        timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+      };
+      setMessages(prev => [...prev, aiMsg]);
+      return;
+    }
+
+    // Check 1.87: Price Range / Threshold Search Intent (e.g. "expenses over 500", "expenses under 100")
+    const isThresholdQuery = /\b(expenses over|expenses under|above|below|more than|less than|greater than)\b/i.test(query);
+    if (isThresholdQuery && !isDeleteIntent && !isAddExpenseIntent) {
+      const numMatch = query.match(/(\d+)/);
+      const threshold = numMatch ? Number(numMatch[1]) : 500;
+      const isAbove = /\b(over|above|more than|greater than)\b/i.test(query);
+
+      const filtered = validExpenses.filter(e => isAbove ? e.amount >= threshold : e.amount <= threshold);
+      const totalAmount = filtered.reduce((s, e) => s + e.amount, 0);
+
+      let replyText = `🔍 **Expenses ${isAbove ? '≥' : '≤'} ₹${threshold.toLocaleString('en-IN')}** (${filtered.length} found):\n\n`;
+      if (filtered.length > 0) {
+        replyText += filtered.map(e => `• ₹${e.amount.toLocaleString('en-IN')} - ${e.note || e.category} (${new Date(e.date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })})`).join('\n');
+        replyText += `\n\n💰 **Subtotal**: ₹${totalAmount.toLocaleString('en-IN')}`;
+      } else {
+        replyText += `No expenses found matching this threshold.`;
+      }
+
+      const aiMsg: ChatMessage = {
+        id: (Date.now() + 1).toString(),
+        sender: 'ai',
+        text: replyText,
+        timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+      };
+      setMessages(prev => [...prev, aiMsg]);
+      return;
+    }
+
     // Check 1.9: Greeting & Help Intent
     const isGreetingQuery = /^(hi|hello|hey|help|commands|what can you do|who created this|who made you|about)\b/i.test(query.trim());
     if (isGreetingQuery && !isDeleteIntent && !isAddExpenseIntent) {
