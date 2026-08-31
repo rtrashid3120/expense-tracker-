@@ -14,7 +14,14 @@ interface ChatMessage {
   sender: 'user' | 'ai';
   text: string;
   timestamp: string;
-  walletPrompt?: { amount: number; category: string; note: string; date?: string; dateLabel?: string };
+  walletPrompt?: { 
+    amount: number; 
+    category: string; 
+    note: string; 
+    date?: string; 
+    dateLabel?: string;
+    multiItems?: Array<{ amount: number; category: string; note: string; date?: string; dateLabel?: string }>;
+  };
   periodPrompts?: string[];
   optionGroups?: OptionGroup[];
 }
@@ -52,6 +59,107 @@ const getCategoryKeywords = (querySubject: string): string[] => {
 
   const singular = k.replace(/(es|s)$/i, '');
   return [k, singular];
+};
+
+const parseMultiExpenses = (query: string) => {
+  let cleanedQuery = query.toLowerCase();
+  
+  // 1. Extract target date first (e.g. "on 26 aug", "yesterday", "2 days ago")
+  let targetDateStr = new Date().toISOString().split('T')[0];
+  let dateDisplayLabel = '';
+  const now = new Date();
+
+  // Check relative day keywords
+  if (/\b(yesterday)\b/i.test(cleanedQuery)) {
+    const d = new Date();
+    d.setDate(now.getDate() - 1);
+    targetDateStr = d.toISOString().split('T')[0];
+    dateDisplayLabel = `Yesterday (${d.toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })})`;
+    cleanedQuery = cleanedQuery.replace(/\b(yesterday)\b/gi, '');
+  } else if (/\b(day before yesterday)\b/i.test(cleanedQuery)) {
+    const d = new Date();
+    d.setDate(now.getDate() - 2);
+    targetDateStr = d.toISOString().split('T')[0];
+    dateDisplayLabel = `Day before yesterday (${d.toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })})`;
+    cleanedQuery = cleanedQuery.replace(/\b(day before yesterday)\b/gi, '');
+  } else if (/(\d+)\s+days?\s+ago/i.test(cleanedQuery)) {
+    const daysMatch = cleanedQuery.match(/(\d+)\s+days?\s+ago/i);
+    if (daysMatch) {
+      const daysAgo = parseInt(daysMatch[1]);
+      const d = new Date();
+      d.setDate(now.getDate() - daysAgo);
+      targetDateStr = d.toISOString().split('T')[0];
+      dateDisplayLabel = `${daysAgo} days ago (${d.toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })})`;
+      cleanedQuery = cleanedQuery.replace(/(\d+)\s+days?\s+ago/gi, '');
+    }
+  } else {
+    const months = ["jan", "feb", "mar", "apr", "may", "jun", "jul", "aug", "sep", "oct", "nov", "dec"];
+    const dayMonthMatch = cleanedQuery.match(/\b(?:on\s+)?(\d{1,2})(?:st|nd|rd|th)?\s+(jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|may|jun(?:e)?|jul(?:y)?|aug(?:ust)?|sep(?:tember)?|oct(?:ober)?|nov(?:ember)?|dec(?:ember)?)(?:\s+(\d{4}))?\b/i);
+    const monthDayMatch = cleanedQuery.match(/\b(?:on\s+)?(jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|may|jun(?:e)?|jul(?:y)?|aug(?:ust)?|sep(?:tember)?|oct(?:ober)?|nov(?:ember)?|dec(?:ember)?)\s+(\d{1,2})(?:st|nd|rd|th)?(?:\s+(\d{4}))?\b/i);
+
+    let matchedMonth = -1;
+    let day = -1;
+    let year = now.getFullYear();
+
+    if (dayMonthMatch) {
+      day = parseInt(dayMonthMatch[1]);
+      const mStr = dayMonthMatch[2].toLowerCase();
+      matchedMonth = months.findIndex(m => mStr.startsWith(m));
+      if (dayMonthMatch[3]) year = parseInt(dayMonthMatch[3]);
+      cleanedQuery = cleanedQuery.replace(dayMonthMatch[0], '');
+    } else if (monthDayMatch) {
+      const mStr = monthDayMatch[1].toLowerCase();
+      matchedMonth = months.findIndex(m => mStr.startsWith(m));
+      day = parseInt(monthDayMatch[2]);
+      if (monthDayMatch[3]) year = parseInt(monthDayMatch[3]);
+      cleanedQuery = cleanedQuery.replace(monthDayMatch[0], '');
+    }
+
+    if (matchedMonth !== -1 && day > 0 && day <= 31) {
+      const d = new Date(year, matchedMonth, day);
+      targetDateStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+      dateDisplayLabel = d.toLocaleDateString('en-IN', { day: 'numeric', month: 'short' });
+    }
+  }
+
+  // 2. Split into multi-clause items by comma or "and" / "&"
+  const rawClauses = cleanedQuery.split(/,|\band\b|&/i).map(s => s.trim()).filter(Boolean);
+  const items: Array<{ amount: number; category: string; note: string; date?: string; dateLabel?: string }> = [];
+
+  for (const clause of rawClauses) {
+    const numMatch = clause.match(/(\d+)/);
+    if (!numMatch) continue;
+
+    const amount = Number(numMatch[1]);
+    let note = clause
+      .replace(/(\d+)/g, '')
+      .replace(/\b(spent|add|log|bought|paid|on|for|rupees|rs|₹)\b/gi, '')
+      .trim();
+
+    if (!note) note = 'Expense';
+    
+    // Capitalize note
+    const formattedNote = note.charAt(0).toUpperCase() + note.slice(1);
+
+    // Infer category
+    let category = 'Other';
+    const noteLower = note.toLowerCase();
+    if (/coffee|tea|cafe|starbucks|dining|food|lunch|dinner|restaurant|pizza|burger|snack|chicken/i.test(noteLower)) category = 'Dining';
+    else if (/fuel|petrol|diesel|cab|uber|ola|bus|train|flight|auto/i.test(noteLower)) category = 'Transport';
+    else if (/grocery|groceries|banana|apple|fruit|supermarket|vegetables|milk|fruits|rice/i.test(noteLower)) category = 'Groceries';
+    else if (/rent|flat|electricity|water|wifi|bill/i.test(noteLower)) category = 'Rent';
+    else if (/shopping|cloth|clothes|shoes|amazon|flipkart/i.test(noteLower)) category = 'Shopping';
+
+    items.push({
+      amount,
+      category,
+      note: formattedNote,
+      date: targetDateStr,
+      dateLabel: dateDisplayLabel
+    });
+  }
+
+  return { items, targetDateStr, dateDisplayLabel };
 };
 
 export function AIChatDrawer() {
@@ -107,26 +215,54 @@ export function AIChatDrawer() {
     return () => window.removeEventListener('open-ai-chat', handleOpen);
   }, []);
 
-  const handleSelectWallet = async (msgId: string, wallet: any, prompt: { amount: number; category: string; note: string; date?: string; dateLabel?: string }) => {
+  const handleSelectWallet = async (
+    msgId: string, 
+    wallet: any, 
+    prompt: { 
+      amount: number; 
+      category: string; 
+      note: string; 
+      date?: string; 
+      dateLabel?: string;
+      multiItems?: Array<{ amount: number; category: string; note: string; date?: string; dateLabel?: string }>;
+    }
+  ) => {
     try {
       const walletId = wallet.id || wallet._id;
-      await api.addExpense({
-        amount: prompt.amount,
-        category: prompt.category,
-        note: prompt.note,
-        walletId,
-        ...(prompt.date ? { date: prompt.date } : {})
-      });
+      const itemsToAdd = prompt.multiItems && prompt.multiItems.length > 0
+        ? prompt.multiItems
+        : [{ amount: prompt.amount, category: prompt.category, note: prompt.note, date: prompt.date, dateLabel: prompt.dateLabel }];
 
-      // Silent refetch without page loading spinner or re-mount
+      for (const item of itemsToAdd) {
+        await api.addExpense({
+          amount: item.amount,
+          category: item.category,
+          note: item.note,
+          walletId,
+          ...(item.date ? { date: item.date } : {})
+        });
+      }
+
       await fetchData(true);
+
+      let confirmText = '';
+      if (itemsToAdd.length === 1) {
+        confirmText = `✅ **Successfully Recorded in ${wallet.name}!**\n- **Amount:** ₹${itemsToAdd[0].amount}\n- **Category:** ${itemsToAdd[0].category}\n- **Item:** ${itemsToAdd[0].note}${itemsToAdd[0].dateLabel ? `\n- **Date:** ${itemsToAdd[0].dateLabel}` : ''}\n- **Wallet:** ${wallet.name}`;
+      } else {
+        confirmText = `✅ **Successfully Recorded ${itemsToAdd.length} Expenses in ${wallet.name}!**\n\n`;
+        itemsToAdd.forEach(it => {
+          confirmText += `• ₹${it.amount} - ${it.note} (${it.category})\n`;
+        });
+        const total = itemsToAdd.reduce((s, i) => s + i.amount, 0);
+        confirmText += `\n💰 **Total Logged:** ₹${total.toLocaleString('en-IN')}`;
+      }
 
       setMessages(prev => prev.map(m => {
         if (m.id === msgId) {
           return {
             ...m,
             walletPrompt: undefined,
-            text: `✅ **Successfully Recorded in ${wallet.name}!**\n- **Amount:** ₹${prompt.amount}\n- **Category:** ${prompt.category}\n- **Item:** ${prompt.note}${prompt.dateLabel ? `\n- **Date:** ${prompt.dateLabel}` : ''}\n- **Wallet:** ${wallet.name}`
+            text: confirmText
           };
         }
         return m;
@@ -208,119 +344,77 @@ export function AIChatDrawer() {
       }
     }
 
-    // Check 1.2: Add Expense Intent (e.g. "spent 50 on coffee yesterday", "spent 200 fuel on 10 aug")
+    // Check 1.2: Add Expense Intent (supports single and compound multi-item commands like "spent 100 on coffee , 100 on thoufika on 26 aug")
     const numMatch = query.match(/(\d+)/);
     const isExplicitViewQuery = /^(show|view|how much|how many|what is|check|list|find|get)\b/i.test(query.trim());
     const isAddExpenseIntent = numMatch && !isExplicitViewQuery && !isDeleteIntent;
 
     if (isAddExpenseIntent) {
-      const amount = Number(numMatch[1]);
-      
-      // Parse custom date from query if user specifies "yesterday", "10 aug", "2 days ago", etc.
-      let targetDateStr = new Date().toISOString().split('T')[0];
-      let dateDisplayLabel = '';
-      const now = new Date();
+      const { items, dateDisplayLabel } = parseMultiExpenses(query);
 
-      let cleanedQuery = query.toLowerCase();
-
-      // Check relative day keywords
-      if (/\b(yesterday)\b/i.test(cleanedQuery)) {
-        const d = new Date();
-        d.setDate(now.getDate() - 1);
-        targetDateStr = d.toISOString().split('T')[0];
-        dateDisplayLabel = `Yesterday (${d.toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })})`;
-        cleanedQuery = cleanedQuery.replace(/\b(yesterday)\b/gi, '');
-      } else if (/\b(day before yesterday)\b/i.test(cleanedQuery)) {
-        const d = new Date();
-        d.setDate(now.getDate() - 2);
-        targetDateStr = d.toISOString().split('T')[0];
-        dateDisplayLabel = `Day before yesterday (${d.toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })})`;
-        cleanedQuery = cleanedQuery.replace(/\b(day before yesterday)\b/gi, '');
-      } else if (/(\d+)\s+days?\s+ago/i.test(cleanedQuery)) {
-        const daysMatch = cleanedQuery.match(/(\d+)\s+days?\s+ago/i);
-        if (daysMatch) {
-          const daysAgo = parseInt(daysMatch[1]);
-          const d = new Date();
-          d.setDate(now.getDate() - daysAgo);
-          targetDateStr = d.toISOString().split('T')[0];
-          dateDisplayLabel = `${daysAgo} days ago (${d.toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })})`;
-          cleanedQuery = cleanedQuery.replace(/(\d+)\s+days?\s+ago/gi, '');
-        }
-      } else {
-        const months = ["jan", "feb", "mar", "apr", "may", "jun", "jul", "aug", "sep", "oct", "nov", "dec"];
-        const dayMonthMatch = cleanedQuery.match(/\b(?:on\s+)?(\d{1,2})(?:st|nd|rd|th)?\s+(jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|may|jun(?:e)?|jul(?:y)?|aug(?:ust)?|sep(?:tember)?|oct(?:ober)?|nov(?:ember)?|dec(?:ember)?)(?:\s+(\d{4}))?\b/i);
-        const monthDayMatch = cleanedQuery.match(/\b(?:on\s+)?(jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|may|jun(?:e)?|jul(?:y)?|aug(?:ust)?|sep(?:tember)?|oct(?:ober)?|nov(?:ember)?|dec(?:ember)?)\s+(\d{1,2})(?:st|nd|rd|th)?(?:\s+(\d{4}))?\b/i);
-
-        let matchedMonth = -1;
-        let day = -1;
-        let year = now.getFullYear();
-
-        if (dayMonthMatch) {
-          day = parseInt(dayMonthMatch[1]);
-          const mStr = dayMonthMatch[2].toLowerCase();
-          matchedMonth = months.findIndex(m => mStr.startsWith(m));
-          if (dayMonthMatch[3]) year = parseInt(dayMonthMatch[3]);
-          cleanedQuery = cleanedQuery.replace(dayMonthMatch[0], '');
-        } else if (monthDayMatch) {
-          const mStr = monthDayMatch[1].toLowerCase();
-          matchedMonth = months.findIndex(m => mStr.startsWith(m));
-          day = parseInt(monthDayMatch[2]);
-          if (monthDayMatch[3]) year = parseInt(monthDayMatch[3]);
-          cleanedQuery = cleanedQuery.replace(monthDayMatch[0], '');
-        }
-
-        if (matchedMonth !== -1 && day > 0 && day <= 31) {
-          const d = new Date(year, matchedMonth, day);
-          targetDateStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-          dateDisplayLabel = d.toLocaleDateString('en-IN', { day: 'numeric', month: 'short' });
-        }
-      }
-
-      let note = cleanedQuery.replace(/(\d+)/g, '').replace(/\b(spent|add|log|bought|paid|on|for|rupees|rs|₹)\b/gi, '').trim();
-      if (!note) note = 'Expense';
-
-      // Infer category from note
-      let category = 'Other';
-      const cleanNoteLower = note.toLowerCase();
-      if (/coffee|tea|cafe|starbucks|dining|food|lunch|dinner|restaurant|pizza|burger|snack|chicken/i.test(cleanNoteLower)) category = 'Dining';
-      else if (/fuel|petrol|diesel|cab|uber|ola|bus|train|flight|auto/i.test(cleanNoteLower)) category = 'Transport';
-      else if (/grocery|groceries|supermarket|vegetables|milk|fruits|rice/i.test(cleanNoteLower)) category = 'Groceries';
-      else if (/rent|flat|electricity|water|wifi|bill/i.test(cleanNoteLower)) category = 'Rent';
-      else if (/shopping|cloth|clothes|shoes|amazon|flipkart/i.test(cleanNoteLower)) category = 'Shopping';
-
-      if (currentWallets.length >= 2) {
-        const aiMessage: ChatMessage = {
-          id: (Date.now() + 1).toString(),
-          sender: 'ai',
-          text: `Which wallet should I add **${note} (₹${amount})**${dateDisplayLabel ? ` for **${dateDisplayLabel}**` : ''} to?`,
-          walletPrompt: { amount, category, note, date: targetDateStr, dateLabel: dateDisplayLabel },
-          timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-        };
-        setMessages(prev => [...prev, aiMessage]);
-        return;
-      } else if (currentWallets.length === 1) {
-        try {
-          const targetW = currentWallets[0];
-          const targetWId = targetW.id || (targetW as any)._id;
-          await api.addExpense({
-            walletId: targetWId,
-            amount,
-            category,
-            note,
-            date: targetDateStr
-          });
-          await fetchData(true);
+      if (items.length > 0) {
+        if (currentWallets.length >= 2) {
+          const isMulti = items.length > 1;
+          const totalSum = items.reduce((s, i) => s + i.amount, 0);
+          const summaryText = isMulti 
+            ? `Which wallet should I add these **${items.length} expenses** (Total ₹${totalSum.toLocaleString('en-IN')})${dateDisplayLabel ? ` for **${dateDisplayLabel}**` : ''} to?`
+            : `Which wallet should I add **${items[0].note} (₹${items[0].amount})**${dateDisplayLabel ? ` for **${dateDisplayLabel}**` : ''} to?`;
 
           const aiMessage: ChatMessage = {
             id: (Date.now() + 1).toString(),
             sender: 'ai',
-            text: `✅ Added ₹${amount} for "${note}" (${category})${dateDisplayLabel ? ` on ${dateDisplayLabel}` : ''} to "${targetW.name}" wallet!`,
+            text: summaryText,
+            walletPrompt: {
+              amount: items[0].amount,
+              category: items[0].category,
+              note: items[0].note,
+              date: items[0].date,
+              dateLabel: dateDisplayLabel,
+              multiItems: items
+            },
             timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
           };
           setMessages(prev => [...prev, aiMessage]);
           return;
-        } catch (err: any) {
-          alert(err.message || 'Failed to add expense');
+        } else if (currentWallets.length === 1) {
+          try {
+            const targetW = currentWallets[0];
+            const targetWId = targetW.id || (targetW as any)._id;
+
+            for (const item of items) {
+              await api.addExpense({
+                walletId: targetWId,
+                amount: item.amount,
+                category: item.category,
+                note: item.note,
+                date: item.date
+              });
+            }
+            await fetchData(true);
+
+            let confirmText = '';
+            if (items.length === 1) {
+              confirmText = `✅ Added ₹${items[0].amount} for "${items[0].note}" (${items[0].category})${dateDisplayLabel ? ` on ${dateDisplayLabel}` : ''} to "${targetW.name}" wallet!`;
+            } else {
+              confirmText = `✅ **Added ${items.length} Expenses**${dateDisplayLabel ? ` for **${dateDisplayLabel}**` : ''} to "${targetW.name}" wallet:\n\n`;
+              items.forEach(it => {
+                confirmText += `• ₹${it.amount} - "${it.note}" (${it.category})\n`;
+              });
+              const totalAmount = items.reduce((s, i) => s + i.amount, 0);
+              confirmText += `\n💰 **Total Logged:** ₹${totalAmount.toLocaleString('en-IN')}`;
+            }
+
+            const aiMessage: ChatMessage = {
+              id: (Date.now() + 1).toString(),
+              sender: 'ai',
+              text: confirmText,
+              timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+            };
+            setMessages(prev => [...prev, aiMessage]);
+            return;
+          } catch (err: any) {
+            alert(err.message || 'Failed to add expenses');
+          }
         }
       }
     }
