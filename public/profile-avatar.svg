@@ -1,0 +1,92 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" fill="none">
+  <defs>
+    <!-- Background Gradient -->
+    <linearGradient id="bgGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#060C18" />
+      <stop offset="50%" stop-color="#091326" />
+      <stop offset="100%" stop-color="#040810" />
+    </linearGradient>
+
+    <!-- Subtle Blueprint Grid Pattern -->
+    <pattern id="grid" width="20" height="20" patternUnits="userSpaceOnUse">
+      <path d="M 20 0 L 0 0 0 20" fill="none" stroke="#112240" stroke-width="0.75" stroke-opacity="0.4" />
+    </pattern>
+
+    <!-- Vibrant Electric Cyan Gradient -->
+    <linearGradient id="cyanGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#4EFFF3" />
+      <stop offset="50%" stop-color="#2DD4BF" />
+      <stop offset="100%" stop-color="#00F0FF" />
+    </linearGradient>
+
+    <!-- Ambient Cyan Glow -->
+    <filter id="neonGlow" x="-30%" y="-30%" width="160%" height="160%">
+      <feGaussianBlur stdDeviation="6" result="blur" />
+      <feComposite in="SourceGraphic" in2="blur" operator="over" />
+    </filter>
+  </defs>
+
+  <!-- Dark Grid Background Canvas -->
+  <rect width="200" height="200" rx="40" fill="url(#bgGrad)" />
+  <rect width="200" height="200" rx="40" fill="url(#grid)" />
+
+  <!-- Outer Ambient Glow -->
+  <g opacity="0.4" filter="url(#neonGlow)">
+    <!-- Outer Diamond C-Shape -->
+    <path
+      d="M152 76 L100 24 L24 100 L100 176 L152 124"
+      stroke="#00F0FF"
+      stroke-width="14"
+      stroke-linecap="square"
+      stroke-linejoin="miter"
+      fill="none"
+    />
+    <!-- Inner Diagonal Line -->
+    <path
+      d="M58 84 L84 58"
+      stroke="#00F0FF"
+      stroke-width="14"
+      stroke-linecap="square"
+      fill="none"
+    />
+    <!-- Inner Chevron Loop -->
+    <path
+      d="M92 66 L134 108 L92 150 L58 116"
+      stroke="#00F0FF"
+      stroke-width="14"
+      stroke-linecap="square"
+      stroke-linejoin="miter"
+      fill="none"
+    />
+  </g>
+
+  <!-- Main Crisp Vector Geometric Monogram -->
+  <!-- 1. Outer Diamond Bracket -->
+  <path
+    d="M152 76 L100 24 L24 100 L100 176 L152 124"
+    stroke="url(#cyanGrad)"
+    stroke-width="14"
+    stroke-linecap="square"
+    stroke-linejoin="miter"
+    fill="none"
+  />
+
+  <!-- 2. Inner Top-Left Diagonal Bar -->
+  <path
+    d="M58 84 L84 58"
+    stroke="url(#cyanGrad)"
+    stroke-width="14"
+    stroke-linecap="square"
+    fill="none"
+  />
+
+  <!-- 3. Inner Angular Hook -->
+  <path
+    d="M92 66 L134 108 L92 150 L58 116"
+    stroke="url(#cyanGrad)"
+    stroke-width="14"
+    stroke-linecap="square"
+    stroke-linejoin="miter"
+    fill="none"
+  />
+</svg>

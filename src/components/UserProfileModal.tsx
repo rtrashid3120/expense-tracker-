@@ -1,5 +1,5 @@
 import { motion, AnimatePresence } from 'framer-motion';
-import { FiX, FiUser, FiMail, FiHash, FiAtSign } from 'react-icons/fi';
+import { FiX, FiMail, FiHash, FiAtSign } from 'react-icons/fi';
 
 interface UserProfileModalProps {
   isOpen: boolean;
@@ -48,13 +48,13 @@ export function UserProfileModal({ isOpen, onClose, user }: UserProfileModalProp
             </div>
 
             <div className="flex flex-col items-center text-center space-y-4">
-              <div className="w-24 h-24 rounded-full bg-gradient-to-tr from-brand-neon to-brand-purple p-[3px] shadow-[0_0_20px_rgba(0,240,255,0.3)]">
-                <div className="w-full h-full bg-white dark:bg-gray-900 rounded-full flex items-center justify-center overflow-hidden">
-                  {user.avatar_url || user.avatar ? (
-                    <img src={user.avatar_url || user.avatar} className="w-full h-full object-cover" alt={displayName} />
-                  ) : (
-                    <FiUser size={40} className="text-brand-600 dark:text-brand-neon" />
-                  )}
+              <div className="w-24 h-24 rounded-full bg-gradient-to-tr from-brand-neon to-brand-purple p-[3px] shadow-[0_0_25px_rgba(0,240,255,0.4)]">
+                <div className="w-full h-full bg-[#091326] rounded-full flex items-center justify-center overflow-hidden">
+                  <img 
+                    src={user.avatar_url || user.avatar || '/profile-avatar.svg'} 
+                    className="w-full h-full object-cover" 
+                    alt={displayName} 
+                  />
                 </div>
               </div>
 

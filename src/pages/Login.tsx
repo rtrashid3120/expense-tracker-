@@ -3,6 +3,7 @@ import { motion } from 'framer-motion';
 import { api } from '../api';
 import { useAppStore } from '../store';
 import { supabase } from '../lib/supabase';
+import { AppLogo } from '../components/AppLogo';
 
 export function Login() {
   const [isLogin, setIsLogin] = useState(true);
@@ -150,10 +151,9 @@ export function Login() {
       >
         <div className="glass-panel p-8 md:p-12 relative z-10">
           <div className="text-center mb-10">
-            <div className="w-16 h-16 bg-gradient-to-tr from-brand-neon to-brand-purple rounded-2xl flex items-center justify-center mx-auto mb-6 shadow-[0_0_30px_rgba(0,240,255,0.4)]">
-              <span className="text-3xl">💎</span>
+            <div className="flex justify-center mb-5">
+              <AppLogo size={52} showText={true} animated />
             </div>
-            <h1 className="text-3xl font-black text-gray-900 dark:text-white mb-2 tracking-tight">ExpenseHub</h1>
             <p className="text-gray-500 dark:text-white/60 font-medium">
               {isLogin ? 'Welcome back to your dashboard' : 'Create an account to get started'}
             </p>

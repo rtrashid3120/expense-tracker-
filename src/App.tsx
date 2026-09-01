@@ -14,6 +14,7 @@ import { BottomNav } from './components/BottomNav';
 import { Sidebar } from './components/Sidebar';
 import { AddExpenseModal } from './components/AddExpenseModal';
 import { AIChatDrawer } from './components/AIChatDrawer';
+import { AppLogo } from './components/AppLogo';
 import { useAppStore } from './store';
 import { FiLogOut } from 'react-icons/fi';
 
@@ -52,12 +53,7 @@ function Layout({ children, onAddClick }: { children: React.ReactNode; onAddClic
       <div className="flex-1 flex flex-col h-full relative overflow-hidden">
         {/* Mobile Header Bar */}
         <header className="md:hidden flex justify-between items-center px-4 py-3 bg-white/80 dark:bg-dark-surface/90 backdrop-blur-2xl border-b border-gray-200/60 dark:border-white/10 sticky top-0 z-40">
-          <div className="flex items-center gap-2.5">
-            <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-blue-600 to-purple-600 dark:from-brand-neon dark:to-brand-purple flex items-center justify-center text-white font-black text-sm shadow-md">
-              E
-            </div>
-            <span className="font-black text-base text-gray-900 dark:text-white tracking-tight">Expense<span className="text-gradient">Hub</span></span>
-          </div>
+          <AppLogo size={28} showText={true} />
 
           <button 
             onClick={signOut}

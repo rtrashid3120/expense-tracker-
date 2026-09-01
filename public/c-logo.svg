@@ -1,0 +1,57 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" fill="none">
+  <!-- Background Canvas with Subtle Dark Blueprint Grid -->
+  <rect width="100" height="100" rx="18" fill="#060C18" />
+  
+  <!-- Grid Lines -->
+  <path d="M 25 0 V 100 M 50 0 V 100 M 75 0 V 100 M 0 25 H 100 M 0 50 H 100 M 0 75 H 100" stroke="#0E1A2E" stroke-width="0.75" />
+
+  <!-- Ambient Neon Glow -->
+  <g opacity="0.5" filter="url(#glow)">
+    <path d="M 87 47 L 53 13 L 13 53 L 47 87" stroke="#38E1D2" stroke-width="8.5" stroke-linecap="square" stroke-linejoin="miter" />
+    <path d="M 53 89 L 87 55" stroke="#38E1D2" stroke-width="8.5" stroke-linecap="square" />
+    <path d="M 32 45 L 45 32" stroke="#38E1D2" stroke-width="8.5" stroke-linecap="square" />
+    <path d="M 50 32 L 70 52 L 50 72 L 32 54" stroke="#38E1D2" stroke-width="8.5" stroke-linecap="square" stroke-linejoin="miter" />
+  </g>
+
+  <defs>
+    <filter id="glow" x="-20%" y="-20%" width="140%" height="140%">
+      <feGaussianBlur stdDeviation="3" result="blur" />
+      <feComposite in="SourceGraphic" in2="blur" operator="over" />
+    </filter>
+  </defs>
+
+  <!-- Crisp Exact Vector Lines -->
+  <!-- 1. Outer Top & Left & Bottom-Left Bracket -->
+  <path
+    d="M 87 47 L 53 13 L 13 53 L 47 87"
+    stroke="#38E1D2"
+    stroke-width="8.5"
+    stroke-linecap="square"
+    stroke-linejoin="miter"
+  />
+
+  <!-- 2. Outer Bottom-Right Arm -->
+  <path
+    d="M 53 89 L 87 55"
+    stroke="#38E1D2"
+    stroke-width="8.5"
+    stroke-linecap="square"
+  />
+
+  <!-- 3. Inner Top-Left Diagonal Bar -->
+  <path
+    d="M 32 45 L 45 32"
+    stroke="#38E1D2"
+    stroke-width="8.5"
+    stroke-linecap="square"
+  />
+
+  <!-- 4. Inner Chevron Hook -->
+  <path
+    d="M 50 32 L 70 52 L 50 72 L 32 54"
+    stroke="#38E1D2"
+    stroke-width="8.5"
+    stroke-linecap="square"
+    stroke-linejoin="miter"
+  />
+</svg>

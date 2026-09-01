@@ -98,12 +98,12 @@ export function Profile() {
         {/* Left Column: Profile Hub */}
         <div className="md:col-span-1 space-y-6">
           <div className="glass-card p-6 text-center">
-            <div className="w-24 h-24 mx-auto rounded-full bg-gradient-to-tr from-brand-neon to-brand-purple flex items-center justify-center shadow-[0_0_20px_rgba(0,240,255,0.3)] mb-4">
-              {profile?.avatar_url ? (
-                <img src={profile.avatar_url} className="w-full h-full rounded-full border-2 border-white/20" alt="avatar" />
-              ) : (
-                <FiUser size={40} className="text-white" />
-              )}
+            <div className="w-24 h-24 mx-auto rounded-full bg-gradient-to-tr from-brand-neon to-brand-purple p-[3px] shadow-[0_0_25px_rgba(0,240,255,0.4)] mb-4">
+              <img 
+                src={profile?.avatar_url || '/profile-avatar.svg'} 
+                className="w-full h-full rounded-full object-cover border-2 border-white/20 bg-[#091326]" 
+                alt="avatar" 
+              />
             </div>
 
             {!isEditingProfile ? (

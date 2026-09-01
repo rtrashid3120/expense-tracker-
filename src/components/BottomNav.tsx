@@ -15,8 +15,8 @@ export function BottomNav({ onAddClick }: { onAddClick: () => void }) {
     { id: '/expenses', icon: FiFileText, label: 'Audit', type: 'link' },
     { id: 'add', isAdd: true, type: 'add' },
     { id: '/trips', icon: FiMap, label: 'Trips', type: 'link' },
-    { id: '/profile', icon: FiUser, label: 'Profile', type: 'link' },
-    { id: 'ai', icon: FiCpu, label: 'AI Bot', type: 'ai', onClick: handleOpenAI }
+    { id: 'ai', icon: FiCpu, label: 'AI Bot', type: 'ai', onClick: handleOpenAI },
+    { id: '/profile', icon: FiUser, label: 'Profile', type: 'link' }
   ];
 
   return (

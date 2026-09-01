@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { motion } from 'framer-motion';
 import { useAppStore } from '../store';
+import { AppLogo } from '../components/AppLogo';
 
 export function Onboarding() {
   const [username, setUsername] = useState('');
@@ -36,10 +37,9 @@ export function Onboarding() {
         className="glass-card max-w-md w-full p-8"
       >
         <div className="text-center mb-8">
-          <div className="w-16 h-16 bg-gradient-to-tr from-brand-neon to-brand-purple rounded-2xl flex items-center justify-center mx-auto mb-6 shadow-[0_0_30px_rgba(0,240,255,0.4)]">
-            <span className="text-3xl">👋</span>
+          <div className="flex justify-center mb-4">
+            <AppLogo size={52} showText={true} animated />
           </div>
-          <h1 className="text-2xl font-black text-gray-900 dark:text-white mb-2">Welcome to ExpenseHub!</h1>
           <p className="text-gray-500 dark:text-white/60 font-medium">Choose a unique username so your friends can find you.</p>
         </div>
 
