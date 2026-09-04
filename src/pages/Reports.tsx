@@ -7,7 +7,8 @@ import {
   FiCalendar, 
   FiChevronLeft, 
   FiChevronRight, 
-  FiRotateCcw 
+  FiRotateCcw,
+  FiTrash2
 } from 'react-icons/fi';
 
 const MONTH_NAMES = [
@@ -21,9 +22,18 @@ const MONTH_SHORT = [
 ];
 
 export function Reports() {
-  const expenses = useAppStore(state => state.expenses);
-  const wallets = useAppStore(state => state.wallets);
-  
+  const { expenses, wallets, deleteExpense } = useAppStore();
+
+  const handleDelete = async (id: string) => {
+    if (confirm('Are you sure you want to delete this expense from the audit trail?')) {
+      try {
+        await deleteExpense(id);
+      } catch (err: any) {
+        alert(err.message || 'Failed to delete expense');
+      }
+    }
+  };
+
   const today = new Date();
   const currentRealYear = today.getFullYear();
   const currentRealMonth = today.getMonth();
@@ -400,7 +410,16 @@ export function Reports() {
                         </div>
                         <span className="text-xs font-medium text-gray-500 dark:text-white/50 mt-0.5">{exp.note || 'No notes'}</span>
                       </div>
-                      <span className="font-black text-gray-900 dark:text-white text-lg">₹{exp.amount.toLocaleString('en-IN')}</span>
+                      <div className="flex items-center gap-3">
+                        <span className="font-black text-gray-900 dark:text-white text-lg">₹{exp.amount.toLocaleString('en-IN')}</span>
+                        <button
+                          onClick={() => handleDelete(exp.id)}
+                          className="p-2 text-gray-400 hover:text-red-500 dark:hover:text-red-400 transition-colors rounded-full hover:bg-gray-100 dark:hover:bg-white/5"
+                          title="Delete Record"
+                        >
+                          <FiTrash2 size={16} />
+                        </button>
+                      </div>
                     </div>
                   );
                 })}
