@@ -7,7 +7,6 @@ import {
   FiCalendar, 
   FiChevronLeft, 
   FiChevronRight, 
-  FiCheck,
   FiRotateCcw 
 } from 'react-icons/fi';
 
@@ -33,20 +32,9 @@ export function Reports() {
   const [selectedYear, setSelectedYear] = useState<number>(currentRealYear);
   const [selectedMonth, setSelectedMonth] = useState<number>(currentRealMonth);
   
-  // Modal State for Month/Year Picker
-  const [isDatePickerOpen, setIsDatePickerOpen] = useState(false);
-  // Temporary picker states inside modal
-  const [tempYear, setTempYear] = useState<number>(currentRealYear);
-
   // Selected Day in Heatmap
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
   const [selectedWalletId, setSelectedWalletId] = useState<string>('ALL');
-
-  // Open modal handler: sync temp state with active selected state
-  const handleOpenPicker = () => {
-    setTempYear(selectedYear);
-    setIsDatePickerOpen(true);
-  };
 
   // Quick navigation: Previous Month
   const handlePrevMonth = () => {
@@ -75,27 +63,8 @@ export function Reports() {
     setSelectedYear(currentRealYear);
     setSelectedMonth(currentRealMonth);
     setSelectedDate(null);
-    setIsDatePickerOpen(false);
   };
 
-  // Generate dynamic list of selectable years (from 2020 through 2035+ and any recorded expense years)
-  const availableYears = useMemo(() => {
-    const yearsSet = new Set<number>();
-    const minYear = 2020;
-    const maxYear = Math.max(2035, currentRealYear + 10, tempYear + 2);
-
-    for (let y = minYear; y <= maxYear; y++) {
-      yearsSet.add(y);
-    }
-    // Also include any years from recorded expenses
-    expenses.forEach(exp => {
-      if (exp.date) {
-        const y = new Date(exp.date).getFullYear();
-        if (!isNaN(y)) yearsSet.add(y);
-      }
-    });
-    return Array.from(yearsSet).sort((a, b) => a - b);
-  }, [expenses, currentRealYear, tempYear]);
 
   // Generate calendar data for the selected month and year
   const calendarData = useMemo(() => {
@@ -200,12 +169,6 @@ export function Reports() {
   const firstDayOfMonth = new Date(selectedYear, selectedMonth, 1).getDay();
   const emptyDays = Array(firstDayOfMonth).fill(null);
 
-  // Calculate expense count per month for the temporary selected year in the picker modal
-  const getExpensesCountForMonthInYear = (monthIdx: number, year: number) => {
-    const prefix = `${year}-${String(monthIdx + 1).padStart(2, '0')}`;
-    return expenses.filter(e => e.date && e.date.startsWith(prefix)).length;
-  };
-
   return (
     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="p-4 md:p-6 max-w-5xl mx-auto pb-24">
       {/* Header & Date Selector Controls */}
@@ -227,15 +190,28 @@ export function Reports() {
             <FiChevronLeft size={18} />
           </button>
 
-          {/* Interactive Calendar Month/Year Picker Button */}
-          <button
-            onClick={handleOpenPicker}
-            title="Choose Month and Year"
-            className="flex items-center gap-2.5 px-4 py-2 rounded-xl bg-gradient-to-r from-blue-600/10 to-purple-600/10 dark:from-brand-neon/15 dark:to-brand-purple/15 border border-blue-200 dark:border-brand-neon/30 text-blue-700 dark:text-brand-neon font-black text-sm shadow-sm hover:scale-105 active:scale-95 transition-all cursor-pointer"
-          >
-            <FiCalendar size={16} className="text-blue-600 dark:text-brand-neon" />
-            <span>{MONTH_NAMES[selectedMonth]} {selectedYear}</span>
-          </button>
+          {/* Interactive Native Date Picker */}
+          <div className="relative shrink-0 flex-1 sm:w-48">
+            <FiCalendar className="absolute left-3 top-1/2 -translate-y-1/2 text-blue-600 dark:text-brand-neon z-10 pointer-events-none" size={16} />
+            <input
+              type="date"
+              value={selectedDate || ''}
+              onChange={(e) => {
+                const val = e.target.value;
+                if (val) {
+                  const [y, m, _d] = val.split('-');
+                  setSelectedYear(parseInt(y, 10));
+                  setSelectedMonth(parseInt(m, 10) - 1);
+                  setSelectedDate(val);
+                  setSelectedWalletId('ALL');
+                } else {
+                  setSelectedDate(null);
+                }
+              }}
+              title="Choose Date"
+              className="w-full bg-gradient-to-r from-blue-600/10 to-purple-600/10 dark:from-brand-neon/15 dark:to-brand-purple/15 border border-blue-200 dark:border-brand-neon/30 rounded-xl py-2 pl-9 pr-3 text-sm font-black text-blue-700 dark:text-brand-neon outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-brand-neon transition-all shadow-sm [&::-webkit-calendar-picker-indicator]:dark:invert [&::-webkit-calendar-picker-indicator]:cursor-pointer [&::-webkit-calendar-picker-indicator]:opacity-60 hover:[&::-webkit-calendar-picker-indicator]:opacity-100"
+            />
+          </div>
 
           <button
             onClick={handleNextMonth}
@@ -443,164 +419,7 @@ export function Reports() {
       {/* ========================================================= */}
       {/* 📅 MONTH & YEAR CALENDAR SELECTION MODAL */}
       {/* ========================================================= */}
-      <AnimatePresence>
-        {isDatePickerOpen && (
-          <div className="fixed inset-0 bg-black/75 backdrop-blur-md z-[120] flex items-center justify-center p-4">
-            <motion.div
-              initial={{ scale: 0.92, opacity: 0, y: 20 }}
-              animate={{ scale: 1, opacity: 1, y: 0 }}
-              exit={{ scale: 0.92, opacity: 0, y: 20 }}
-              className="bg-white dark:bg-[#0c1017] border border-gray-200 dark:border-white/15 rounded-[2.5rem] p-6 sm:p-8 max-w-lg w-full shadow-2xl relative overflow-hidden"
-            >
-              {/* Background ambient accents */}
-              <div className="absolute top-0 right-0 w-64 h-64 bg-brand-neon/10 rounded-full blur-[80px] pointer-events-none" />
-              <div className="absolute bottom-0 left-0 w-64 h-64 bg-brand-purple/10 rounded-full blur-[80px] pointer-events-none" />
 
-              {/* Modal Header */}
-              <div className="flex justify-between items-center mb-6 relative z-10">
-                <div className="flex items-center gap-3">
-                  <div className="w-11 h-11 rounded-2xl bg-gradient-to-br from-blue-600/20 to-purple-600/20 dark:from-brand-neon/20 dark:to-brand-purple/20 border border-blue-500/30 dark:border-brand-neon/30 flex items-center justify-center text-blue-600 dark:text-brand-neon shadow-sm">
-                    <FiCalendar size={20} />
-                  </div>
-                  <div>
-                    <h3 className="text-xl font-black text-gray-900 dark:text-white">Choose Month & Year</h3>
-                    <p className="text-xs text-gray-500 dark:text-white/60 font-medium">Select any month to inspect historical heatmaps.</p>
-                  </div>
-                </div>
-
-                <button
-                  onClick={() => setIsDatePickerOpen(false)}
-                  className="w-9 h-9 rounded-full bg-gray-100 dark:bg-white/10 hover:bg-gray-200 dark:hover:bg-white/20 text-gray-500 dark:text-white/70 flex items-center justify-center transition-all cursor-pointer"
-                >
-                  <FiX size={18} />
-                </button>
-              </div>
-
-              {/* 1. SEPARATE YEAR SELECTOR */}
-              <div className="mb-6 relative z-10">
-                <div className="flex justify-between items-center mb-3">
-                  <span className="text-xs font-black text-gray-400 dark:text-white/50 uppercase tracking-wider">
-                    1. Select Year
-                  </span>
-                  <div className="flex items-center gap-1">
-                    <button
-                      onClick={() => setTempYear(y => y - 1)}
-                      title="Previous Year"
-                      className="w-7 h-7 rounded-lg bg-gray-100 dark:bg-white/10 flex items-center justify-center text-gray-700 dark:text-white text-xs hover:bg-gray-200 dark:hover:bg-white/20 transition-all cursor-pointer"
-                    >
-                      <FiChevronLeft size={14} />
-                    </button>
-                    <span className="text-sm font-black text-blue-600 dark:text-brand-neon px-2">
-                      {tempYear}
-                    </span>
-                    <button
-                      onClick={() => setTempYear(y => y + 1)}
-                      title="Next Year"
-                      className="w-7 h-7 rounded-lg bg-gray-100 dark:bg-white/10 flex items-center justify-center text-gray-700 dark:text-white text-xs hover:bg-gray-200 dark:hover:bg-white/20 transition-all cursor-pointer"
-                    >
-                      <FiChevronRight size={14} />
-                    </button>
-                  </div>
-                </div>
-
-                {/* Horizontal Quick Year Pills */}
-                <div className="flex items-center gap-2 overflow-x-auto scrollbar-hide pb-1">
-                  {availableYears.map(year => {
-                    const isSelected = tempYear === year;
-                    return (
-                      <button
-                        key={year}
-                        type="button"
-                        onClick={() => setTempYear(year)}
-                        className={`px-4 py-2 rounded-2xl text-xs font-black transition-all shrink-0 border cursor-pointer ${
-                          isSelected
-                            ? 'bg-blue-600 dark:bg-brand-neon text-white dark:text-black border-transparent shadow-md scale-105'
-                            : 'bg-white dark:bg-white/5 border-gray-200 dark:border-white/10 text-gray-700 dark:text-white/70 hover:bg-gray-100 dark:hover:bg-white/10'
-                        }`}
-                      >
-                        {year}
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-
-              {/* 2. SEPARATE MONTHS LIST (3x4 Grid) */}
-              <div className="mb-6 relative z-10">
-                <span className="block text-xs font-black text-gray-400 dark:text-white/50 uppercase tracking-wider mb-3">
-                  2. Select Month in {tempYear}
-                </span>
-
-                <div className="grid grid-cols-3 sm:grid-cols-4 gap-2.5">
-                  {MONTH_NAMES.map((monthName, idx) => {
-                    const isSelected = selectedMonth === idx && selectedYear === tempYear;
-                    const isCurrentLiveMonth = currentRealMonth === idx && currentRealYear === tempYear;
-                    const expCount = getExpensesCountForMonthInYear(idx, tempYear);
-
-                    return (
-                      <button
-                        key={monthName}
-                        type="button"
-                        onClick={() => {
-                          setSelectedYear(tempYear);
-                          setSelectedMonth(idx);
-                          setSelectedDate(null);
-                          setIsDatePickerOpen(false);
-                        }}
-                        className={`p-3 rounded-2xl flex flex-col items-center justify-center gap-1 transition-all border relative cursor-pointer ${
-                          isSelected
-                            ? 'bg-gradient-to-br from-blue-600 to-purple-600 dark:from-brand-neon dark:to-brand-purple text-white dark:text-black font-black border-transparent shadow-lg scale-[1.03] z-10'
-                            : 'bg-white/80 dark:bg-white/5 border-gray-200 dark:border-white/10 text-gray-800 dark:text-white/80 hover:bg-gray-100 dark:hover:bg-white/10 hover:scale-[1.02]'
-                        }`}
-                      >
-                        <span className="text-xs sm:text-sm font-bold">
-                          {monthName}
-                        </span>
-
-                        {/* Transaction count badge or live indicator */}
-                        <div className="flex items-center gap-1">
-                          {isCurrentLiveMonth && (
-                            <span className="w-1.5 h-1.5 rounded-full bg-blue-500 dark:bg-brand-neon animate-ping"></span>
-                          )}
-                          <span className={`text-[10px] font-semibold ${isSelected ? 'text-white/90 dark:text-black/80' : 'text-gray-400 dark:text-white/40'}`}>
-                            {expCount > 0 ? `${expCount} exp` : '0 exp'}
-                          </span>
-                        </div>
-
-                        {isSelected && (
-                          <div className="absolute top-1.5 right-1.5 w-4 h-4 rounded-full bg-white/20 dark:bg-black/20 flex items-center justify-center text-[10px]">
-                            <FiCheck />
-                          </div>
-                        )}
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-
-              {/* Modal Footer Shortcuts */}
-              <div className="flex items-center justify-between gap-3 pt-4 border-t border-gray-200 dark:border-white/10 relative z-10">
-                <button
-                  type="button"
-                  onClick={handleGoToCurrentMonth}
-                  className="px-4 py-2.5 rounded-2xl bg-gray-100 dark:bg-white/5 hover:bg-gray-200 dark:hover:bg-white/10 text-gray-700 dark:text-white text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer"
-                >
-                  <FiRotateCcw size={13} />
-                  <span>Current Month ({MONTH_SHORT[currentRealMonth]} {currentRealYear})</span>
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => setIsDatePickerOpen(false)}
-                  className="px-5 py-2.5 rounded-2xl bg-gradient-to-r from-blue-600 to-purple-600 dark:from-brand-neon dark:to-brand-purple text-white dark:text-black text-xs font-black shadow-md hover:shadow-lg active:scale-95 transition-all cursor-pointer"
-                >
-                  Done
-                </button>
-              </div>
-            </motion.div>
-          </div>
-        )}
-      </AnimatePresence>
     </motion.div>
   );
 }
