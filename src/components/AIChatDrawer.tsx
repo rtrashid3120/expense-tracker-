@@ -9,6 +9,12 @@ interface OptionGroup {
   options: { label: string; prompt: string }[];
 }
 
+interface UndoPayload {
+  action: 'RESTORE_EXPENSES' | 'REVERT_UPDATE';
+  expenses?: any[];
+  updates?: { id: string, oldData: any }[];
+}
+
 interface ChatMessage {
   id: string;
   sender: 'user' | 'ai';
@@ -24,6 +30,8 @@ interface ChatMessage {
   };
   periodPrompts?: string[];
   optionGroups?: OptionGroup[];
+  undoPayload?: UndoPayload;
+  isUndone?: boolean;
 }
 
 const STORAGE_KEY = 'expensehub_ai_chat_messages';
@@ -520,6 +528,7 @@ export function AIChatDrawer() {
         const targets = validExpenses.filter(e => e.date && e.date.startsWith(fromDate));
         if (targets.length > 0) {
           try {
+            const undoUpdates = targets.map(t => ({ id: t.id || (t as any)._id, oldData: { date: t.date } }));
             for (const t of targets) {
               const tId = t.id || (t as any)._id;
               await api.updateExpense(tId, { date: toDate });
@@ -528,7 +537,8 @@ export function AIChatDrawer() {
             const aiMessage: ChatMessage = {
               id: (Date.now() + 1).toString(), sender: 'ai',
               text: `📅 **Bulk Date Transfer Complete!**\n\nI successfully shifted **${targets.length} expenses** from ${bulkDateMatch[1]} to ${bulkDateMatch[2]}.`,
-              timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+              timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+              undoPayload: { action: 'REVERT_UPDATE', updates: undoUpdates }
             };
             setMessages(prev => [...prev, aiMessage]);
             return;
@@ -558,6 +568,7 @@ export function AIChatDrawer() {
       // We only execute if we actually found targets and the parsed itemSearch isn't an amount (preventing collision with Intent 3)
       if (targets.length > 0 && isNaN(Number(itemSearch))) {
         try {
+          const undoUpdatesCat = targets.map(t => ({ id: t.id || (t as any)._id, oldData: { category: t.category } }));
           for (const t of targets) {
             const tId = t.id || (t as any)._id;
             await api.updateExpense(tId, { category: targetCategory as any });
@@ -566,7 +577,8 @@ export function AIChatDrawer() {
           const aiMessage: ChatMessage = {
             id: (Date.now() + 1).toString(), sender: 'ai',
             text: `🗂️ **Bulk Category Update Complete!**\n\nI successfully moved **${targets.length} "${itemSearch}" records** to the **${targetCategory}** category.`,
-            timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+            timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+            undoPayload: { action: 'REVERT_UPDATE', updates: undoUpdatesCat }
           };
           setMessages(prev => [...prev, aiMessage]);
           return;
@@ -585,12 +597,14 @@ export function AIChatDrawer() {
       if (target) {
         try {
           const tId = target.id || (target as any)._id;
+          const undoSingleUpdate = { id: tId, oldData: { amount: target.amount } };
           await api.updateExpense(tId, { amount: newAmount });
           await fetchData(true);
           const aiMessage: ChatMessage = {
             id: (Date.now() + 1).toString(), sender: 'ai',
             text: `✅ **Expense Amount Fixed!**\n\nI successfully updated your "${target.note || target.category}" record from ₹${oldAmount} to **₹${newAmount}**.`,
-            timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+            timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+            undoPayload: { action: 'REVERT_UPDATE', updates: [undoSingleUpdate] }
           };
           setMessages(prev => [...prev, aiMessage]);
           return;
@@ -607,6 +621,7 @@ export function AIChatDrawer() {
         
         if (targets.length > 0 && cleanNote.length >= 2) {
           try {
+            const deletedExpensesList = targets.map(t => ({ ...t }));
             for (const t of targets) {
               const tId = t.id || (t as any)._id;
               await api.deleteExpense(tId);
@@ -616,7 +631,8 @@ export function AIChatDrawer() {
               id: (Date.now() + 1).toString(),
               sender: 'ai',
               text: `🗑️ **Bulk Deletion Complete!**\n\nI successfully deleted **${targets.length} records** matching "${cleanNote}".`,
-              timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+              timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+              undoPayload: { action: 'RESTORE_EXPENSES', expenses: deletedExpensesList }
             };
             setMessages(prev => [...prev, aiMessage]);
             return;
@@ -696,6 +712,7 @@ export function AIChatDrawer() {
       if (target) {
         try {
           const targetId = target.id || (target as any)._id;
+          const singleDeletedExpense = { ...target };
           await api.deleteExpense(targetId);
           await fetchData(true);
 
@@ -703,7 +720,8 @@ export function AIChatDrawer() {
             id: (Date.now() + 1).toString(),
             sender: 'ai',
             text: `✅ **Successfully Deleted Expense!**\n- Item: ${target.note || 'Expense'}\n- Amount: ₹${target.amount}\n- Category: ${target.category}`,
-            timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+            timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+            undoPayload: { action: 'RESTORE_EXPENSES', expenses: [singleDeletedExpense] }
           };
           setMessages(prev => [...prev, aiMessage]);
           return;
@@ -1827,6 +1845,29 @@ export function AIChatDrawer() {
     }
   };
 
+  const handleUndo = async (msgId: string) => {
+    const msg = messages.find(m => m.id === msgId);
+    if (!msg || !msg.undoPayload || msg.isUndone) return;
+
+    try {
+      if (msg.undoPayload.action === 'RESTORE_EXPENSES' && msg.undoPayload.expenses) {
+        for (const e of msg.undoPayload.expenses) {
+          const { id, _id, ...rest } = e;
+          await api.addExpense(rest);
+        }
+      } else if (msg.undoPayload.action === 'REVERT_UPDATE' && msg.undoPayload.updates) {
+        for (const u of msg.undoPayload.updates) {
+          await api.updateExpense(u.id, u.oldData);
+        }
+      }
+      
+      await fetchData(true);
+      setMessages(prev => prev.map(m => m.id === msgId ? { ...m, isUndone: true, text: m.text + '\n\n↩️ **Action Reversed Successfully!**' } : m));
+    } catch (err: any) {
+      alert('Failed to undo: ' + err.message);
+    }
+  };
+
   const handleClear = () => {
     const clearedMsg: ChatMessage[] = [
       {
@@ -1934,6 +1975,19 @@ export function AIChatDrawer() {
                               </button>
                             ))}
                           </div>
+                        </div>
+                      )}
+
+                      {/* Undo Button */}
+                      {msg.undoPayload && !msg.isUndone && (
+                        <div className="mt-3 pt-2.5 border-t border-gray-200 dark:border-white/10 space-y-2">
+                          <button
+                            type="button"
+                            onClick={() => handleUndo(msg.id)}
+                            className="px-3 py-2 bg-red-50 dark:bg-red-500/10 hover:bg-red-100 dark:hover:bg-red-500/20 border border-red-200 dark:border-red-500/30 text-red-600 dark:text-red-400 font-bold text-xs rounded-xl shadow-sm transition-all active:scale-95 cursor-pointer flex items-center gap-1.5"
+                          >
+                            ↩️ Undo Action
+                          </button>
                         </div>
                       )}
 
