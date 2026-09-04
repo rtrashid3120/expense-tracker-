@@ -562,6 +562,34 @@ export function AIChatDrawer() {
         }
       }
     }
+    // FEATURE: Single Expense Amount Modification ("change the 500 rent to 600")
+    const isAmountModifyIntent = /\b(?:change|update|edit)\b.*?\b(?:the|my)?\s*(?:rs\.?|₹|inr)?\s*(\d+(?:\.\d+)?)\s+(.*?)\s+(?:expense|spending|transaction)?\b.*?\bto\b\s+(?:rs\.?|₹|inr)?\s*(\d+(?:\.\d+)?)/i.test(query);
+    if (isAmountModifyIntent) {
+      const match = query.match(/\b(?:change|update|edit)\b.*?\b(?:the|my)?\s*(?:rs\.?|₹|inr)?\s*(\d+(?:\.\d+)?)\s+(.*?)\s+(?:expense|spending|transaction)?\b.*?\bto\b\s+(?:rs\.?|₹|inr)?\s*(\d+(?:\.\d+)?)/i);
+      if (match) {
+        const oldAmount = Number(match[1]);
+        const cleanNote = match[2].trim().toLowerCase();
+        const newAmount = Number(match[3]);
+        
+        let target = validExpenses.find(e => e.amount === oldAmount && (e.note || '').toLowerCase().includes(cleanNote));
+        if (target) {
+          try {
+            const tId = target.id || (target as any)._id;
+            await api.updateExpense(tId, { amount: newAmount });
+            await fetchData(true);
+            const aiMessage: ChatMessage = {
+              id: (Date.now() + 1).toString(),
+              sender: 'ai',
+              text: `✅ **Expense Updated!**\n\nI changed your "${target.note}" expense from ₹${oldAmount} to **₹${newAmount}**.`,
+              timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+            };
+            setMessages(prev => [...prev, aiMessage]);
+            return;
+          } catch(e) { console.error(e); }
+        }
+      }
+    }
+
     const isDeleteIntent = /\b(delete|remove|cancel|undo|erase|drop)\b/i.test(query);
     if (isDeleteIntent) {
       // FEATURE: Bulk Deletion ("delete all swiggy expenses")
