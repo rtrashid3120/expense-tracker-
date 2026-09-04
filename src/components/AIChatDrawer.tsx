@@ -132,8 +132,10 @@ const parseMultiExpenses = (query: string) => {
 
     const amount = Number(numMatch[1]);
     let note = clause
-      .replace(/(\d+)/g, '')
-      .replace(/\b(spent|add|log|bought|paid|on|for|rupees|rs|₹)\b/gi, '')
+      .replace(/(\d+(?:\.\d+)?)/g, '') // remove the number part
+      .replace(/\b(spend|spending|spent|cost|gave|took|charge|charged|purchase|purchased|add|log|bought|paid|on|for|at|in|to|from|rupees|rs|inr|bucks|₹)\b/gi, '')
+      .replace(/[^\w\s-]/gi, '') // remove lingering weird symbols like commas
+      .replace(/\s+/g, ' ') // clean up double spaces
       .trim();
 
     if (!note) note = 'Expense';
@@ -144,11 +146,15 @@ const parseMultiExpenses = (query: string) => {
     // Infer category
     let category = 'Other';
     const noteLower = note.toLowerCase();
-    if (/coffee|tea|cafe|starbucks|dining|food|lunch|dinner|restaurant|pizza|burger|snack|chicken/i.test(noteLower)) category = 'Dining';
-    else if (/fuel|petrol|diesel|cab|uber|ola|bus|train|flight|auto/i.test(noteLower)) category = 'Transport';
-    else if (/grocery|groceries|banana|apple|fruit|supermarket|vegetables|milk|fruits|rice/i.test(noteLower)) category = 'Groceries';
-    else if (/rent|flat|electricity|water|wifi|bill/i.test(noteLower)) category = 'Rent';
-    else if (/shopping|cloth|clothes|shoes|amazon|flipkart/i.test(noteLower)) category = 'Shopping';
+    
+    if (/coffee|tea|cafe|starbucks|dining|food|lunch|dinner|restaurant|pizza|burger|snack|chicken|swiggy|zomato|kfc|mcdonalds/i.test(noteLower)) category = 'Dining';
+    else if (/fuel|petrol|diesel|cab|uber|ola|bus|train|flight|auto|ticket|parking|rapido/i.test(noteLower)) category = 'Transport';
+    else if (/grocery|groceries|banana|apple|fruit|supermarket|vegetables|milk|fruits|rice|bread|eggs/i.test(noteLower)) category = 'Groceries';
+    else if (/rent|flat|electricity|water|wifi|bill|maintenance/i.test(noteLower)) category = 'Rent';
+    else if (/shopping|cloth|clothes|shoes|amazon|flipkart|myntra|shirt|pant|jeans/i.test(noteLower)) category = 'Shopping';
+    else if (/medical|pharmacy|apollo|doctor|hospital|tablet|medicine|pill|health/i.test(noteLower)) category = 'Medical';
+    else if (/movie|cinema|netflix|spotify|games|concert|mall|entertainment|prime|show/i.test(noteLower)) category = 'Personal';
+    else if (/trip|travel|hotel|resort|vacation/i.test(noteLower)) category = 'Travel';
 
     items.push({
       amount,
