@@ -476,14 +476,445 @@ export function AIChatDrawer() {
       return;
     }
 
+    // Check 1.16: Navigation & UI Shortcuts (e.g. "go to reports", "take me to trips", "open dashboard")
+    const navMatch = query.match(/^(?:go to|take me to|open|show|navigate to)\s+(dashboard|reports|trips|family|audit trail|profile|settings)$/i);
+    if (navMatch) {
+      const target = navMatch[1].toLowerCase();
+      let path = '#/';
+      let pageName = 'Dashboard';
+      if (target.includes('report')) { path = '#/reports'; pageName = 'Reports & Analytics'; }
+      else if (target.includes('trip')) { path = '#/trips'; pageName = 'Trips & Vacations'; }
+      else if (target.includes('family')) { path = '#/family'; pageName = 'Family Pool'; }
+      else if (target.includes('audit')) { path = '#/audit-trail'; pageName = 'Audit Trail'; }
+      else if (target.includes('profile') || target.includes('setting')) { path = '#/profile'; pageName = 'Profile & Settings'; }
+
+      window.location.hash = path;
+      const aiMsg: ChatMessage = {
+        id: (Date.now() + 1).toString(),
+        sender: 'ai',
+        text: `🚀 **Navigating to ${pageName}...**\n\nOpening the ${pageName} page for you right now!`,
+        timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+      };
+      setMessages(prev => [...prev, aiMsg]);
+      return;
+    }
+
+    // Check 1.17: Theme Toggle (e.g. "switch to dark mode", "enable light mode")
+    const themeMatch = query.match(/\b(dark mode|light mode)\b/i);
+    if (themeMatch && /(switch|toggle|enable|turn on|set)/i.test(query)) {
+      const isDark = themeMatch[1].toLowerCase().includes('dark');
+      if (isDark) {
+        document.documentElement.classList.add('dark');
+        localStorage.setItem('theme', 'dark');
+      } else {
+        document.documentElement.classList.remove('dark');
+        localStorage.setItem('theme', 'light');
+      }
+      const aiMsg: ChatMessage = {
+        id: (Date.now() + 1).toString(),
+        sender: 'ai',
+        text: `🎨 **Theme Updated!**\n\nSwitched app theme to **${isDark ? '🌙 Dark Mode' : '☀️ Light Mode'}**.`,
+        timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+      };
+      setMessages(prev => [...prev, aiMsg]);
+      return;
+    }
+
+    // Check 1.18: Bill Splitting Calculator (e.g. "split 1200 with 4 friends", "split 1500 among 3 people")
+    const splitMatch = query.match(/split\s+(?:₹|rs\.?)?\s*(\d+)\s+(?:between|among|with)\s+(\d+)/i);
+    if (splitMatch) {
+      const totalAmount = Number(splitMatch[1]);
+      const peopleCount = Math.max(1, Number(splitMatch[2]));
+      const perPerson = Math.ceil(totalAmount / peopleCount);
+
+      let replyText = `➗ **Bill Splitting Breakdown**:\n\n`;
+      replyText += `• **Total Amount**: ₹${totalAmount.toLocaleString('en-IN')}\n`;
+      replyText += `• **Split Among**: ${peopleCount} people\n`;
+      replyText += `• **Share Per Person**: 💰 **₹${perPerson.toLocaleString('en-IN')}**\n\n`;
+      replyText += `💡 *ExpenseHub Tip: You can also record shared travel bills directly in your **Trips** tab!*`;
+
+      const aiMsg: ChatMessage = {
+        id: (Date.now() + 1).toString(),
+        sender: 'ai',
+        text: replyText,
+        timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+      };
+      setMessages(prev => [...prev, aiMsg]);
+      return;
+    }
+
+    // Check 1.19: Wallet Transfer (e.g. "transfer 2000 from HDFC to Cash")
+    const transferMatch = query.match(/transfer\s+(?:₹|rs\.?)?\s*(\d+)\s+from\s+([a-zA-Z0-9\s]+?)\s+(?:wallet\s+)?to\s+([a-zA-Z0-9\s]+?)(?:\s+wallet)?$/i);
+    if (transferMatch) {
+      const amt = Number(transferMatch[1]);
+      const fromName = transferMatch[2].trim().toLowerCase();
+      const toName = transferMatch[3].trim().toLowerCase();
+
+      const sourceWallet = currentWallets.find(w => w.name.toLowerCase().includes(fromName) || fromName.includes(w.name.toLowerCase()));
+      const targetWallet = currentWallets.find(w => w.name.toLowerCase().includes(toName) || toName.includes(w.name.toLowerCase()));
+
+      if (!sourceWallet || !targetWallet) {
+        const aiMsg: ChatMessage = {
+          id: (Date.now() + 1).toString(),
+          sender: 'ai',
+          text: `⚠️ Couldn't find one of the wallets.\nAvailable wallets: ${currentWallets.map(w => `"${w.name}"`).join(', ')}`,
+          timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+        };
+        setMessages(prev => [...prev, aiMsg]);
+        return;
+      }
+
+      if (sourceWallet.balance < amt) {
+        const aiMsg: ChatMessage = {
+          id: (Date.now() + 1).toString(),
+          sender: 'ai',
+          text: `⚠️ **Insufficient Balance in ${sourceWallet.name}!**\nAvailable: ₹${sourceWallet.balance.toLocaleString('en-IN')}, Requested: ₹${amt.toLocaleString('en-IN')}`,
+          timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+        };
+        setMessages(prev => [...prev, aiMsg]);
+        return;
+      }
+
+      try {
+        const sId = sourceWallet.id || (sourceWallet as any)._id;
+        const tId = targetWallet.id || (targetWallet as any)._id;
+        await api.transferWallets(sId, tId, amt);
+        await fetchData(true);
+
+        const aiMsg: ChatMessage = {
+          id: (Date.now() + 1).toString(),
+          sender: 'ai',
+          text: `✅ **Successfully Transferred ₹${amt.toLocaleString('en-IN')}!**\n\n• From: **${sourceWallet.name}** (New Balance: ₹${(sourceWallet.balance - amt).toLocaleString('en-IN')})\n• To: **${targetWallet.name}** (New Balance: ₹${(targetWallet.balance + amt).toLocaleString('en-IN')})`,
+          timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+        };
+        setMessages(prev => [...prev, aiMsg]);
+        return;
+      } catch (err: any) {
+        alert(err.message || 'Transfer failed');
+      }
+    }
+
+    // Check 1.20: Create Wallet (e.g. "create wallet HDFC 25000", "add wallet Cash 5000")
+    const createWalletMatch = query.match(/^(?:create|add|new)\s+wallet\s+([a-zA-Z0-9\s]+?)(?:\s+(?:with\s+)?(?:budget|balance)?)?\s+(\d+)$/i);
+    if (createWalletMatch) {
+      const wName = createWalletMatch[1].trim();
+      const wBudget = Number(createWalletMatch[2]);
+
+      try {
+        await api.createWallet(wName, wBudget);
+        await fetchData(true);
+
+        const aiMsg: ChatMessage = {
+          id: (Date.now() + 1).toString(),
+          sender: 'ai',
+          text: `👛 **Wallet "${wName}" Created Successfully!**\n\n• **Initial Budget**: ₹${wBudget.toLocaleString('en-IN')}\n• **Current Balance**: ₹${wBudget.toLocaleString('en-IN')}\n\nYou can now log expenses directly into this wallet!`,
+          timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+        };
+        setMessages(prev => [...prev, aiMsg]);
+        return;
+      } catch (err: any) {
+        alert(err.message || 'Failed to create wallet');
+      }
+    }
+
+    // Check 1.21: Delete Wallet (e.g. "delete wallet Cash")
+    const deleteWalletMatch = query.match(/^(?:delete|remove)\s+wallet\s+([a-zA-Z0-9\s]+)$/i);
+    if (deleteWalletMatch) {
+      const targetName = deleteWalletMatch[1].trim().toLowerCase();
+      const targetW = currentWallets.find(w => w.name.toLowerCase() === targetName || w.name.toLowerCase().includes(targetName));
+
+      if (targetW) {
+        try {
+          const wId = targetW.id || (targetW as any)._id;
+          await api.deleteWallet(wId);
+          await fetchData(true);
+
+          const aiMsg: ChatMessage = {
+            id: (Date.now() + 1).toString(),
+            sender: 'ai',
+            text: `🗑️ **Wallet "${targetW.name}" Deleted Successfully!**`,
+            timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+          };
+          setMessages(prev => [...prev, aiMsg]);
+          return;
+        } catch (err: any) {
+          alert(err.message || 'Failed to delete wallet');
+        }
+      } else {
+        const aiMsg: ChatMessage = {
+          id: (Date.now() + 1).toString(),
+          sender: 'ai',
+          text: `⚠️ Wallet "${deleteWalletMatch[1]}" not found.\nActive wallets: ${currentWallets.map(w => `"${w.name}"`).join(', ')}`,
+          timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+        };
+        setMessages(prev => [...prev, aiMsg]);
+        return;
+      }
+    }
+
+    // Check 1.22: Create Trip (e.g. "create trip Goa budget 20000", "new trip Manali 15000")
+    const createTripMatch = query.match(/^(?:create|add|new)\s+trip\s+([a-zA-Z0-9\s]+?)(?:\s+(?:with\s+)?budget)?\s+(\d+)$/i);
+    if (createTripMatch) {
+      const tName = createTripMatch[1].trim();
+      const tBudget = Number(createTripMatch[2]);
+
+      try {
+        await api.createTrip({
+          name: tName,
+          totalBudget: tBudget,
+          groupSize: 1,
+          image: '',
+          balances: []
+        });
+        await fetchData(true);
+
+        const aiMsg: ChatMessage = {
+          id: (Date.now() + 1).toString(),
+          sender: 'ai',
+          text: `✈️ **Trip "${tName}" Created Successfully!**\n\n• **Budget**: ₹${tBudget.toLocaleString('en-IN')}\n• **Spent**: ₹0\n• **Members**: 1 (You)\n\nYou can now log shared expenses to this trip!`,
+          timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+        };
+        setMessages(prev => [...prev, aiMsg]);
+        return;
+      } catch (err: any) {
+        alert(err.message || 'Failed to create trip');
+      }
+    }
+
+    // Check 1.23: Add Expense to Trip (e.g. "add 500 dinner to Goa trip", "spent 1200 fuel in Goa trip")
+    const addTripExpenseMatch = query.match(/(?:add|spent|paid)\s+(?:₹|rs\.?)?\s*(\d+)\s+(?:on|for)?\s*([a-zA-Z0-9\s]+?)\s+(?:to|in)\s+([a-zA-Z0-9\s]+?)\s+trip/i);
+    if (addTripExpenseMatch) {
+      const amt = Number(addTripExpenseMatch[1]);
+      const note = addTripExpenseMatch[2].trim();
+      const tripSearch = addTripExpenseMatch[3].trim().toLowerCase();
+
+      const targetTrip = trips.find(t => t.name.toLowerCase().includes(tripSearch) || tripSearch.includes(t.name.toLowerCase()));
+      if (targetTrip) {
+        try {
+          const tripId = targetTrip.id || (targetTrip as any)._id;
+          const defaultWallet = currentWallets.length > 0 ? (currentWallets[0].id || (currentWallets[0] as any)._id) : undefined;
+
+          await api.addExpense({
+            amount: amt,
+            category: 'Travel',
+            note,
+            tripId,
+            walletId: defaultWallet
+          } as any);
+          await fetchData(true);
+
+          const aiMsg: ChatMessage = {
+            id: (Date.now() + 1).toString(),
+            sender: 'ai',
+            text: `✅ **Recorded ₹${amt.toLocaleString('en-IN')} for "${note}" in ${targetTrip.name} trip!**\n\n• **Updated Trip Spent**: ₹${((targetTrip.spent || 0) + amt).toLocaleString('en-IN')} / ₹${(targetTrip.totalBudget || 0).toLocaleString('en-IN')}`,
+            timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+          };
+          setMessages(prev => [...prev, aiMsg]);
+          return;
+        } catch (err: any) {
+          alert(err.message || 'Failed to log trip expense');
+        }
+      }
+    }
+
+    // Check 1.24: Edit / Update Expense Amount (e.g. "change coffee to 60", "update petrol to 300")
+    const editAmountMatch = query.match(/^(?:change|update|edit)\s+([a-zA-Z0-9\s]+?)(?:\s+amount|\s+expense)?\s+(?:from\s+\d+\s+)?to\s+(?:₹|rs\.?)?\s*(\d+)$/i);
+    if (editAmountMatch) {
+      const itemSearch = editAmountMatch[1].trim().toLowerCase();
+      const newAmount = Number(editAmountMatch[2]);
+
+      const targetExp = validExpenses.find(e => 
+        (e.note && e.note.toLowerCase().includes(itemSearch)) || 
+        (e.category && e.category.toLowerCase().includes(itemSearch)) ||
+        itemSearch.includes((e.note || '').toLowerCase())
+      );
+
+      if (targetExp) {
+        try {
+          const expId = targetExp.id || (targetExp as any)._id;
+          const oldAmount = targetExp.amount;
+          await api.updateExpense(expId, { amount: newAmount });
+          await fetchData(true);
+
+          const aiMsg: ChatMessage = {
+            id: (Date.now() + 1).toString(),
+            sender: 'ai',
+            text: `✏️ **Expense Updated Successfully!**\n\n• **Item**: ${targetExp.note || targetExp.category}\n• **Old Amount**: ₹${oldAmount.toLocaleString('en-IN')}\n• **New Amount**: 💰 **₹${newAmount.toLocaleString('en-IN')}**\n\n*Wallet balance adjusted automatically.*`,
+            timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+          };
+          setMessages(prev => [...prev, aiMsg]);
+          return;
+        } catch (err: any) {
+          alert(err.message || 'Failed to update expense');
+        }
+      }
+    }
+
+    // Check 1.25: Edit Category (e.g. "change category of cake to Groceries")
+    const editCatMatch = query.match(/^(?:change|update)\s+category\s+of\s+([a-zA-Z0-9\s]+?)\s+to\s+([a-zA-Z0-9\s]+)$/i);
+    if (editCatMatch) {
+      const itemSearch = editCatMatch[1].trim().toLowerCase();
+      const newCat = editCatMatch[2].trim();
+
+      const targetExp = validExpenses.find(e => 
+        (e.note && e.note.toLowerCase().includes(itemSearch)) ||
+        (e.category && e.category.toLowerCase().includes(itemSearch))
+      );
+
+      if (targetExp) {
+        try {
+          const expId = targetExp.id || (targetExp as any)._id;
+          await api.updateExpense(expId, { category: newCat });
+          await fetchData(true);
+
+          const aiMsg: ChatMessage = {
+            id: (Date.now() + 1).toString(),
+            sender: 'ai',
+            text: `✏️ **Category Updated!**\n\n• **Item**: ${targetExp.note || 'Expense'}\n• **New Category**: 🏷️ **${newCat}**`,
+            timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+          };
+          setMessages(prev => [...prev, aiMsg]);
+          return;
+        } catch (err: any) {
+          alert(err.message || 'Failed to update category');
+        }
+      }
+    }
+
+    // Check 1.26: Month-over-Month Comparison (e.g. "compare this month vs last month", "compare with last month")
+    const isCompareMonthQuery = /\b(compare (?:this month )?(?:vs|with|to) last month|last month vs this month)\b/i.test(query);
+    if (isCompareMonthQuery) {
+      const now = new Date();
+      const thisMonth = now.getMonth();
+      const thisYear = now.getFullYear();
+
+      const lastMonthDate = new Date(thisYear, thisMonth - 1, 1);
+      const lastMonth = lastMonthDate.getMonth();
+      const lastYear = lastMonthDate.getFullYear();
+
+      const thisMonthExpenses = validExpenses.filter(e => {
+        const d = new Date(e.date);
+        return d.getMonth() === thisMonth && d.getFullYear() === thisYear;
+      });
+
+      const lastMonthExpenses = validExpenses.filter(e => {
+        const d = new Date(e.date);
+        return d.getMonth() === lastMonth && d.getFullYear() === lastYear;
+      });
+
+      const thisTotal = thisMonthExpenses.reduce((s, e) => s + e.amount, 0);
+      const lastTotal = lastMonthExpenses.reduce((s, e) => s + e.amount, 0);
+      const diff = thisTotal - lastTotal;
+      const percentChange = lastTotal > 0 ? Math.round((Math.abs(diff) / lastTotal) * 100) : 0;
+
+      let replyText = `📊 **Month-over-Month Spending Comparison**:\n\n`;
+      replyText += `• **This Month**: ₹${thisTotal.toLocaleString('en-IN')} (${thisMonthExpenses.length} transactions)\n`;
+      replyText += `• **Last Month**: ₹${lastTotal.toLocaleString('en-IN')} (${lastMonthExpenses.length} transactions)\n\n`;
+
+      if (lastTotal === 0) {
+        replyText += `ℹ️ You have no expenses recorded for last month to compare percentage growth.`;
+      } else if (diff > 0) {
+        replyText += `🔺 **Spending increased by ${percentChange}% (+₹${diff.toLocaleString('en-IN')})** compared to last month. Consider pacing your discretionary expenses!`;
+      } else if (diff < 0) {
+        replyText += `🟢 **Great job! Spending decreased by ${percentChange}% (-₹${Math.abs(diff).toLocaleString('en-IN')})** compared to last month. You are saving more!`;
+      } else {
+        replyText += `⚖️ **Exact match!** Your spending this month is identical to last month.`;
+      }
+
+      const aiMsg: ChatMessage = {
+        id: (Date.now() + 1).toString(),
+        sender: 'ai',
+        text: replyText,
+        timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+      };
+      setMessages(prev => [...prev, aiMsg]);
+      return;
+    }
+
+    // Check 1.27: Merchant / Keyword Search (e.g. "how much on swiggy", "find amazon expenses", "starbucks expenses")
+    const merchantMatch = query.match(/(?:how much (?:did i spend )?on|find|search|show)\s+(swiggy|zomato|amazon|flipkart|starbucks|uber|ola|netflix|blinkit|zepto|supermarket|[a-zA-Z]+)\s*(?:expenses|orders|purchases|bills)?$/i);
+    if (merchantMatch && !isDeleteIntent) {
+      const kw = merchantMatch[1].toLowerCase().trim();
+      if (kw.length > 2 && !/^(the|all|my|wallet|trips|reports|money|budget|spending|food|fuel|dining|groceries|grocery|travel|shopping|medical|rent|bills)$/i.test(kw)) {
+        const matches = validExpenses.filter(e => 
+          (e.note && e.note.toLowerCase().includes(kw)) ||
+          (e.category && e.category.toLowerCase().includes(kw))
+        );
+
+        if (matches.length > 0) {
+          const totalAmt = matches.reduce((s, e) => s + e.amount, 0);
+          let replyText = `🛍️ **Spending on "${kw.toUpperCase()}"** (${matches.length} transactions):\n\n`;
+          replyText += matches.map(e => `• ₹${e.amount.toLocaleString('en-IN')} - ${e.note || e.category} (${new Date(e.date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })})`).join('\n');
+          replyText += `\n\n💰 **Total Spent**: ₹${totalAmt.toLocaleString('en-IN')}`;
+
+          const aiMsg: ChatMessage = {
+            id: (Date.now() + 1).toString(),
+            sender: 'ai',
+            text: replyText,
+            timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+          };
+          setMessages(prev => [...prev, aiMsg]);
+          return;
+        }
+      }
+    }
+
+    // Check 1.28: Family Pool Intent (e.g. "family budget", "show family pool", "family expenses")
+    const isFamilyQuery = /(^|\b)(family pool|family budget|family expenses)(\b|$)/i.test(query);
+    if (isFamilyQuery) {
+      try {
+        const pools = await api.getFamilyPools();
+        if (pools.length === 0) {
+          const aiMsg: ChatMessage = {
+            id: (Date.now() + 1).toString(),
+            sender: 'ai',
+            text: `👨‍👩‍👧 **No Active Family Pool Found**\n\nYou haven't created a Family Pool yet. Open the **Family** tab to create a shared pool and track household expenses together!`,
+            timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+          };
+          setMessages(prev => [...prev, aiMsg]);
+          return;
+        }
+
+        let replyText = `👨‍👩‍👧 **Family Pool Overview** (${pools.length} active):\n\n`;
+        pools.forEach((p: any) => {
+          replyText += `• **${p.name || 'Family Pool'}**:\n  - Budget: ₹${(p.totalBudget || p.total_budget || 0).toLocaleString('en-IN')}\n  - Members: ${p.members?.length || 1} people\n\n`;
+        });
+
+        const aiMsg: ChatMessage = {
+          id: (Date.now() + 1).toString(),
+          sender: 'ai',
+          text: replyText.trim(),
+          timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+        };
+        setMessages(prev => [...prev, aiMsg]);
+        return;
+      } catch (e) {
+        console.error(e);
+      }
+    }
+
+    // Check 1.29: Export Intent (e.g. "export expenses", "download report", "export csv")
+    const isExportQuery = /\b(export|download report|export csv|download expenses)\b/i.test(query);
+    if (isExportQuery) {
+      const aiMsg: ChatMessage = {
+        id: (Date.now() + 1).toString(),
+        sender: 'ai',
+        text: `📥 **Exporting Your Expense Data**:\n\nYou can download complete reports (CSV or PDF) anytime:\n1. Click **Reports** in the sidebar or bottom navigation.\n2. Tap the **"Export CSV"** button at the top right of the Reports page to get your full itemized spreadsheet!`,
+        timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+      };
+      setMessages(prev => [...prev, aiMsg]);
+      return;
+    }
+
     // Check 1.2: Add Expense Intent (supports single and compound multi-item commands like "spent 100 on coffee , 100 on fuel on 26 aug")
     const numMatch = query.match(/(\d+)/);
     const isExplicitViewQuery = /^(show|view|how much|how many|what is|check|list|find|get)\b/i.test(query.trim());
 
     // Exploratory / advisory / question / calculation checks
+    const hasOtherActionPrefix = /^(create|transfer|split|change|update|edit|go to|take me to|open|switch to|compare)/i.test(query.trim());
     const isQuestionOrAdvice = 
-      /^(can i|could i|should i|would i|is it|is \d+|how to|how can|why|what if|explain|predict|tell me|suggest|give me|recommend|rule|tips|ways to)\b/i.test(query.trim()) ||
-      /\b(50\s*30\s*20|50\/30\/20|rule 50|safe to spend|can i spend|budget advice|save money|financial tips|how to save)\b/i.test(query) ||
+      /^(can i|could i|should i|would i|is it|is \d+|how to|how can|why|what if|explain|predict|tell me|suggest|give me|recommend|rule|tips|ways to|compare|who owes|settle)\b/i.test(query.trim()) ||
+      /\b(50\s*30\s*20|50\/30\/20|rule 50|safe to spend|can i spend|budget advice|save money|financial tips|how to save|can i save|split \d+)\b/i.test(query) ||
       query.includes('?');
 
     const hasAddActionKeyword = /\b(spent|add|log|bought|paid|pay|bill|purchase|entry|record|deduct)\b/i.test(query);
@@ -496,6 +927,7 @@ export function AIChatDrawer() {
       !isDeleteIntent && 
       !isQuestionOrAdvice &&
       !isThresholdQuery &&
+      !hasOtherActionPrefix &&
       (hasAddActionKeyword || hasCurrencySymbol || isDirectAddPattern || query.includes(','));
 
     if (isAddExpenseIntent) {

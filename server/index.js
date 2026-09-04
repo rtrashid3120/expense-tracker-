@@ -312,6 +312,29 @@ app.delete('/api/wallets/:id', authenticateToken, async (req, res) => {
   }
 });
 
+app.post('/api/wallets/transfer', authenticateToken, async (req, res) => {
+  try {
+    const { fromWalletId, toWalletId, amount } = req.body;
+    const amt = Number(amount);
+    if (!amt || amt <= 0) return res.status(400).json({ error: 'Valid positive amount required' });
+
+    const source = await Wallet.findOne({ _id: fromWalletId, user_id: req.user.id });
+    const target = await Wallet.findOne({ _id: toWalletId, user_id: req.user.id });
+
+    if (!source || !target) return res.status(404).json({ error: 'One or both wallets not found' });
+    if (source.balance < amt) return res.status(400).json({ error: `Insufficient balance in ${source.name}` });
+
+    source.balance -= amt;
+    target.balance += amt;
+    await source.save();
+    await target.save();
+
+    res.json({ success: true, from: source.name, to: target.name, amount: amt });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // ==================== EXPENSES ROUTES ====================
 
 app.get('/api/expenses', authenticateToken, async (req, res) => {
@@ -367,6 +390,41 @@ app.post('/api/expenses', authenticateToken, async (req, res) => {
       date: expense.date,
       note: expense.note || undefined,
       ...(expense.details || {})
+    });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.put('/api/expenses/:id', authenticateToken, async (req, res) => {
+  try {
+    const existing = await Expense.findOne({ _id: req.params.id, user_id: req.user.id });
+    if (!existing) return res.status(404).json({ error: 'Expense not found' });
+
+    const { amount, category, note, date } = req.body;
+    const oldAmount = existing.amount;
+    const diff = (amount !== undefined) ? Number(amount) - oldAmount : 0;
+
+    if (amount !== undefined) existing.amount = Number(amount);
+    if (category !== undefined) existing.category = category;
+    if (note !== undefined) existing.note = note;
+    if (date !== undefined) existing.date = date;
+
+    await existing.save();
+
+    // Adjust wallet balance if amount changed
+    if (diff !== 0 && existing.wallet_id) {
+      await Wallet.updateOne({ _id: existing.wallet_id, user_id: req.user.id }, { $inc: { balance: -diff } });
+    }
+
+    res.json({
+      id: existing._id.toString(),
+      walletId: existing.wallet_id ? existing.wallet_id.toString() : undefined,
+      tripId: existing.trip_id ? existing.trip_id.toString() : undefined,
+      amount: existing.amount,
+      category: existing.category,
+      date: existing.date,
+      note: existing.note
     });
   } catch (err) {
     res.status(500).json({ error: err.message });

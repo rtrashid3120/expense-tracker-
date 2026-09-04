@@ -116,6 +116,17 @@ export const api = {
     }
   },
 
+  transferWallets: async (fromWalletId: string, toWalletId: string, amount: number): Promise<any> => {
+    const res = await fetch(`${API_BASE_URL}/wallets/transfer`, {
+      method: 'POST',
+      headers: getHeaders(),
+      body: JSON.stringify({ fromWalletId, toWalletId, amount })
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'Failed to transfer funds');
+    return data;
+  },
+
   // Expenses
   getExpenses: async (): Promise<Expense[]> => {
     const res = await fetch(`${API_BASE_URL}/expenses`, { headers: getHeaders() });
@@ -131,6 +142,17 @@ export const api = {
     });
     const data = await res.json();
     if (!res.ok) throw new Error(data.error || 'Failed to add expense');
+    return data;
+  },
+
+  updateExpense: async (id: string, updates: Partial<Expense>): Promise<Expense> => {
+    const res = await fetch(`${API_BASE_URL}/expenses/${id}`, {
+      method: 'PUT',
+      headers: getHeaders(),
+      body: JSON.stringify(updates)
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'Failed to update expense');
     return data;
   },
 
