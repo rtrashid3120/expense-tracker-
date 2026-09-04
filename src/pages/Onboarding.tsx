@@ -38,7 +38,7 @@ export function Onboarding() {
       >
         <div className="text-center mb-8">
           <div className="flex justify-center mb-4">
-            <AppLogo size={52} showText={true} animated />
+            <AppLogo size={62} showText={true} layout="vertical" animated />
           </div>
           <p className="text-gray-500 dark:text-white/60 font-medium">Choose a unique username so your friends can find you.</p>
         </div>

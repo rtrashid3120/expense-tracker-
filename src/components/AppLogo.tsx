@@ -7,6 +7,8 @@ export interface AppLogoProps {
   className?: string;
   /** Whether to animate on hover */
   animated?: boolean;
+  /** Layout orientation: 'horizontal' (default) or 'vertical' */
+  layout?: 'horizontal' | 'vertical';
 }
 
 export function AppLogo({
@@ -14,6 +16,7 @@ export function AppLogo({
   showText = false,
   className = '',
   animated = false,
+  layout = 'horizontal',
 }: AppLogoProps) {
   const iconDim = typeof size === 'number'
     ? size
@@ -29,9 +32,13 @@ export function AppLogo({
     ? 'text-2xl'
     : 'text-3xl';
 
+  const isVertical = layout === 'vertical';
+
   return (
     <div
-      className={`inline-flex items-center gap-3.5 select-none shrink-0 ${
+      className={`${
+        isVertical ? 'inline-flex flex-col items-center gap-3' : 'inline-flex items-center gap-3.5'
+      } select-none shrink-0 ${
         animated ? 'group cursor-pointer' : ''
       } ${className}`}
       title="EXPENSE-HUB"
