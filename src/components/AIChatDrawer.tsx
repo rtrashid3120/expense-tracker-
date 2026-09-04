@@ -484,9 +484,109 @@ export function AIChatDrawer() {
       }
     }
 
-    // Check 1: Expense Deletion Intent (e.g. "delete spent 50 coffee", "remove coffee 50")
+    // FEATURE: Bulk Modifications (Date Shift / Category Change)
+    const isBulkDateShift = /\b(?:change|move|shift)\b.*?\b(?:all|the)?\b.*?\b(?:spending|expenses|transactions)\b.*?\b(?:from|on)\b\s+(.*?)\s+\bto\b\s+(.*)/i.test(query);
+    const isBulkCategoryShift = /\b(?:change|move|update)\b.*?\b(?:all|every|the)\b\s+(.*?)\s+(?:expenses|spending|transactions)\b.*?\bto\b\s+(.*)/i.test(query);
+    
+    if (isBulkDateShift) {
+      const match = query.match(/\b(?:change|move|shift)\b.*?\b(?:all|the)?\b.*?\b(?:spending|expenses|transactions)\b.*?\b(?:from|on)\b\s+(.*?)\s+\bto\b\s+(.*)/i);
+      if (match) {
+        const parseSimpleDate = (dStr: string) => {
+          const m = dStr.match(/(\d{1,2})(?:st|nd|rd|th)?\s+(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)/i);
+          if (m) {
+            const day = parseInt(m[1]);
+            const monthIdx = ["jan", "feb", "mar", "apr", "may", "jun", "jul", "aug", "sep", "oct", "nov", "dec"].findIndex(x => m[2].toLowerCase().startsWith(x));
+            if (monthIdx !== -1) {
+              const d = new Date(new Date().getFullYear(), monthIdx, day);
+              return d.toISOString().split('T')[0];
+            }
+          }
+          return null;
+        };
+        const fromDate = parseSimpleDate(match[1]);
+        const toDate = parseSimpleDate(match[2]);
+
+        if (fromDate && toDate) {
+          const targets = validExpenses.filter(e => e.date && e.date.startsWith(fromDate));
+          if (targets.length > 0) {
+            try {
+              for (const t of targets) {
+                const tId = t.id || (t as any)._id;
+                await api.updateExpense(tId, { date: toDate });
+              }
+              await fetchData(true);
+              const aiMessage: ChatMessage = {
+                id: (Date.now() + 1).toString(),
+                sender: 'ai',
+                text: `✅ **Bulk Update Complete!**\n\nI successfully shifted **${targets.length} expenses** from ${match[1]} to ${match[2]}.`,
+                timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+              };
+              setMessages(prev => [...prev, aiMessage]);
+              return;
+            } catch(e) { console.error(e); }
+          } else {
+             const aiMessage: ChatMessage = {
+                id: (Date.now() + 1).toString(),
+                sender: 'ai',
+                text: `⚠️ **No Expenses Found**\n\nI couldn't find any expenses on ${match[1]} to move.`,
+                timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+              };
+              setMessages(prev => [...prev, aiMessage]);
+              return;
+          }
+        }
+      }
+    } else if (isBulkCategoryShift) {
+      const match = query.match(/\b(?:change|move|update)\b.*?\b(?:all|every|the)\b\s+(.*?)\s+(?:expenses|spending|transactions)\b.*?\bto\b\s+(.*)/i);
+      if (match) {
+        const itemSearch = match[1].toLowerCase().trim();
+        const targetCategory = match[2].charAt(0).toUpperCase() + match[2].slice(1).toLowerCase().trim();
+        
+        const targets = validExpenses.filter(e => (e.note || '').toLowerCase().includes(itemSearch));
+        if (targets.length > 0) {
+          try {
+            for (const t of targets) {
+              const tId = t.id || (t as any)._id;
+              await api.updateExpense(tId, { category: targetCategory as any });
+            }
+            await fetchData(true);
+            const aiMessage: ChatMessage = {
+              id: (Date.now() + 1).toString(),
+              sender: 'ai',
+              text: `✅ **Bulk Category Update Complete!**\n\nI successfully moved **${targets.length} "${itemSearch}" expenses** to the **${targetCategory}** category.`,
+              timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+            };
+            setMessages(prev => [...prev, aiMessage]);
+            return;
+          } catch(e) { console.error(e); }
+        }
+      }
+    }
     const isDeleteIntent = /\b(delete|remove|cancel|undo|erase|drop)\b/i.test(query);
     if (isDeleteIntent) {
+      // FEATURE: Bulk Deletion ("delete all swiggy expenses")
+      if (/\b(all|every)\b/i.test(query)) {
+        let cleanNote = query.replace(/\b(delete|remove|cancel|undo|erase|drop|all|every|my|the|spent|add|log|bought|paid|on|for|rupees|rs|₹|expense|expenses|transactions|last|latest|item)\b/gi, '').trim();
+        const targets = validExpenses.filter(e => (e.note || '').toLowerCase().includes(cleanNote.toLowerCase()) || (e.category || '').toLowerCase().includes(cleanNote.toLowerCase()));
+        
+        if (targets.length > 0 && cleanNote.length >= 2) {
+          try {
+            for (const t of targets) {
+              const tId = t.id || (t as any)._id;
+              await api.deleteExpense(tId);
+            }
+            await fetchData(true);
+            const aiMessage: ChatMessage = {
+              id: (Date.now() + 1).toString(),
+              sender: 'ai',
+              text: `🗑️ **Bulk Deletion Complete!**\n\nI successfully deleted **${targets.length} expenses** matching "${cleanNote}".`,
+              timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+            };
+            setMessages(prev => [...prev, aiMessage]);
+            return;
+          } catch (e) { console.error(e); }
+        }
+      }
       const numMatch = query.match(/(\d+)/);
       const amount = numMatch ? Number(numMatch[1]) : null;
       let cleanNote = query.replace(/(\d+)/g, '').replace(/\b(delete|remove|cancel|undo|erase|drop|spent|add|log|bought|paid|on|for|rupees|rs|₹|expense|last|latest|item)\b/gi, '').trim();
