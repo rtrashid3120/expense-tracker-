@@ -557,7 +557,8 @@ export function AIChatDrawer() {
 
     // INTENT 2: Bulk Category Shift ("change all swiggy to dining", "switch evrything apple to tech")
     // Captures almost any combination of verb + target + wildcard (all/everything)
-    const bulkCatMatch = query.match(/\b(?:change|move|shift|transfer|update|switch|alter|modify|migrate|swap|convert|reassign|relocate|push|revert|transition|transform|reallocate|edit|fix|adjust|correct|set|make|assign|put)\b.*?\b(?:all|every|evry|everything|evrything|the|those|my|these|entire|whole)?\b\s*(.*?)(?:\s+(?:spending|spendings|expense|expenses|transaction|transactions|item|items|bill|bills|record|records|data|entry|entries|history|log|logs|purchases|payments|exp|txn|txns|amt))?\s+\bto\b\s+(.*)/i);
+    const normalizedQuery = query.replace(/\binto\b/gi, 'to').replace(/\binside\b/gi, 'to').replace(/\bunder\b/gi, 'to').replace(/\bwithin\b/gi, 'to');
+    const bulkCatMatch = normalizedQuery.match(/\b(?:change|move|shift|transfer|update|switch|alter|modify|migrate|swap|convert|reassign|relocate|push|revert|transition|transform|reallocate|edit|fix|adjust|correct|set|make|assign|put)\b.*?\b(?:all|every|evry|everything|evrything|the|those|my|these|entire|whole)?\b\s*(.*?)(?:\s+(?:spending|spendings|expense|expenses|transaction|transactions|item|items|bill|bills|record|records|data|entry|entries|history|log|logs|purchases|payments|exp|txn|txns|amt))?\s+\bto\b\s+(.*)/i);
     if (bulkCatMatch && bulkCatMatch[1].trim()) {
       const itemSearch = bulkCatMatch[1].toLowerCase().trim().replace(/\b(?:spending|spendings|expense|expenses|transaction|transactions|item|items|bill|bills|record|records|data|entry|entries|history|log|logs|purchases|payments|exp|txn|txns|amt|all|every|evry|everything|evrything|the|those|my|these|entire|whole)\b/gi, '').trim();
       const targetCategoryRaw = bulkCatMatch[2].toLowerCase().trim().replace(/category/i, '').trim();
@@ -645,11 +646,10 @@ export function AIChatDrawer() {
       let targetDate: string | null = null;
       
       // 1. Extract Date if present
-      const dateRegex = /\b(?:on|from|for)?\s*(?:(\d{1,2})(?:st|nd|rd|th)?\s+([a-z]+)|([a-z]+)\s+(\d{1,2})(?:st|nd|rd|th)?)\b/i;
+      const dateRegex = /\b(?:on\s+|from\s+|for\s+)?(\d{1,2})(?:st|nd|rd|th)?\s+([a-z]+)\b|\b(?:on\s+|from\s+|for\s+)?([a-z]+)\s+(\d{1,2})(?:st|nd|rd|th)?\b/i;
       const dMatch = cleanQuery.match(dateRegex);
       if (dMatch) {
-        let dayStr = dMatch[1], monthStr = dMatch[2];
-        if (!dayStr) { dayStr = dMatch[4]; monthStr = dMatch[3]; }
+        let dayStr = dMatch[1] || dMatch[4], monthStr = dMatch[2] || dMatch[3];
         const day = parseInt(dayStr);
         const months = ["jan", "feb", "mar", "apr", "may", "jun", "jul", "aug", "sep", "oct", "nov", "dec"];
         const monthIdx = months.findIndex(x => monthStr.toLowerCase().startsWith(x));
