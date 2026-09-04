@@ -1,21 +1,15 @@
 import { Link, useLocation } from 'react-router-dom';
-import { FiMap, FiFileText, FiPlus, FiHome, FiCpu, FiGrid, FiUser } from 'react-icons/fi';
+import { FiMap, FiPlus, FiHome, FiGrid, FiUser } from 'react-icons/fi';
 import { motion } from 'framer-motion';
 
 export function BottomNav({ onAddClick }: { onAddClick: () => void }) {
   const location = useLocation();
 
-  const handleOpenAI = () => {
-    window.dispatchEvent(new Event('open-ai-chat'));
-  };
-
   const navItems = [
     { id: '/', icon: FiHome, label: 'Home', type: 'link' },
     { id: '/heatmaps', icon: FiGrid, label: 'Heatmaps', type: 'link' },
-    { id: '/expenses', icon: FiFileText, label: 'Audit', type: 'link' },
     { id: 'add', isAdd: true, type: 'add' },
     { id: '/trips', icon: FiMap, label: 'Trips', type: 'link' },
-    { id: 'ai', icon: FiCpu, label: 'AI Bot', type: 'ai', onClick: handleOpenAI },
     { id: '/profile', icon: FiUser, label: 'Profile', type: 'link' }
   ];
 
@@ -39,25 +33,7 @@ export function BottomNav({ onAddClick }: { onAddClick: () => void }) {
             );
           }
 
-          if (item.type === 'ai') {
-            const Icon = item.icon!;
-            return (
-              <motion.button
-                whileTap={{ scale: 0.88 }}
-                whileHover={{ scale: 1.08 }}
-                key="ai"
-                onClick={item.onClick}
-                title="ExpenseHub AI"
-                className="relative flex flex-col items-center justify-center w-10 h-10 sm:w-11 sm:h-11 rounded-full text-red-400 dark:text-brand-neon bg-red-950/40 dark:bg-brand-neon/10 border border-red-500/30 dark:border-brand-neon/30 transition-all shadow-sm cursor-pointer"
-              >
-                <Icon size={18} className="relative z-10 animate-pulse" />
-                <span className="absolute -top-1 -right-0.5 flex h-2 w-2">
-                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 dark:bg-brand-neon opacity-75"></span>
-                  <span className="relative inline-flex rounded-full h-2 w-2 bg-red-500 dark:bg-brand-neon"></span>
-                </span>
-              </motion.button>
-            );
-          }
+
 
           const isActive = location.pathname === item.id;
           const Icon = item.icon!;

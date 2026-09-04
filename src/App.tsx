@@ -1,6 +1,6 @@
 import React, { useState, useEffect, Component } from 'react';
 import type { ErrorInfo } from 'react';
-import { HashRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { HashRouter, Routes, Route, Navigate, Link } from 'react-router-dom';
 import { AnimatePresence, motion } from 'framer-motion';
 import { Dashboard } from './pages/Dashboard';
 import { Trips } from './pages/Trips';
@@ -16,7 +16,7 @@ import { AddExpenseModal } from './components/AddExpenseModal';
 import { AIChatDrawer } from './components/AIChatDrawer';
 import { AppLogo } from './components/AppLogo';
 import { useAppStore } from './store';
-import { FiLogOut } from 'react-icons/fi';
+import { FiLogOut, FiZap, FiFileText } from 'react-icons/fi';
 
 class ErrorBoundary extends Component<{children: React.ReactNode}, {hasError: boolean, error: Error | null}> {
   constructor(props: {children: React.ReactNode}) {
@@ -55,13 +55,29 @@ function Layout({ children, onAddClick }: { children: React.ReactNode; onAddClic
         <header className="md:hidden flex justify-between items-center px-4 py-3 bg-white/80 dark:bg-dark-surface/90 backdrop-blur-2xl border-b border-gray-200/60 dark:border-white/10 sticky top-0 z-40">
           <AppLogo size={28} showText={true} />
 
-          <button 
-            onClick={signOut}
-            title="Log Out"
-            className="w-8 h-8 rounded-full bg-red-500/10 border border-red-500/20 flex items-center justify-center text-red-600 dark:text-red-400"
-          >
-            <FiLogOut size={14} />
-          </button>
+          <div className="flex items-center gap-2">
+            <button 
+              onClick={() => window.dispatchEvent(new Event('open-ai-chat'))}
+              className="w-8 h-8 rounded-full bg-brand-neon/10 border border-brand-neon/30 flex items-center justify-center text-brand-neon shadow-[0_0_10px_rgba(0,240,255,0.4)]"
+              title="ExpenseHub AI"
+            >
+              <FiZap size={14} className="animate-pulse" />
+            </button>
+            <Link 
+              to="/expenses"
+              className="w-8 h-8 rounded-full bg-gray-100 dark:bg-white/5 border border-gray-200 dark:border-white/10 flex items-center justify-center text-gray-600 dark:text-white/60"
+              title="Audit Trail"
+            >
+              <FiFileText size={14} />
+            </Link>
+            <button 
+              onClick={signOut}
+              title="Log Out"
+              className="w-8 h-8 rounded-full bg-red-500/10 border border-red-500/20 flex items-center justify-center text-red-600 dark:text-red-400"
+            >
+              <FiLogOut size={14} />
+            </button>
+          </div>
         </header>
 
         {/* Top Header for Desktop */}
