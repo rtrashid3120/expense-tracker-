@@ -510,7 +510,7 @@ export function AIChatDrawer() {
     };
 
     // INTENT 1: Bulk Date Shift ("transfer evrything from sep 20 to sep 21", "move all spending from 20 sep to 21 sep")
-    const bulkDateMatch = query.match(/\b(?:change|move|shift|transfer|update|switch|alter|modify|migrate|swap|convert)\b.*?\b(?:from|on|of)\b\s+([^]+?)\s+\bto\b\s+([^]+)/i);
+    const bulkDateMatch = query.match(/\b(?:change|move|shift|transfer|update|switch|alter|modify|migrate|swap|convert|reassign|relocate|push|revert|transition|transform|reallocate|edit|fix|adjust|correct|set|make)\b.*?\b(?:from|on|of|for)\b\s+([^]+?)\s+\bto\b\s+([^]+)/i);
     if (bulkDateMatch) {
       const fromDate = parseFlexibleDate(bulkDateMatch[1]);
       const toDate = parseFlexibleDate(bulkDateMatch[2]);
@@ -547,9 +547,9 @@ export function AIChatDrawer() {
 
     // INTENT 2: Bulk Category Shift ("change all swiggy to dining", "switch evrything apple to tech")
     // Captures almost any combination of verb + target + wildcard (all/everything)
-    const bulkCatMatch = query.match(/\b(?:change|move|update|transfer|switch|alter|modify|migrate|assign|set)\b.*?\b(?:all|every|evry|everything|evrything|the|those|my)?\b\s*(.*?)(?:\s+(?:expenses|spending|spendings|transactions|items|bills|records|data))?\s+\bto\b\s+(.*)/i);
+    const bulkCatMatch = query.match(/\b(?:change|move|shift|transfer|update|switch|alter|modify|migrate|swap|convert|reassign|relocate|push|revert|transition|transform|reallocate|edit|fix|adjust|correct|set|make|assign|put)\b.*?\b(?:all|every|evry|everything|evrything|the|those|my|these|entire|whole)?\b\s*(.*?)(?:\s+(?:spending|spendings|expense|expenses|transaction|transactions|item|items|bill|bills|record|records|data|entry|entries|history|log|logs|purchases|payments|exp|txn|txns|amt))?\s+\bto\b\s+(.*)/i);
     if (bulkCatMatch && bulkCatMatch[1].trim()) {
-      const itemSearch = bulkCatMatch[1].toLowerCase().trim().replace(/\b(?:expenses|spending|spendings|transactions|items|bills|records|data|all|every|evry|everything|evrything|the|those|my)\b/gi, '').trim();
+      const itemSearch = bulkCatMatch[1].toLowerCase().trim().replace(/\b(?:spending|spendings|expense|expenses|transaction|transactions|item|items|bill|bills|record|records|data|entry|entries|history|log|logs|purchases|payments|exp|txn|txns|amt|all|every|evry|everything|evrything|the|those|my|these|entire|whole)\b/gi, '').trim();
       const targetCategoryRaw = bulkCatMatch[2].toLowerCase().trim().replace(/category/i, '').trim();
       const targetCategory = targetCategoryRaw.charAt(0).toUpperCase() + targetCategoryRaw.slice(1);
       
@@ -575,7 +575,7 @@ export function AIChatDrawer() {
     }
 
     // INTENT 3: Single Expense Amount Modification ("change the 500 rent to 600", "update 1200 groceries to 1500")
-    const isAmountModifyIntent = query.match(/\b(?:change|update|edit|alter|modify|fix)\b.*?\b(?:the|my)?\s*(?:rs\.?|₹|inr)?\s*(\d+(?:\.\d+)?)\s+(.*?)(?:\s+(?:expense|spending|transaction|bill))?\s+\bto\b\s+(?:rs\.?|₹|inr)?\s*(\d+(?:\.\d+)?)/i);
+    const isAmountModifyIntent = query.match(/\b(?:change|move|shift|transfer|update|switch|alter|modify|migrate|swap|convert|reassign|relocate|push|revert|transition|transform|reallocate|edit|fix|adjust|correct|set|make)\b.*?\b(?:the|my|this|that|those|these)?\s*(?:rs\.?|₹|inr|rupees|bucks)?\s*(\d+(?:\.\d+)?)\s+(.*?)(?:\s+(?:spending|spendings|expense|expenses|transaction|transactions|item|items|bill|bills|record|records|data|entry|entries|history|log|logs|purchases|payments|exp|txn|txns|amt))?\s+\bto\b\s+(?:rs\.?|₹|inr|rupees|bucks)?\s*(\d+(?:\.\d+)?)/i);
     if (isAmountModifyIntent) {
       const oldAmount = Number(isAmountModifyIntent[1]);
       const cleanNote = isAmountModifyIntent[2].trim().toLowerCase();
@@ -598,11 +598,11 @@ export function AIChatDrawer() {
       }
     }
 
-    const isDeleteIntent = /\b(delete|remove|cancel|undo|erase|drop|clear|trash|wipe)\b/i.test(query);
+    const isDeleteIntent = /\b(delete|remove|cancel|undo|erase|drop|clear|trash|wipe|destroy|discard|eliminate|nuke|kill|void|scrap|chuck|dump|bin|del|rm)\b/i.test(query);
     if (isDeleteIntent) {
       // FEATURE: Bulk Deletion ("delete all swiggy expenses", "remove everything apple")
-      if (/\b(all|every|evry|everything|evrything|those|these)\b/i.test(query)) {
-        let cleanNote = query.replace(/\b(delete|remove|cancel|undo|erase|drop|clear|trash|wipe|all|every|evry|everything|evrything|my|the|those|these|spent|add|log|bought|paid|on|for|rupees|rs|₹|expense|expenses|spending|spendings|transactions|bills|records|data|last|latest|item|items)\b/gi, '').trim();
+      if (/\b(all|every|evry|everything|evrything|the|those|my|these|entire|whole)\b/i.test(query)) {
+        let cleanNote = query.replace(/\b(delete|remove|cancel|undo|erase|drop|clear|trash|wipe|destroy|discard|eliminate|nuke|kill|void|scrap|chuck|dump|bin|del|rm|all|every|evry|everything|evrything|the|those|my|these|entire|whole|spent|add|log|bought|paid|on|for|rupees|rs|₹|inr|bucks|spending|spendings|expense|expenses|transaction|transactions|item|items|bill|bills|record|records|data|entry|entries|history|log|logs|purchases|payments|exp|txn|txns|amt|last|latest)\b/gi, '').trim();
         const targets = validExpenses.filter(e => (e.note || '').toLowerCase().includes(cleanNote.toLowerCase()) || (e.category || '').toLowerCase().includes(cleanNote.toLowerCase()));
         
         if (targets.length > 0 && cleanNote.length >= 2) {
@@ -652,7 +652,7 @@ export function AIChatDrawer() {
       }
 
       // 3. Extract Note
-      const cleanNote = cleanQuery.replace(/\b(delete|remove|cancel|undo|erase|drop|clear|trash|wipe|spent|add|log|bought|paid|on|for|rupees|rs|₹|inr|expense|expenses|spending|spendings|transactions|bills|records|data|last|latest|item)\b/gi, '').trim().replace(/\s+/g, ' ');
+      const cleanNote = cleanQuery.replace(/\b(delete|remove|cancel|undo|erase|drop|clear|trash|wipe|destroy|discard|eliminate|nuke|kill|void|scrap|chuck|dump|bin|del|rm|spent|add|log|bought|paid|on|for|rupees|rs|₹|inr|bucks|spending|spendings|expense|expenses|transaction|transactions|item|items|bill|bills|record|records|data|entry|entries|history|log|logs|purchases|payments|exp|txn|txns|amt|last|latest)\b/gi, '').trim().replace(/\s+/g, ' ');
 
       // Find targets that match criteria
       const matchedTargets = validExpenses.filter(e => {
