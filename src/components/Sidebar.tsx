@@ -9,9 +9,12 @@ export function Sidebar() {
   const profile = useAppStore(state => state.profile);
   const user = useAppStore(state => state.user);
   
-  const fullName = profile?.full_name || user?.full_name || user?.email?.split('@')[0] || 'User';
+  const googleAvatar = typeof window !== 'undefined' ? localStorage.getItem('google_avatar_url') : null;
+  const googleName = typeof window !== 'undefined' ? localStorage.getItem('google_full_name') : null;
+
+  const fullName = profile?.full_name || user?.full_name || googleName || user?.email?.split('@')[0] || 'User';
   const username = profile?.username || user?.username || (user?.email ? `@${user.email.split('@')[0]}` : '@username');
-  const avatarUrl = profile?.avatar_url || user?.avatar_url || profile?.avatar || user?.avatar || '/profile-avatar.svg';
+  const avatarUrl = profile?.avatar_url || user?.avatar_url || googleAvatar || profile?.avatar || user?.avatar || '/profile-avatar.svg';
 
   const handleOpenAI = () => {
     window.dispatchEvent(new Event('open-ai-chat'));

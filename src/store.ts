@@ -132,25 +132,59 @@ export const useAppStore = create<AppState>((set, get) => ({
 
   initAuth: async () => {
     try {
-      // 1. Check if user just returned from Supabase Google Login
+      // 1. Check if user is logged into Supabase (Google Auth session)
       const { data: { session } } = await supabase.auth.getSession();
+      let googleAvatar = localStorage.getItem('google_avatar_url') || '';
+      let googleName = localStorage.getItem('google_full_name') || '';
+
       if (session?.user) {
-        // We have a Google user! Bridge them to MongoDB
         const email = session.user.email;
-        const full_name = session.user.user_metadata?.full_name;
-        const avatar_url = session.user.user_metadata?.avatar_url;
+        const full_name = session.user.user_metadata?.full_name || session.user.user_metadata?.name || '';
+        const avatar_url = session.user.user_metadata?.avatar_url || session.user.user_metadata?.picture || '';
         
-        if (email) {
-          await api.googleLogin(email, full_name, avatar_url);
+        if (avatar_url) {
+          googleAvatar = avatar_url;
+          localStorage.setItem('google_avatar_url', avatar_url);
         }
-        // Sign out of Supabase locally so we rely purely on MongoDB JWT
-        await supabase.auth.signOut();
+        if (full_name) {
+          googleName = full_name;
+          localStorage.setItem('google_full_name', full_name);
+        }
+
+        if (email) {
+          try {
+            await api.googleLogin(email, full_name, avatar_url);
+          } catch (bridgeErr) {
+            console.error('API Google bridge error:', bridgeErr);
+          }
+        }
       }
 
       // 2. Load standard MongoDB profile
       const profile = await api.getProfile();
       if (profile) {
+        // If MongoDB profile doesn't have an avatar or it differs, sync Google photo
+        if (googleAvatar && profile.avatar_url !== googleAvatar) {
+          profile.avatar_url = googleAvatar;
+          api.updateProfile({ avatar_url: googleAvatar }).catch(console.error);
+        }
+        if (googleName && (!profile.full_name || profile.full_name === 'ExpenseHub User' || profile.full_name === 'User')) {
+          profile.full_name = googleName;
+          api.updateProfile({ full_name: googleName }).catch(console.error);
+        }
         set({ user: profile, profile, isAuthLoading: false });
+        await get().fetchData();
+      } else if (session?.user) {
+        // Fallback profile from active Google session
+        const fallbackProfile = {
+          id: session.user.id,
+          email: session.user.email || '',
+          full_name: googleName || session.user.email?.split('@')[0] || 'User',
+          username: `@${session.user.email?.split('@')[0] || 'user'}`,
+          avatar_url: googleAvatar,
+          short_id: session.user.id.slice(0, 6)
+        };
+        set({ user: fallbackProfile as any, profile: fallbackProfile as any, isAuthLoading: false });
         await get().fetchData();
       } else {
         set({ user: null, profile: null, isAuthLoading: false, isLoading: false });
@@ -162,6 +196,11 @@ export const useAppStore = create<AppState>((set, get) => ({
 
   signOut: async () => {
     localStorage.removeItem('expensehub_token');
+    localStorage.removeItem('google_avatar_url');
+    localStorage.removeItem('google_full_name');
+    try {
+      await supabase.auth.signOut();
+    } catch (e) {}
     set({ user: null, profile: null, expenses: [], wallets: [], trips: [], friends: [], isAuthLoading: false });
   },
 

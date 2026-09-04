@@ -61,7 +61,11 @@ export function Login() {
               throw mongoErr;
             }
             // Auto-sync Supabase user session to backend API
-            await api.googleLogin(cleanEmail, data.user.user_metadata?.full_name);
+            const avatar = data.user.user_metadata?.avatar_url || data.user.user_metadata?.picture;
+            const name = data.user.user_metadata?.full_name || data.user.user_metadata?.name;
+            if (avatar) localStorage.setItem('google_avatar_url', avatar);
+            if (name) localStorage.setItem('google_full_name', name);
+            await api.googleLogin(cleanEmail, name, avatar);
           } catch (e) {
             throw mongoErr;
           }
@@ -82,7 +86,11 @@ export function Login() {
                 password: password
               });
               if (!supaErr && data?.user) {
-                await api.googleLogin(cleanEmail);
+                const avatar = data.user.user_metadata?.avatar_url || data.user.user_metadata?.picture;
+                const name = data.user.user_metadata?.full_name || data.user.user_metadata?.name;
+                if (avatar) localStorage.setItem('google_avatar_url', avatar);
+                if (name) localStorage.setItem('google_full_name', name);
+                await api.googleLogin(cleanEmail, name, avatar);
               } else {
                 throw signupErr;
               }

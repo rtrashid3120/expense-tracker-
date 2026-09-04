@@ -148,10 +148,16 @@ app.post('/api/auth/google', async (req, res) => {
         short_id
       });
     } else {
-      // Update avatar or name if provided and missing
+      // Always synchronize avatar or name with Google profile
       let updated = false;
-      if (avatar_url && !user.avatar_url) { user.avatar_url = avatar_url; updated = true; }
-      if (full_name && user.full_name === 'ExpenseHub User') { user.full_name = full_name; updated = true; }
+      if (avatar_url && user.avatar_url !== avatar_url) {
+        user.avatar_url = avatar_url;
+        updated = true;
+      }
+      if (full_name && (!user.full_name || user.full_name === 'ExpenseHub User' || user.full_name === 'User')) {
+        user.full_name = full_name;
+        updated = true;
+      }
       if (updated) await user.save();
     }
 

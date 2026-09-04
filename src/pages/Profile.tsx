@@ -100,9 +100,12 @@ export function Profile() {
           <div className="glass-card p-6 text-center">
             <div className="w-24 h-24 mx-auto rounded-full bg-gradient-to-tr from-brand-neon to-brand-purple p-[3px] shadow-[0_0_25px_rgba(0,240,255,0.4)] mb-4">
               <img 
-                src={profile?.avatar_url || '/profile-avatar.svg'} 
+                src={profile?.avatar_url || (typeof window !== 'undefined' ? localStorage.getItem('google_avatar_url') : null) || '/profile-avatar.svg'} 
                 className="w-full h-full rounded-full object-cover border-2 border-white/20 bg-[#091326]" 
                 alt="avatar" 
+                onError={(e) => {
+                  (e.target as HTMLImageElement).src = '/profile-avatar.svg';
+                }}
               />
             </div>
 
