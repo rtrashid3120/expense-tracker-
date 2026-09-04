@@ -9,12 +9,11 @@ export function AuditTrailPage() {
   const [searchDate, setSearchDate] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<string>('All');
   
-  const defaultWalletId = wallets[0]?.id || (wallets[0] as any)?._id || '';
-  const [selectedWalletId, setSelectedWalletId] = useState<string>(defaultWalletId);
-
+  const [selectedWalletId, setSelectedWalletId] = useState<string>(''); // Start with all wallets selected
   const categories = ['All', 'Groceries', 'Transport', 'Rent', 'Dining', 'Shopping', 'Personal', 'Medical', 'Fuel', 'Travel'];
-
-  const activeWalletId = selectedWalletId || defaultWalletId;
+  
+  // No longer forcing a fallback to defaultWalletId so "All Wallets" works
+  const activeWalletId = selectedWalletId;
 
   const filteredExpenses = expenses.filter(exp => {
     const expWalletId = exp.walletId || (exp as any).wallet_id;
@@ -80,9 +79,22 @@ export function AuditTrailPage() {
       {wallets.length > 0 && (
         <div className="flex items-center gap-2 overflow-x-auto scrollbar-hide mb-4 pb-1">
           <FiCreditCard className="text-purple-600 dark:text-brand-neon shrink-0" size={14} />
+          
+          <button
+            onClick={() => setSelectedWalletId('')}
+            className={`px-3 py-1.5 rounded-xl text-[11px] font-bold transition-all whitespace-nowrap shrink-0 border flex items-center gap-1 ${
+              !selectedWalletId
+                ? 'bg-purple-600 dark:bg-brand-neon text-white dark:text-black border-purple-600 dark:border-brand-neon shadow-md'
+                : 'bg-white/70 dark:bg-white/5 border-gray-200 dark:border-white/10 text-gray-600 dark:text-white/70 hover:bg-gray-100 dark:hover:bg-white/10'
+            }`}
+          >
+            All Wallets
+            <span className="text-[9px] px-1 rounded-full bg-black/10 dark:bg-white/20">{expenses.length}</span>
+          </button>
+
           {wallets.map(w => {
             const wId = w.id || (w as any)._id;
-            const isSelected = activeWalletId === wId;
+            const isSelected = selectedWalletId === wId;
             const walletExpenseCount = expenses.filter(e => (e.walletId || (e as any).wallet_id) === wId).length;
 
             return (
