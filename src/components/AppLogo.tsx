@@ -1,12 +1,8 @@
-import brandBannerImg from '../../logo/WhatsApp Image 2026-09-01 at 18.42.56.jpeg';
-
 export interface AppLogoProps {
-  /** Size of the logo icon in pixels */
+  /** Size / dimension of the icon in pixels or preset */
   size?: 'xs' | 'sm' | 'md' | 'lg' | 'xl' | number;
-  /** Whether to show the text to the right of the logo */
+  /** Whether to show the text to the right of the icon */
   showText?: boolean;
-  /** Use the exact uploaded banner directly */
-  useBannerImage?: boolean;
   /** Optional custom CSS classes */
   className?: string;
   /** Whether to animate on hover */
@@ -15,38 +11,23 @@ export interface AppLogoProps {
 
 export function AppLogo({
   size = 'md',
-  showText = true,
-  useBannerImage = false,
+  showText = false,
   className = '',
   animated = false,
 }: AppLogoProps) {
   const iconDim = typeof size === 'number'
     ? size
-    : size === 'xs' ? 26
-    : size === 'sm' ? 32
+    : size === 'xs' ? 24
+    : size === 'sm' ? 30
     : size === 'md' ? 44
     : size === 'lg' ? 52
     : 62; // 'xl'
 
-  const fontSizeClass = iconDim <= 32
+  const fontSizeClass = iconDim <= 30
     ? 'text-lg'
     : iconDim <= 44
     ? 'text-2xl'
     : 'text-3xl';
-
-  // If useBannerImage is explicitly true, render the exact banner
-  if (useBannerImage) {
-    return (
-      <div className={`inline-flex items-center select-none ${animated ? 'hover:scale-105 transition-transform' : ''} ${className}`}>
-        <img
-          src={brandBannerImg}
-          alt="EXPENSE-HUB"
-          style={{ height: iconDim }}
-          className="w-auto object-contain rounded-xl"
-        />
-      </div>
-    );
-  }
 
   return (
     <div
@@ -55,74 +36,105 @@ export function AppLogo({
       } ${className}`}
       title="EXPENSE-HUB"
     >
-      {/* 1. EXACT "C" LOGO ICON FROM YOUR IMAGE */}
+      {/* 1. STANDALONE LUXURY OBSIDIAN & NEON DIAMOND EMBLEM */}
       <div
         style={{ width: iconDim, height: iconDim }}
-        className={`relative shrink-0 flex items-center justify-center rounded-2xl bg-[#060C18] border border-[#38E1D2]/40 shadow-[0_0_18px_rgba(56,225,210,0.35)] overflow-hidden transition-transform duration-200 ${
-          animated ? 'group-hover:scale-105 active:scale-95' : ''
+        className={`relative shrink-0 flex items-center justify-center rounded-2xl bg-[#091020]/90 border border-[#00F0FF]/40 shadow-[0_0_18px_rgba(0,240,255,0.35)] backdrop-blur-md p-1.5 overflow-hidden transition-all duration-300 ${
+          animated ? 'group-hover:scale-105 group-hover:shadow-[0_0_26px_rgba(0,240,255,0.6)] active:scale-95' : ''
         }`}
       >
         <svg
           viewBox="0 0 100 100"
-          className="w-full h-full p-1"
+          className="w-full h-full"
           fill="none"
           xmlns="http://www.w3.org/2000/svg"
         >
-          {/* Dark Blueprint Grid Pattern */}
+          <defs>
+            {/* Neon Cyan to Purple Gradient */}
+            <linearGradient id="vaultNeonGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+              <stop offset="0%" stopColor="#00F0FF" />
+              <stop offset="50%" stopColor="#38E1D2" />
+              <stop offset="100%" stopColor="#8A2BE2" />
+            </linearGradient>
+
+            {/* Core Chrome Highlight */}
+            <linearGradient id="chromeHighlight" x1="0%" y1="100%" x2="100%" y2="0%">
+              <stop offset="0%" stopColor="#CBD5E1" />
+              <stop offset="50%" stopColor="#F8FAFC" />
+              <stop offset="100%" stopColor="#FFFFFF" />
+            </linearGradient>
+
+            {/* Ambient Glow */}
+            <filter id="vaultSoftGlow" x="-25%" y="-25%" width="150%" height="150%">
+              <feGaussianBlur stdDeviation="3.5" result="blur" />
+              <feComposite in="SourceGraphic" in2="blur" operator="over" />
+            </filter>
+          </defs>
+
+          {/* Hexagonal Tech Grid Accent */}
           <path
-            d="M 25 0 V 100 M 50 0 V 100 M 75 0 V 100 M 0 25 H 100 M 0 50 H 100 M 0 75 H 100"
-            stroke="#0E1A2E"
+            d="M 50 16 L 82 34 V 66 L 50 84 L 18 66 V 34 Z"
+            stroke="#1E293B"
             strokeWidth="0.75"
+            strokeDasharray="2 2"
           />
 
-          {/* Ambient Glow */}
-          <g opacity="0.6">
-            <path d="M 86 44 L 50 14 L 14 50 L 44 80" stroke="#38E1D2" strokeWidth="9" strokeLinecap="square" strokeLinejoin="miter" />
-            <path d="M 54 90 L 86 58" stroke="#38E1D2" strokeWidth="9" strokeLinecap="square" />
-            <path d="M 30 42 L 42 30" stroke="#38E1D2" strokeWidth="9" strokeLinecap="square" />
-            <path d="M 48 34 L 68 54 L 48 74 L 30 56" stroke="#38E1D2" strokeWidth="9" strokeLinecap="square" strokeLinejoin="miter" />
+          {/* Ambient Glow Underlay */}
+          <g filter="url(#vaultSoftGlow)" opacity="0.65">
+            <path
+              d="M 50 14 L 86 50 L 50 86 L 14 50 Z"
+              stroke="#00F0FF"
+              strokeWidth="5.5"
+              strokeLinejoin="round"
+            />
           </g>
 
-          {/* 1. Outer Top & Left Wall */}
+          {/* Outer Prism Diamond Frame */}
           <path
-            d="M 86 44 L 50 14 L 14 50 L 44 80"
-            stroke="#38E1D2"
-            strokeWidth="8.5"
-            strokeLinecap="square"
-            strokeLinejoin="miter"
+            d="M 50 14 L 86 50 L 50 86 L 14 50 Z"
+            stroke="url(#vaultNeonGradient)"
+            strokeWidth="5.5"
+            strokeLinejoin="round"
           />
 
-          {/* 2. Outer Bottom-Right Diagonal Arm */}
+          {/* Inner Inset Diamond Track */}
           <path
-            d="M 54 90 L 86 58"
-            stroke="#38E1D2"
-            strokeWidth="8.5"
-            strokeLinecap="square"
+            d="M 50 25 L 75 50 L 50 75 L 25 50 Z"
+            stroke="#1E293B"
+            strokeWidth="1.5"
+            strokeLinejoin="round"
           />
 
-          {/* 3. Inner Top-Left Floating Diagonal Bar */}
+          {/* Core Metallic 'E' Monogram */}
           <path
-            d="M 30 42 L 42 30"
-            stroke="#38E1D2"
-            strokeWidth="8.5"
-            strokeLinecap="square"
+            d="M 64 34 H 38 V 66 H 64 M 38 50 H 58"
+            stroke="url(#chromeHighlight)"
+            strokeWidth="6.5"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          />
+          <path
+            d="M 64 34 H 38 V 66 H 64 M 38 50 H 58"
+            stroke="url(#vaultNeonGradient)"
+            strokeWidth="3.5"
+            strokeLinecap="round"
+            strokeLinejoin="round"
           />
 
-          {/* 4. Inner Chevron Hook */}
-          <path
-            d="M 48 34 L 68 54 L 48 74 L 30 56"
-            stroke="#38E1D2"
-            strokeWidth="8.5"
-            strokeLinecap="square"
-            strokeLinejoin="miter"
+          {/* Specular Glint Star */}
+          <circle cx="78" cy="22" r="1.5" fill="#FFFFFF" />
+          <polygon
+            points="78,17 79.5,21.5 84,22 79.5,22.5 78,27 76.5,22.5 72,22 76.5,21.5"
+            fill="#00F0FF"
+            opacity="0.85"
           />
         </svg>
       </div>
 
-      {/* 2. TEXT WRITTEN TO THE RIGHT OF THE LOGO */}
+      {/* 2. SEAMLESS NATIVE TYPOGRAPHY (NO BLACK ENCLOSING BOX) */}
       {showText && (
-        <span className={`font-black ${fontSizeClass} tracking-tight text-[#38E1D2] drop-shadow-[0_0_12px_rgba(56,225,210,0.4)]`}>
-          EXPENSE-HUB
+        <span className={`font-black ${fontSizeClass} tracking-tight leading-none text-gray-900 dark:text-white flex items-center`}>
+          EXPENSE-<span className="text-[#00F0FF] dark:text-[#00F0FF] drop-shadow-[0_0_12px_rgba(0,240,255,0.6)]">HUB</span>
         </span>
       )}
     </div>

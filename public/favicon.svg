@@ -1,16 +1,44 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" fill="none">
-  <rect width="100" height="100" rx="18" fill="#060C18" />
-  <path d="M 25 0 V 100 M 50 0 V 100 M 75 0 V 100 M 0 25 H 100 M 0 50 H 100 M 0 75 H 100" stroke="#0E1A2E" stroke-width="0.75" />
+  <defs>
+    <radialGradient id="favVaultBg" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#0E1A33" />
+      <stop offset="100%" stop-color="#050912" />
+    </radialGradient>
+    <linearGradient id="favNeonCyanPurple" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#00F0FF" />
+      <stop offset="45%" stop-color="#38E1D2" />
+      <stop offset="100%" stop-color="#8A2BE2" />
+    </linearGradient>
+    <linearGradient id="favTitaniumEdge" x1="0%" y1="100%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#E2E8F0" />
+      <stop offset="50%" stop-color="#94A3B8" />
+      <stop offset="100%" stop-color="#FFFFFF" />
+    </linearGradient>
+    <filter id="favVaultGlow" x="-20%" y="-20%" width="140%" height="140%">
+      <feGaussianBlur stdDeviation="3" result="blur" />
+      <feComposite in="SourceGraphic" in2="blur" operator="over" />
+    </filter>
+  </defs>
 
-  <!-- 1. Outer Top & Left & Bottom-Left Bracket -->
-  <path d="M 87 47 L 53 13 L 13 53 L 47 87" stroke="#38E1D2" stroke-width="8.5" stroke-linecap="square" stroke-linejoin="miter" />
+  <!-- Squircle Canvas Background -->
+  <rect width="100" height="100" rx="24" fill="url(#favVaultBg)" stroke="#00F0FF" stroke-opacity="0.35" stroke-width="1.5" />
 
-  <!-- 2. Outer Bottom-Right Arm -->
-  <path d="M 53 89 L 87 55" stroke="#38E1D2" stroke-width="8.5" stroke-linecap="square" />
+  <!-- Outer Ambient Glow Layer -->
+  <g filter="url(#favVaultGlow)" opacity="0.6">
+    <path d="M 50 14 L 86 50 L 50 86 L 14 50 Z" stroke="#00F0FF" stroke-width="5" stroke-linejoin="round" />
+  </g>
 
-  <!-- 3. Inner Top-Left Diagonal Bar -->
-  <path d="M 32 45 L 45 32" stroke="#38E1D2" stroke-width="8.5" stroke-linecap="square" />
+  <!-- Outer Prism Diamond Frame -->
+  <path d="M 50 14 L 86 50 L 50 86 L 14 50 Z" stroke="url(#favNeonCyanPurple)" stroke-width="5.5" stroke-linejoin="round" />
 
-  <!-- 4. Inner Chevron Hook -->
-  <path d="M 50 32 L 70 52 L 50 72 L 32 54" stroke="#38E1D2" stroke-width="8.5" stroke-linecap="square" stroke-linejoin="miter" />
+  <!-- Inner Inset Diamond Ring -->
+  <path d="M 50 24 L 76 50 L 50 76 L 24 50 Z" stroke="#1E293B" stroke-width="1.5" stroke-linejoin="round" />
+
+  <!-- Core Metallic 'E' Monogram -->
+  <path d="M 64 33 H 38 V 67 H 64 M 38 50 H 58" stroke="url(#favTitaniumEdge)" stroke-width="6" stroke-linecap="round" stroke-linejoin="round" />
+  <path d="M 64 33 H 38 V 67 H 64 M 38 50 H 58" stroke="url(#favNeonCyanPurple)" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round" />
+
+  <!-- Specular Glint Star -->
+  <circle cx="78" cy="22" r="1.5" fill="#FFFFFF" />
+  <polygon points="78,17 79.5,21.5 84,22 79.5,22.5 78,27 76.5,22.5 72,22 76.5,21.5" fill="#00F0FF" opacity="0.8" />
 </svg>

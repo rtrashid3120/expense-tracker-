@@ -162,6 +162,110 @@ const parseMultiExpenses = (query: string) => {
   return { items, targetDateStr, dateDisplayLabel };
 };
 
+const generateLocalFinancialAnswer = (
+  query: string,
+  wallets: any[],
+  expenses: any[],
+  trips: any[],
+  monthlyBudget: number,
+  _profile: any
+): string => {
+  const lower = query.toLowerCase().trim();
+  const totalBalance = wallets.reduce((s, w) => s + (w.balance || 0), 0);
+  const totalSpent = expenses.reduce((s, e) => s + (e.amount || 0), 0);
+
+  if (/who (created|built|made|owns)|creator|owner|mohamed|rashid/i.test(lower)) {
+    return `🌟 **ExpenseHub was designed and built by Mohamed Rashid!**\n\nHe crafted ExpenseHub as an all-in-one financial operating system—giving you effortless expense logging, smart wallet budgeting, trip bill splitting, and instant financial clarity.`;
+  }
+
+  if (/(^|\b)(trip|trips|vacation|tour|holiday)(\b|$)/i.test(lower)) {
+    if (trips.length === 0) {
+      return `✈️ **No Active Trips Found**\n\nYou haven't created any trips yet. You can create a trip in the **Trips** tab to split bills and track shared vacation expenses with friends!`;
+    }
+    let text = `✈️ **Active Trips Summary** (${trips.length} active):\n\n`;
+    trips.forEach((t: any) => {
+      const budget = Number(t.totalBudget || t.total_budget || 0);
+      const spent = Number(t.spent || 0);
+      const remaining = Math.max(0, budget - spent);
+      const percent = budget > 0 ? Math.round((spent / budget) * 100) : 0;
+      const size = t.groupSize || t.group_size || (t.balances?.length || 1);
+      text += `• **${t.name}**:\n  - Spent: ₹${spent.toLocaleString('en-IN')} / Budget: ₹${budget.toLocaleString('en-IN')} (${percent}% used)\n  - Remaining: ₹${remaining.toLocaleString('en-IN')}\n  - Members: ${size} people\n\n`;
+    });
+    return text.trim();
+  }
+
+  if (/(^|\b)(50\s*30\s*20|50\/30\/20|rule 50)(\b|$)/i.test(lower)) {
+    const baseAmount = monthlyBudget > 0 ? monthlyBudget : (totalBalance > 0 ? totalBalance : 50000);
+    const needs = Math.round(baseAmount * 0.50);
+    const wants = Math.round(baseAmount * 0.30);
+    const savings = Math.round(baseAmount * 0.20);
+
+    return `📐 **The 50/30/20 Budgeting Rule** (Tailored for you):\n\n` +
+      `Based on your ${monthlyBudget > 0 ? `Monthly Budget (₹${monthlyBudget.toLocaleString('en-IN')})` : `Total Balance (₹${baseAmount.toLocaleString('en-IN')})`}:\n\n` +
+      `• 🏠 **50% Needs (₹${needs.toLocaleString('en-IN')})**: Essential expenses (Rent, Groceries, Utilities, Bills, Fuel/Transport)\n` +
+      `• ☕ **30% Wants (₹${wants.toLocaleString('en-IN')})**: Discretionary spending (Dining out, Shopping, Entertainment, Coffee)\n` +
+      `• 💰 **20% Savings (₹${savings.toLocaleString('en-IN')})**: Emergency Fund, Investments, and Debt clearance\n\n` +
+      `💡 *ExpenseHub Tip: Track your categories to ensure your Wants stay under ₹${wants.toLocaleString('en-IN')}!*`;
+  }
+
+  if (/(^|\b)(wallet|wallets|balance|cash|funds|net balance)(\b|$)/i.test(lower)) {
+    let text = `👛 **Active Wallets & Total Balance**:\n\n`;
+    wallets.forEach((w: any) => {
+      text += `• **${w.name}**: ₹${(w.balance || 0).toLocaleString('en-IN')}\n`;
+    });
+    text += `\n💰 **Total Across All Wallets**: ₹${totalBalance.toLocaleString('en-IN')}`;
+    return text;
+  }
+
+  if (/(^|\b)(budget|budget left|budget status|over budget)(\b|$)/i.test(lower)) {
+    const percent = monthlyBudget > 0 ? Math.round((totalSpent / monthlyBudget) * 100) : 0;
+    const remaining = monthlyBudget > 0 ? monthlyBudget - totalSpent : 0;
+    return `🎯 **Budget Overview**:\n\n` +
+      `• **Monthly Target**: ₹${monthlyBudget.toLocaleString('en-IN')}\n` +
+      `• **Total Expenses Logged**: ₹${totalSpent.toLocaleString('en-IN')} (${percent}% utilized)\n` +
+      `• **Remaining Allowance**: ₹${remaining.toLocaleString('en-IN')}\n` +
+      `• **Current Total Wallet Cash**: ₹${totalBalance.toLocaleString('en-IN')}`;
+  }
+
+  if (/(^|\b)(tips|how to save|save money|reduce spending|financial advice|cut expenses)(\b|$)/i.test(lower)) {
+    const catMap: Record<string, number> = {};
+    expenses.forEach((e: any) => {
+      const cat = e.category || 'Other';
+      catMap[cat] = (catMap[cat] || 0) + e.amount;
+    });
+    const topCat = Object.entries(catMap).sort((a, b) => b[1] - a[1])[0];
+
+    let text = `💡 **Personalized Financial & Savings Tips**:\n\n`;
+    if (topCat) {
+      text += `1. 🎯 **Tackle Your #1 Category (${topCat[0]} - ₹${topCat[1].toLocaleString('en-IN')})**:\n   Your highest spending is in **${topCat[0]}**. Setting a targeted limit here is your easiest win!\n\n`;
+    }
+    text += `2. 👛 **Allocate by Wallet**:\n   Use dedicated wallets for separate purposes to prevent overspending.\n\n`;
+    text += `3. ⏳ **The 24-Hour Cooling Rule**:\n   Delay unplanned purchases above ₹1,000 for 24 hours to reduce impulse spending.\n\n`;
+    text += `4. ⚡ **Monitor Spending Velocity**:\n   Check *"spending velocity"* regularly to see your projected month-end total!`;
+    return text;
+  }
+
+  // Category breakdown
+  const catMap: Record<string, number> = {};
+  expenses.forEach((e: any) => {
+    const cat = e.category || 'Other';
+    catMap[cat] = (catMap[cat] || 0) + e.amount;
+  });
+  const topCat = Object.entries(catMap).sort((a, b) => b[1] - a[1])[0];
+
+  return `👋 **ExpenseHub AI Financial Assistant**\n\n` +
+    `Here is your real-time financial snapshot:\n` +
+    `• **Total Available Balance**: ₹${totalBalance.toLocaleString('en-IN')} across ${wallets.length} active wallet${wallets.length === 1 ? '' : 's'}\n` +
+    `• **Total Expenses Tracked**: ₹${totalSpent.toLocaleString('en-IN')}\n` +
+    (topCat ? `• **Top Spending Category**: ${topCat[0]} (₹${topCat[1].toLocaleString('en-IN')})\n` : '') +
+    `\n**You can ask me to:**\n` +
+    `• ➕ **Log Expenses**: *"spent 50 coffee yesterday"*, *"paid 200 fuel"*\n` +
+    `• 🗑️ **Delete Expenses**: *"delete spent 50 coffee"*\n` +
+    `• 📊 **Filter & Breakdown**: *"show fuel expenses"*, *"category breakdown"*\n` +
+    `• 👛 **Check Balances**: *"which wallet has highest balance"*, *"total balance"*\n` +
+    `• ⚡ **Insights**: *"how fast am i spending"*, *"safe to spend 500?"*`;
+};
+
 export function AIChatDrawer() {
   const [isOpen, setIsOpen] = useState(false);
   const [inputMsg, setInputMsg] = useState('');
@@ -344,10 +448,55 @@ export function AIChatDrawer() {
       }
     }
 
-    // Check 1.2: Add Expense Intent (supports single and compound multi-item commands like "spent 100 on coffee , 100 on thoufika on 26 aug")
+    // Check 1.15: Price Range / Threshold Search Intent (e.g. "expenses over 500", "expenses under 100")
+    const isThresholdQuery = /\b(expenses over|expenses under|above|below|more than|less than|greater than)\b/i.test(query);
+    if (isThresholdQuery && !isDeleteIntent) {
+      const numMatch = query.match(/(\d+)/);
+      const threshold = numMatch ? Number(numMatch[1]) : 500;
+      const isAbove = /\b(over|above|more than|greater than)\b/i.test(query);
+
+      const filtered = validExpenses.filter(e => isAbove ? e.amount >= threshold : e.amount <= threshold);
+      const totalAmount = filtered.reduce((s, e) => s + e.amount, 0);
+
+      let replyText = `🔍 **Expenses ${isAbove ? '≥' : '≤'} ₹${threshold.toLocaleString('en-IN')}** (${filtered.length} found):\n\n`;
+      if (filtered.length > 0) {
+        replyText += filtered.map(e => `• ₹${e.amount.toLocaleString('en-IN')} - ${e.note || e.category} (${new Date(e.date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })})`).join('\n');
+        replyText += `\n\n💰 **Subtotal**: ₹${totalAmount.toLocaleString('en-IN')}`;
+      } else {
+        replyText += `No expenses found matching this threshold.`;
+      }
+
+      const aiMsg: ChatMessage = {
+        id: (Date.now() + 1).toString(),
+        sender: 'ai',
+        text: replyText,
+        timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+      };
+      setMessages(prev => [...prev, aiMsg]);
+      return;
+    }
+
+    // Check 1.2: Add Expense Intent (supports single and compound multi-item commands like "spent 100 on coffee , 100 on fuel on 26 aug")
     const numMatch = query.match(/(\d+)/);
     const isExplicitViewQuery = /^(show|view|how much|how many|what is|check|list|find|get)\b/i.test(query.trim());
-    const isAddExpenseIntent = numMatch && !isExplicitViewQuery && !isDeleteIntent;
+
+    // Exploratory / advisory / question / calculation checks
+    const isQuestionOrAdvice = 
+      /^(can i|could i|should i|would i|is it|is \d+|how to|how can|why|what if|explain|predict|tell me|suggest|give me|recommend|rule|tips|ways to)\b/i.test(query.trim()) ||
+      /\b(50\s*30\s*20|50\/30\/20|rule 50|safe to spend|can i spend|budget advice|save money|financial tips|how to save)\b/i.test(query) ||
+      query.includes('?');
+
+    const hasAddActionKeyword = /\b(spent|add|log|bought|paid|pay|bill|purchase|entry|record|deduct)\b/i.test(query);
+    const hasCurrencySymbol = /(?:₹|rs\.?|inr)\s*\d+|\d+\s*(?:₹|rs\.?|inr|rupees)/i.test(query);
+    const isDirectAddPattern = /^[a-zA-Z\s]+\s+\d+$/i.test(query.trim()) || /^\d+\s+[a-zA-Z\s]+$/i.test(query.trim());
+
+    const isAddExpenseIntent = 
+      Boolean(numMatch) && 
+      !isExplicitViewQuery && 
+      !isDeleteIntent && 
+      !isQuestionOrAdvice &&
+      !isThresholdQuery &&
+      (hasAddActionKeyword || hasCurrencySymbol || isDirectAddPattern || query.includes(','));
 
     if (isAddExpenseIntent) {
       const { items, dateDisplayLabel } = parseMultiExpenses(query);
@@ -419,156 +568,8 @@ export function AIChatDrawer() {
       }
     }
 
-    // Check 1.5: Unified Spending & Filter Query Engine (e.g. "Show me the expenses", "show fuel expenses", "Show All Expenses in aug wallet this month")
-    const isSpendingOrFilterQuery = 
-      (/\b(show|view|how much|how many|spending|spent|cost|expenses|expense|breakdown|ledger)\b/i.test(query) ||
-       /\b(fuel|grocery|groceries|coffee|food|rent|dining|shopping|medical|travel)\b/i.test(query)) &&
-      !isDeleteIntent && !isAddExpenseIntent;
-
-    if (isSpendingOrFilterQuery) {
-      // Extract optional wallet and timeframe parameters first
-      const walletMatch = query.match(/in\s+(.*?)\s+wallet/i);
-      let rawWalletName = walletMatch ? walletMatch[1].replace(/\(.*?\)/g, '').trim() : '';
-
-      const timeframeMatch = query.match(/(this week|this month|all time)/i);
-      const timeframe = timeframeMatch ? timeframeMatch[1].toLowerCase() : '';
-
-      // Clean filler words, analytical terms, and punctuation from the query subject
-      let rawSubject = query
-        .replace(/in\s+.*?\s+wallet/gi, '')
-        .replace(/\b(this week|this month|all time)\b/gi, '')
-        .replace(/\b(show|view|find|check|get|details|breakdown|expenses|expense|how|much|many|did|i|my|you|we|spent|spend|spending|cost|on|for|in|total|all|the|a|an|please|tell|me|about|amount|value|velocity|is|what|which)\b/gi, '')
-        .replace(/[\?\!\.,]/g, '')
-        .trim();
-
-      const subject = (rawSubject.length > 1 && !/^(me|the|my|all|wallet|expenses|velocity|is|what)$/i.test(rawSubject))
-        ? rawSubject.charAt(0).toUpperCase() + rawSubject.slice(1)
-        : 'All Expenses';
-
-      // Base list filtered by subject using fuzzy keywords
-      let matching = validExpenses;
-      if (subject !== 'All Expenses') {
-        const keywords = getCategoryKeywords(subject);
-        matching = validExpenses.filter(e => {
-          const noteLower = (e.note || '').toLowerCase();
-          const catLower = (e.category || '').toLowerCase();
-          return keywords.some(kw => noteLower.includes(kw) || catLower.includes(kw));
-        });
-      }
-
-      // STEP 1: If user has NOT specified a wallet yet, ALWAYS prompt Step 1: Select Wallet First!
-      if (!rawWalletName) {
-        const totalAll = matching.reduce((sum, e) => sum + e.amount, 0);
-
-        let replyText = `🤔 Step 1: Which Wallet do you want to view for "${subject}"?\n\n`;
-        replyText += `Total Spent across active wallets: ₹${totalAll.toLocaleString('en-IN')} (${matching.length} transactions)\n\n`;
-        replyText += `Select a Wallet option below to proceed:`;
-
-        const walletOptions = [
-          { label: `👛 All Active Wallets (₹${totalAll.toLocaleString('en-IN')})`, prompt: `Show ${subject} expenses in All Wallets` },
-          ...currentWallets.map(w => {
-            const wId = String(w.id || (w as any)._id);
-            const wTotal = matching.filter(e => String(e.walletId) === wId).reduce((sum, e) => sum + e.amount, 0);
-            return {
-              label: `👛 ${w.name} (₹${wTotal.toLocaleString('en-IN')})`,
-              prompt: `Show ${subject} expenses in ${w.name} wallet`
-            };
-          })
-        ];
-
-        const aiMsg: ChatMessage = {
-          id: (Date.now() + 1).toString(),
-          sender: 'ai',
-          text: replyText,
-          optionGroups: [
-            { title: "Select Wallet First:", options: walletOptions }
-          ],
-          timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-        };
-        setMessages(prev => [...prev, aiMsg]);
-        return;
-      }
-
-      // STEP 2 & 3: User HAS specified a wallet (e.g. "in aug wallet")
-      let walletDisplayName = 'All Wallets';
-      let targetWallet: any = null;
-
-      if (rawWalletName.toLowerCase() !== 'all wallets') {
-        const cleanSearch = rawWalletName.replace(/\(.*?\)/g, '').trim().toLowerCase();
-        targetWallet = currentWallets.find(w => 
-          w.name.toLowerCase() === cleanSearch ||
-          w.name.toLowerCase().includes(cleanSearch) || 
-          cleanSearch.includes(w.name.toLowerCase())
-        );
-
-        if (targetWallet) {
-          walletDisplayName = targetWallet.name;
-          const targetWId = String(targetWallet.id || (targetWallet as any)._id);
-          matching = matching.filter(e => String(e.walletId) === targetWId);
-        }
-      }
-
-      // Filter by timeframe if specified
-      const now = new Date();
-      if (timeframe === 'this week') {
-        const startOfWeek = new Date(now.getFullYear(), now.getMonth(), now.getDate() - now.getDay());
-        matching = matching.filter(e => new Date(e.date) >= startOfWeek);
-      } else if (timeframe === 'this month') {
-        const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
-        matching = matching.filter(e => new Date(e.date) >= startOfMonth);
-      }
-
-      const totalAmount = matching.reduce((sum, e) => sum + e.amount, 0);
-
-      let replyText = `📊 ${subject}`;
-      if (walletDisplayName !== 'All Wallets') replyText += ` in "${walletDisplayName}" Wallet`;
-      else replyText += ` in All Wallets`;
-      if (timeframe) replyText += ` (${timeframe.toUpperCase()})`;
-      replyText += `:\n\nTotal Spent: ₹${totalAmount.toLocaleString('en-IN')} (${matching.length} transactions)\n\n`;
-
-      if (matching.length > 0) {
-        replyText += matching.map(e => `• ₹${e.amount.toLocaleString('en-IN')} - ${e.note || e.category} (${new Date(e.date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })})`).join('\n');
-      } else {
-        replyText += `No transactions found for this selection.`;
-      }
-
-      // If user specified wallet BUT hasn't specified timeframe yet, prompt STEP 2: Choose Period!
-      if (!timeframe) {
-        replyText += `\n\n🗓️ Step 2: Now select the Time Period for ${walletDisplayName !== 'All Wallets' ? `"${walletDisplayName}" Wallet` : 'All Wallets'}:`;
-        const currentMonthName = new Date().toLocaleString('en-IN', { month: 'long' });
-        const walletPart = targetWallet ? `in ${targetWallet.name} wallet ` : 'in All Wallets ';
-
-        const periodOptions = [
-          { label: `🗓️ This Week`, prompt: `Show ${subject} expenses ${walletPart}this week` },
-          { label: `📅 ${currentMonthName} (This Month)`, prompt: `Show ${subject} expenses ${walletPart}this month` },
-          { label: `♾️ All Time`, prompt: `Show ${subject} expenses ${walletPart}all time` }
-        ];
-
-        const aiMsg: ChatMessage = {
-          id: (Date.now() + 1).toString(),
-          sender: 'ai',
-          text: replyText,
-          optionGroups: [
-            { title: `Select Time Period for ${walletDisplayName !== 'All Wallets' ? `"${walletDisplayName}" Wallet` : 'selection'}:`, options: periodOptions }
-          ],
-          timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-        };
-        setMessages(prev => [...prev, aiMsg]);
-        return;
-      }
-
-      const aiMsg: ChatMessage = {
-        id: (Date.now() + 1).toString(),
-        sender: 'ai',
-        text: replyText,
-        timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-      };
-      setMessages(prev => [...prev, aiMsg]);
-      return;
-    }
-
     // Check 1.6: Wallet Balances Query Intent
-    const isWalletQuery = /\b(wallet balance|highest balance|which wallet|all wallets|wallet total|wallet list|my wallets|top wallet)\b/i.test(query);
+    const isWalletQuery = /\b(wallet balance|highest balance|which wallet|all wallets|wallet total|wallet list|my wallets|top wallet|total balance|my balance|how much money|total cash|net balance|current balance|available balance)\b/i.test(query);
     if (isWalletQuery && !isDeleteIntent && !isAddExpenseIntent) {
       let replyText = `👛 **Active Wallets & Balances**:\n\n`;
       const sortedWallets = [...currentWallets].sort((a, b) => b.balance - a.balance);
@@ -737,22 +738,70 @@ export function AIChatDrawer() {
       return;
     }
 
-    // Check 1.87: Price Range / Threshold Search Intent (e.g. "expenses over 500", "expenses under 100")
-    const isThresholdQuery = /\b(expenses over|expenses under|above|below|more than|less than|greater than)\b/i.test(query);
-    if (isThresholdQuery && !isDeleteIntent && !isAddExpenseIntent) {
-      const numMatch = query.match(/(\d+)/);
-      const threshold = numMatch ? Number(numMatch[1]) : 500;
-      const isAbove = /\b(over|above|more than|greater than)\b/i.test(query);
+    // Check 1.88: Trip Budgets & Group Status Intent
+    const isTripQuery = /(^|\b)(trip|trips|vacation|tour|holiday)(\b|$)/i.test(query) && !isDeleteIntent && !isAddExpenseIntent;
+    if (isTripQuery) {
+      if (trips.length === 0) {
+        const aiMsg: ChatMessage = {
+          id: (Date.now() + 1).toString(),
+          sender: 'ai',
+          text: `✈️ **No Active Trips Found**\n\nYou haven't created any trips yet. You can create a trip in the **Trips** tab to split bills and track shared vacation expenses with friends!`,
+          timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+        };
+        setMessages(prev => [...prev, aiMsg]);
+        return;
+      }
 
-      const filtered = validExpenses.filter(e => isAbove ? e.amount >= threshold : e.amount <= threshold);
-      const totalAmount = filtered.reduce((s, e) => s + e.amount, 0);
+      let replyText = `✈️ **Active Trips Summary** (${trips.length} active):\n\n`;
+      trips.forEach(t => {
+        const budget = Number(t.totalBudget || (t as any).total_budget || 0);
+        const spent = Number(t.spent || 0);
+        const remaining = Math.max(0, budget - spent);
+        const percent = budget > 0 ? Math.round((spent / budget) * 100) : 0;
+        const size = t.groupSize || (t as any).group_size || (t.balances?.length || 1);
+        replyText += `• **${t.name}**:\n  - Spent: ₹${spent.toLocaleString('en-IN')} / Budget: ₹${budget.toLocaleString('en-IN')} (${percent}% used)\n  - Remaining: ₹${remaining.toLocaleString('en-IN')}\n  - Members: ${size} people\n\n`;
+      });
 
-      let replyText = `🔍 **Expenses ${isAbove ? '≥' : '≤'} ₹${threshold.toLocaleString('en-IN')}** (${filtered.length} found):\n\n`;
-      if (filtered.length > 0) {
-        replyText += filtered.map(e => `• ₹${e.amount.toLocaleString('en-IN')} - ${e.note || e.category} (${new Date(e.date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })})`).join('\n');
-        replyText += `\n\n💰 **Subtotal**: ₹${totalAmount.toLocaleString('en-IN')}`;
+      const aiMsg: ChatMessage = {
+        id: (Date.now() + 1).toString(),
+        sender: 'ai',
+        text: replyText.trim(),
+        timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+      };
+      setMessages(prev => [...prev, aiMsg]);
+      return;
+    }
+
+    // Check 1.89: Monthly Budget Health & Remaining Limit Intent
+    const isBudgetStatusQuery = /\b(budget status|budget left|remaining budget|monthly budget|how much budget|budget remaining|over budget|my budget)\b/i.test(query) && !isDeleteIntent && !isAddExpenseIntent;
+    if (isBudgetStatusQuery) {
+      const now = new Date();
+      const currentMonthExpenses = validExpenses.filter(e => {
+        const d = new Date(e.date);
+        return d.getFullYear() === now.getFullYear() && d.getMonth() === now.getMonth();
+      });
+      const totalMonthSpent = currentMonthExpenses.reduce((sum, e) => sum + e.amount, 0);
+      const remainingBudget = monthlyBudget > 0 ? monthlyBudget - totalMonthSpent : 0;
+      const percentUsed = monthlyBudget > 0 ? Math.round((totalMonthSpent / monthlyBudget) * 100) : 0;
+      const daysInMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
+      const daysRemaining = daysInMonth - now.getDate() + 1;
+      const safeDailyLimit = remainingBudget > 0 ? Math.round(remainingBudget / (daysRemaining || 1)) : 0;
+
+      let replyText = `🎯 **Monthly Budget Overview**:\n\n`;
+      if (monthlyBudget > 0) {
+        replyText += `• **Monthly Target**: ₹${monthlyBudget.toLocaleString('en-IN')}\n`;
+        replyText += `• **Spent This Month**: ₹${totalMonthSpent.toLocaleString('en-IN')} (${percentUsed}% used)\n`;
+        if (remainingBudget >= 0) {
+          replyText += `• **Remaining Budget**: ₹${remainingBudget.toLocaleString('en-IN')}\n`;
+          replyText += `• **Safe Daily Spend**: ₹${safeDailyLimit.toLocaleString('en-IN')} / day for next ${daysRemaining} days\n\n`;
+          replyText += `✅ *You are well within your budget!*`;
+        } else {
+          replyText += `• **Over Budget By**: ⚠️ ₹${Math.abs(remainingBudget).toLocaleString('en-IN')}\n\n`;
+          replyText += `⚠️ *You have exceeded your monthly limit. Pacing your discretionary spend is recommended.*`;
+        }
       } else {
-        replyText += `No expenses found matching this threshold.`;
+        replyText += `• **Spent This Month**: ₹${totalMonthSpent.toLocaleString('en-IN')}\n`;
+        replyText += `ℹ️ You haven't set a monthly budget yet. You can set one in your **Profile & Settings** page to monitor monthly targets!`;
       }
 
       const aiMsg: ChatMessage = {
@@ -765,17 +814,21 @@ export function AIChatDrawer() {
       return;
     }
 
-    // Check 1.9: Greeting & Help Intent
-    const isGreetingQuery = /^(hi|hello|hey|help|commands|what can you do|who created this|who made you|about)\b/i.test(query.trim());
-    if (isGreetingQuery && !isDeleteIntent && !isAddExpenseIntent) {
-      let replyText = `👋 **Hi there! I'm ExpenseHub AI**, your 24/7 financial assistant.\n\n`;
-      replyText += `Here are things you can ask me:\n`;
-      replyText += `• 📝 **Add Expenses**: *"spent 50 coffee yesterday"*, *"paid 200 petrol on 10 aug"*\n`;
-      replyText += `• 🗑️ **Delete Expenses**: *"delete spent 50 coffee"*, *"remove 200 fuel"*\n`;
-      replyText += `• 📊 **Check Spending**: *"how much i spent on grocery"*, *"show fuel expenses"*\n`;
-      replyText += `• 👛 **Wallet Balances**: *"which wallet has highest balance"*, *"show wallet total"*\n`;
-      replyText += `• ⚡ **Spending Velocity**: *"how fast am i spending"*, *"highest expense"*\n\n`;
-      replyText += `💡 *Crafted with ❤️ for ExpenseHub by Mohamed Rashid.*`;
+    // Check 1.90: 50/30/20 Rule Financial Strategy Intent
+    const is503020RuleQuery = /(^|\b)(50\s*30\s*20|50\/30\/20|rule 50)(\b|$)/i.test(query);
+    if (is503020RuleQuery) {
+      const totalBalance = currentWallets.reduce((s, w) => s + w.balance, 0);
+      const baseAmount = monthlyBudget > 0 ? monthlyBudget : (totalBalance > 0 ? totalBalance : 50000);
+      const needs = Math.round(baseAmount * 0.50);
+      const wants = Math.round(baseAmount * 0.30);
+      const savings = Math.round(baseAmount * 0.20);
+
+      let replyText = `📐 **The 50/30/20 Budgeting Rule** (Tailored for you):\n\n`;
+      replyText += `Based on your ${monthlyBudget > 0 ? `Monthly Budget (₹${monthlyBudget.toLocaleString('en-IN')})` : `Total Balance (₹${baseAmount.toLocaleString('en-IN')})`}:\n\n`;
+      replyText += `• 🏠 **50% Needs (₹${needs.toLocaleString('en-IN')})**:\n  Rent, Groceries, Utilities, Bills, and Fuel/Transport.\n`;
+      replyText += `• ☕ **30% Wants (₹${wants.toLocaleString('en-IN')})**:\n  Dining out, Shopping, Entertainment, and Coffee.\n`;
+      replyText += `• 💰 **20% Savings (₹${savings.toLocaleString('en-IN')})**:\n  Emergency Fund, Investments, and Debt clearance.\n\n`;
+      replyText += `💡 *ExpenseHub Tip: Track your categories to ensure your "Wants" don't exceed 30%!*`;
 
       const aiMsg: ChatMessage = {
         id: (Date.now() + 1).toString(),
@@ -787,7 +840,242 @@ export function AIChatDrawer() {
       return;
     }
 
+    // Check 1.91: Savings Tips & Financial Advice Intent
+    const isSavingsTipsQuery = /\b(tips|how to save|save money|can i save|reduce spending|financial advice|cut expenses|ways to save|how to reduce|how to cut)\b/i.test(query) && !isDeleteIntent && !isAddExpenseIntent;
+    if (isSavingsTipsQuery) {
+      const catMap: Record<string, number> = {};
+      validExpenses.forEach(e => {
+        const cat = e.category || 'Other';
+        catMap[cat] = (catMap[cat] || 0) + e.amount;
+      });
+      const topCat = Object.entries(catMap).sort((a, b) => b[1] - a[1])[0];
 
+      let replyText = `💡 **Personalized Financial & Savings Tips**:\n\n`;
+      if (topCat) {
+        replyText += `1. 🎯 **Tackle Your #1 Category (${topCat[0]} - ₹${topCat[1].toLocaleString('en-IN')})**:\n   Your largest expense area is **${topCat[0]}**. Setting a dedicated wallet limit for ${topCat[0]} can save you up to 15-20% each month.\n\n`;
+      }
+      replyText += `2. 👛 **Use Multiple Wallets**:\n   Keep one wallet for essentials (Groceries, Bills) and another for discretionary spending (Dining, Shopping).\n\n`;
+      replyText += `3. ⏳ **Apply the 24-Hour Rule**:\n   For any non-essential purchase above ₹1,000, wait 24 hours before buying to avoid impulse purchases.\n\n`;
+      replyText += `4. ⚡ **Track Daily Spending Velocity**:\n   Ask me *"how fast am I spending?"* once a week to stay ahead of your month-end cash flow!`;
+
+      const aiMsg: ChatMessage = {
+        id: (Date.now() + 1).toString(),
+        sender: 'ai',
+        text: replyText,
+        timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+      };
+      setMessages(prev => [...prev, aiMsg]);
+      return;
+    }
+
+    // Check 1.92: Recent Expenses & Today's Summary Intent
+    const isRecentExpensesQuery = /\b(today|today's expenses|recent expenses|latest transactions|recent transactions|what did i spend today|latest expenses)\b/i.test(query) && !isDeleteIntent && !isAddExpenseIntent;
+    if (isRecentExpensesQuery) {
+      const todayStr = new Date().toISOString().split('T')[0];
+      const todayExpenses = validExpenses.filter(e => e.date && e.date.startsWith(todayStr));
+
+      let replyText = '';
+      if (query.toLowerCase().includes('today')) {
+        const todayTotal = todayExpenses.reduce((s, e) => s + e.amount, 0);
+        replyText = `📅 **Today's Expenses** (${todayExpenses.length} entries):\n\n`;
+        if (todayExpenses.length > 0) {
+          replyText += todayExpenses.map(e => `• ₹${e.amount.toLocaleString('en-IN')} - ${e.note || e.category} (${e.category})`).join('\n');
+          replyText += `\n\n💰 **Total Today**: ₹${todayTotal.toLocaleString('en-IN')}`;
+        } else {
+          replyText += `No expenses recorded for today yet. You can log one by typing *"spent 50 coffee"*!`;
+        }
+      } else {
+        const recent = validExpenses.slice(0, 5);
+        replyText = `🕒 **Latest 5 Expenses**:\n\n`;
+        if (recent.length > 0) {
+          replyText += recent.map(e => `• ₹${e.amount.toLocaleString('en-IN')} - ${e.note || e.category} (${new Date(e.date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })})`).join('\n');
+        } else {
+          replyText += `No expenses found in your account yet.`;
+        }
+      }
+
+      const aiMsg: ChatMessage = {
+        id: (Date.now() + 1).toString(),
+        sender: 'ai',
+        text: replyText,
+        timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+      };
+      setMessages(prev => [...prev, aiMsg]);
+      return;
+    }
+
+    // Check 1.925: Unified Spending & Filter Query Engine (e.g. "Show me the expenses", "show fuel expenses", "Show All Expenses in aug wallet this month")
+    const isSpendingOrFilterQuery = 
+      (/\b(show|view|how much|how many|list|check|find|get|breakdown|ledger)\b/i.test(query) ||
+       /\b(all expenses|total spent|total expenses|spending on|spent on)\b/i.test(query) ||
+       (/\b(fuel|grocery|groceries|coffee|food|rent|dining|shopping|medical|travel)\b/i.test(query) && /\b(spent|cost|expense|expenses|how much|show|view)\b/i.test(query))) &&
+      !isDeleteIntent && 
+      !isAddExpenseIntent;
+
+    if (isSpendingOrFilterQuery) {
+      // Extract optional wallet and timeframe parameters first
+      const walletMatch = query.match(/in\s+(.*?)\s+wallet/i);
+      let rawWalletName = walletMatch ? walletMatch[1].replace(/\(.*?\)/g, '').trim() : '';
+
+      const timeframeMatch = query.match(/(this week|this month|all time)/i);
+      const timeframe = timeframeMatch ? timeframeMatch[1].toLowerCase() : '';
+
+      // Clean filler words, analytical terms, and punctuation from the query subject
+      let rawSubject = query
+        .replace(/in\s+.*?\s+wallet/gi, '')
+        .replace(/\b(this week|this month|all time)\b/gi, '')
+        .replace(/\b(show|view|find|check|get|details|breakdown|expenses|expense|how|much|many|did|i|my|you|we|spent|spend|spending|cost|on|for|in|total|all|the|a|an|please|tell|me|about|amount|value|velocity|is|what|which)\b/gi, '')
+        .replace(/[?!.,]/g, '')
+        .trim();
+
+      const subject = (rawSubject.length > 1 && !/^(me|the|my|all|wallet|expenses|velocity|is|what)$/i.test(rawSubject))
+        ? rawSubject.charAt(0).toUpperCase() + rawSubject.slice(1)
+        : 'All Expenses';
+
+      // Base list filtered by subject using fuzzy keywords
+      let matching = validExpenses;
+      if (subject !== 'All Expenses') {
+        const keywords = getCategoryKeywords(subject);
+        matching = validExpenses.filter(e => {
+          const noteLower = (e.note || '').toLowerCase();
+          const catLower = (e.category || '').toLowerCase();
+          return keywords.some(kw => noteLower.includes(kw) || catLower.includes(kw));
+        });
+      }
+
+      // STEP 1: If user has NOT specified a wallet yet, ALWAYS prompt Step 1: Select Wallet First!
+      if (!rawWalletName) {
+        const totalAll = matching.reduce((sum, e) => sum + e.amount, 0);
+
+        let replyText = `🤔 Step 1: Which Wallet do you want to view for "${subject}"?\n\n`;
+        replyText += `Total Spent across active wallets: ₹${totalAll.toLocaleString('en-IN')} (${matching.length} transactions)\n\n`;
+        replyText += `Select a Wallet option below to proceed:`;
+
+        const walletOptions = [
+          { label: `👛 All Active Wallets (₹${totalAll.toLocaleString('en-IN')})`, prompt: `Show ${subject} expenses in All Wallets` },
+          ...currentWallets.map(w => {
+            const wId = String(w.id || (w as any)._id);
+            const wTotal = matching.filter(e => String(e.walletId) === wId).reduce((sum, e) => sum + e.amount, 0);
+            return {
+              label: `👛 ${w.name} (₹${wTotal.toLocaleString('en-IN')})`,
+              prompt: `Show ${subject} expenses in ${w.name} wallet`
+            };
+          })
+        ];
+
+        const aiMsg: ChatMessage = {
+          id: (Date.now() + 1).toString(),
+          sender: 'ai',
+          text: replyText,
+          optionGroups: [
+            { title: "Select Wallet First:", options: walletOptions }
+          ],
+          timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+        };
+        setMessages(prev => [...prev, aiMsg]);
+        return;
+      }
+
+      // STEP 2 & 3: User HAS specified a wallet (e.g. "in aug wallet")
+      let walletDisplayName = 'All Wallets';
+      let targetWallet: any = null;
+
+      if (rawWalletName.toLowerCase() !== 'all wallets') {
+        const cleanSearch = rawWalletName.replace(/\(.*?\)/g, '').trim().toLowerCase();
+        targetWallet = currentWallets.find(w => 
+          w.name.toLowerCase() === cleanSearch ||
+          w.name.toLowerCase().includes(cleanSearch) || 
+          cleanSearch.includes(w.name.toLowerCase())
+        );
+
+        if (targetWallet) {
+          walletDisplayName = targetWallet.name;
+          const targetWId = String(targetWallet.id || (targetWallet as any)._id);
+          matching = matching.filter(e => String(e.walletId) === targetWId);
+        }
+      }
+
+      // Filter by timeframe if specified
+      const now = new Date();
+      if (timeframe === 'this week') {
+        const startOfWeek = new Date(now.getFullYear(), now.getMonth(), now.getDate() - now.getDay());
+        matching = matching.filter(e => new Date(e.date) >= startOfWeek);
+      } else if (timeframe === 'this month') {
+        const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+        matching = matching.filter(e => new Date(e.date) >= startOfMonth);
+      }
+
+      const totalAmount = matching.reduce((sum, e) => sum + e.amount, 0);
+
+      let replyText = `📊 ${subject}`;
+      if (walletDisplayName !== 'All Wallets') replyText += ` in "${walletDisplayName}" Wallet`;
+      else replyText += ` in All Wallets`;
+      if (timeframe) replyText += ` (${timeframe.toUpperCase()})`;
+      replyText += `:\n\nTotal Spent: ₹${totalAmount.toLocaleString('en-IN')} (${matching.length} transactions)\n\n`;
+
+      if (matching.length > 0) {
+        replyText += matching.map(e => `• ₹${e.amount.toLocaleString('en-IN')} - ${e.note || e.category} (${new Date(e.date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })})`).join('\n');
+      } else {
+        replyText += `No transactions found for this selection.`;
+      }
+
+      // If user specified wallet BUT hasn't specified timeframe yet, prompt STEP 2: Choose Period!
+      if (!timeframe) {
+        replyText += `\n\n🗓️ Step 2: Now select the Time Period for ${walletDisplayName !== 'All Wallets' ? `"${walletDisplayName}" Wallet` : 'All Wallets'}:`;
+        const currentMonthName = new Date().toLocaleString('en-IN', { month: 'long' });
+        const walletPart = targetWallet ? `in ${targetWallet.name} wallet ` : 'in All Wallets ';
+
+        const periodOptions = [
+          { label: `🗓️ This Week`, prompt: `Show ${subject} expenses ${walletPart}this week` },
+          { label: `📅 ${currentMonthName} (This Month)`, prompt: `Show ${subject} expenses ${walletPart}this month` },
+          { label: `♾️ All Time`, prompt: `Show ${subject} expenses ${walletPart}all time` }
+        ];
+
+        const aiMsg: ChatMessage = {
+          id: (Date.now() + 1).toString(),
+          sender: 'ai',
+          text: replyText,
+          optionGroups: [
+            { title: `Select Time Period for ${walletDisplayName !== 'All Wallets' ? `"${walletDisplayName}" Wallet` : 'selection'}:`, options: periodOptions }
+          ],
+          timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+        };
+        setMessages(prev => [...prev, aiMsg]);
+        return;
+      }
+
+      const aiMsg: ChatMessage = {
+        id: (Date.now() + 1).toString(),
+        sender: 'ai',
+        text: replyText,
+        timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+      };
+      setMessages(prev => [...prev, aiMsg]);
+      return;
+    }
+
+    // Check 1.93: Greeting & Help Intent
+    const isGreetingQuery = /^(hi|hello|hey|help|commands|what can you do|who created this|who made you|about)\b/i.test(query.trim());
+    if (isGreetingQuery && !isDeleteIntent && !isAddExpenseIntent) {
+      let replyText = `👋 **Hi there! I'm ExpenseHub AI**, your 24/7 financial assistant.\n\n`;
+      replyText += `Here are things you can ask me:\n`;
+      replyText += `• 📝 **Add Expenses**: *"spent 50 coffee yesterday"*, *"paid 200 petrol on 10 aug"*\n`;
+      replyText += `• 🗑️ **Delete Expenses**: *"delete spent 50 coffee"*, *"remove 200 fuel"*\n`;
+      replyText += `• 📊 **Check Spending**: *"how much i spent on grocery"*, *"show fuel expenses"*\n`;
+      replyText += `• 👛 **Wallet Balances**: *"which wallet has highest balance"*, *"what is my total balance"*\n`;
+      replyText += `• ⚡ **Velocity & Health**: *"how fast am i spending"*, *"safe to spend 500?"*\n`;
+      replyText += `• 💡 **Advisory**: *"how to save money"*, *"explain 50 30 20 rule"*\n\n`;
+      replyText += `💡 *Crafted with ❤️ for ExpenseHub by Mohamed Rashid.*`;
+
+      const aiMsg: ChatMessage = {
+        id: (Date.now() + 1).toString(),
+        sender: 'ai',
+        text: replyText,
+        timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+      };
+      setMessages(prev => [...prev, aiMsg]);
+      return;
+    }
 
     setIsLoading(true);
 
@@ -820,13 +1108,23 @@ export function AIChatDrawer() {
 
       setMessages(prev => [...prev, aiMessage]);
     } catch (err: any) {
-      const errorMessage: ChatMessage = {
+      console.warn('Backend AI unavailable, using intelligent financial assistant fallback:', err);
+      const fallbackText = generateLocalFinancialAnswer(
+        query.trim(),
+        currentWallets,
+        validExpenses,
+        trips,
+        monthlyBudget,
+        profile
+      );
+
+      const aiMessage: ChatMessage = {
         id: (Date.now() + 1).toString(),
         sender: 'ai',
-        text: `⚠️ Sorry, I encountered an issue: ${err.message || 'Unable to connect to AI service'}. Please try again!`,
+        text: fallbackText,
         timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
       };
-      setMessages(prev => [...prev, errorMessage]);
+      setMessages(prev => [...prev, aiMessage]);
     } finally {
       setIsLoading(false);
     }

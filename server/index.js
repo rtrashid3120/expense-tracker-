@@ -707,7 +707,7 @@ Instructions:
     ];
 
     // Try primary models
-    const candidateModels = ['gemini-3.6-flash', 'gemini-3-flash-preview', 'gemini-2.0-flash-lite', 'gemini-1.5-flash'];
+    const candidateModels = ['gemini-2.0-flash', 'gemini-1.5-flash', 'gemini-2.0-flash-lite', 'gemini-1.5-pro'];
     let replyText = null;
     let lastError = null;
 
@@ -731,7 +731,29 @@ Instructions:
     }
 
     if (!replyText) {
-      return res.status(500).json({ error: lastError || 'AI Service unavailable' });
+      console.warn('Gemini API call returned no answer (' + (lastError || 'No response') + '), activating intelligent built-in fallback.');
+      
+      const lowerMsg = message.toLowerCase();
+      if (/who (created|built|made|owns)|creator|owner|mohamed|rashid/i.test(lowerMsg)) {
+        replyText = `🌟 **ExpenseHub was designed and built by Mohamed Rashid!**\n\nHe crafted ExpenseHub to make personal finance effortless, elegant, and completely actionable—giving you total clarity over your expenses, wallets, and shared trip budgets.`;
+      } else if (/(^|\b)(trip|trips)(\b|$)/i.test(lowerMsg)) {
+        replyText = trips.length > 0 
+          ? `✈️ **Active Trips Summary**:\n` + trips.map(t => `• **${t.name}**: Spent ₹${t.spent} / Budget ₹${t.total_budget} (${t.group_size} members)`).join('\n')
+          : `✈️ You have no active trips logged yet. You can create one anytime!`;
+      } else if (/(^|\b)(wallet|wallets|balance)(\b|$)/i.test(lowerMsg)) {
+        const totalBal = wallets.reduce((s, w) => s + (w.balance || 0), 0);
+        replyText = `👛 **Your Wallets & Balances**:\n` + 
+          (wallets.length > 0 
+            ? wallets.map(w => `• **${w.name}**: ₹${(w.balance || 0).toLocaleString('en-IN')}`).join('\n') + `\n\n💰 **Total Available Balance**: ₹${totalBal.toLocaleString('en-IN')}`
+            : `No active wallets found.`);
+      } else {
+        const topCat = Object.entries(categoryTotals).sort((a, b) => b[1] - a[1])[0];
+        replyText = `💡 **ExpenseHub Financial Insight**:\n\n` +
+          `• **Total Tracked Spending**: ₹${totalSpent.toLocaleString('en-IN')}\n` +
+          (topCat ? `• **Highest Expense Category**: ${topCat[0]} (₹${topCat[1].toLocaleString('en-IN')})\n` : '') +
+          `• **Active Wallets**: ${wallets.length}\n\n` +
+          `Ask me to log an expense, check your spending velocity, calculate budget advice, or review your category distributions!`;
+      }
     }
 
     // Parse Real-time AI Action Execution

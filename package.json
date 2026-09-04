@@ -8,6 +8,8 @@
     "server": "node server/index.js",
     "start:all": "concurrently \"node server/index.js\" \"vite\"",
     "build": "tsc -b && vite build",
+    "predeploy": "npm run build",
+    "deploy": "gh-pages -d dist",
     "lint": "oxlint",
     "preview": "vite preview"
   },
