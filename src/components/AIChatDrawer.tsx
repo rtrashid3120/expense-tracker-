@@ -65,14 +65,14 @@ const parseMultiExpenses = (query: string) => {
   let cleanedQuery = query.toLowerCase();
 
   // FEATURE: Receipt Math (e.g., "3 coffees for 120 each")
-  cleanedQuery = cleanedQuery.replace(/(\d+)\s+([a-z\s]+?)\s+(?:for|at)\s+(\d+)\s+each/gi, (match, qty, item, price) => {
+  cleanedQuery = cleanedQuery.replace(/(\d+)\s+([a-z\s]+?)\s+(?:for|at)\s+(\d+)\s+each/gi, (_match, qty, item, price) => {
     return `${Number(qty) * Number(price)} for ${item.trim()}`;
   });
 
   // FEATURE: Currency Conversion ($ -> INR, etc.)
-  cleanedQuery = cleanedQuery.replace(/\$(\d+)|(\d+)\s*dollars?/gi, (match, p1, p2) => `₹${Math.round(Number(p1 || p2) * 83)}`);
-  cleanedQuery = cleanedQuery.replace(/€(\d+)|(\d+)\s*euros?/gi, (match, p1, p2) => `₹${Math.round(Number(p1 || p2) * 90)}`);
-  cleanedQuery = cleanedQuery.replace(/£(\d+)|(\d+)\s*pounds?/gi, (match, p1, p2) => `₹${Math.round(Number(p1 || p2) * 105)}`);
+  cleanedQuery = cleanedQuery.replace(/\$(\d+)|(\d+)\s*dollars?/gi, (_match, p1, p2) => `₹${Math.round(Number(p1 || p2) * 83)}`);
+  cleanedQuery = cleanedQuery.replace(/€(\d+)|(\d+)\s*euros?/gi, (_match, p1, p2) => `₹${Math.round(Number(p1 || p2) * 90)}`);
+  cleanedQuery = cleanedQuery.replace(/£(\d+)|(\d+)\s*pounds?/gi, (_match, p1, p2) => `₹${Math.round(Number(p1 || p2) * 105)}`);
 
   // 1. Extract target date first (e.g. "on 26 aug", "yesterday", "2 days ago")
   let targetDateStr = new Date().toISOString().split('T')[0];
