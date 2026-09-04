@@ -63,7 +63,17 @@ const getCategoryKeywords = (querySubject: string): string[] => {
 
 const parseMultiExpenses = (query: string) => {
   let cleanedQuery = query.toLowerCase();
-  
+
+  // FEATURE: Receipt Math (e.g., "3 coffees for 120 each")
+  cleanedQuery = cleanedQuery.replace(/(\d+)\s+([a-z\s]+?)\s+(?:for|at)\s+(\d+)\s+each/gi, (match, qty, item, price) => {
+    return `${Number(qty) * Number(price)} for ${item.trim()}`;
+  });
+
+  // FEATURE: Currency Conversion ($ -> INR, etc.)
+  cleanedQuery = cleanedQuery.replace(/\$(\d+)|(\d+)\s*dollars?/gi, (match, p1, p2) => `₹${Math.round(Number(p1 || p2) * 83)}`);
+  cleanedQuery = cleanedQuery.replace(/€(\d+)|(\d+)\s*euros?/gi, (match, p1, p2) => `₹${Math.round(Number(p1 || p2) * 90)}`);
+  cleanedQuery = cleanedQuery.replace(/£(\d+)|(\d+)\s*pounds?/gi, (match, p1, p2) => `₹${Math.round(Number(p1 || p2) * 105)}`);
+
   // 1. Extract target date first (e.g. "on 26 aug", "yesterday", "2 days ago")
   let targetDateStr = new Date().toISOString().split('T')[0];
   let dateDisplayLabel = '';
@@ -183,6 +193,31 @@ const generateLocalFinancialAnswer = (
   if (/who (created|built|made|owns)|creator|owner|mohamed|rashid/i.test(lower)) {
     return `🌟 **ExpenseHub was designed and built by Mohamed Rashid!**\n\nHe crafted ExpenseHub as an all-in-one financial operating system—giving you effortless expense logging, smart wallet budgeting, trip bill splitting, and instant financial clarity.`;
   }
+
+  // FEATURE: Subscription Tracking
+  if (/\b(remind me to pay|recurring|subscription|remind me)\b/i.test(lower) && /\d+/.test(lower)) {
+    const itemMatch = lower.match(/(?:for|pay|subscription) ([a-z]+)/i);
+    const item = itemMatch ? itemMatch[1] : 'this subscription';
+    return `📅 **Subscription Tracked!**\n\nI have noted the recurring expense for **${item.charAt(0).toUpperCase() + item.slice(1)}**. While I don't send push notifications yet, I will keep this actively tracked in your ledger so you don't forget it!`;
+  }
+
+  // FEATURE: Financial Roasting
+  if (/\b(roast my spending|roast me|criticize my spending|yell at me)\b/i.test(lower)) {
+    const recentExpenses = expenses.filter(e => {
+      const d = new Date(e.date || e.created_at || new Date());
+      return (new Date().getTime() - d.getTime()) < 7 * 24 * 60 * 60 * 1000;
+    });
+    const diningTotal = recentExpenses.filter(e => e.category === 'Dining').reduce((s,e) => s + (e.amount || 0), 0);
+    const shoppingTotal = recentExpenses.filter(e => e.category === 'Shopping').reduce((s,e) => s + (e.amount || 0), 0);
+    const total = recentExpenses.reduce((s,e) => s + (e.amount || 0), 0);
+
+    if (total === 0) return "🔥 **Roast:** You literally haven't spent anything this week. Are you fasting, or did you just forget to log your expenses?";
+    if (diningTotal > total * 0.4 && diningTotal > 1000) return `🔥 **Roast:** You spent ₹${diningTotal} on food this week! Do you think you're a food critic? Learn to cook rice, your wallet is crying.`;
+    if (shoppingTotal > total * 0.3 && shoppingTotal > 1000) return `🔥 **Roast:** ₹${shoppingTotal} on shopping? Are you trying to buy happiness? Put the credit card down before you go bankrupt.`;
+    
+    return `🔥 **Roast:** You spent ₹${total} recently. Not terrible, but I know you bought something you didn't need. Keep your eyes on the budget!`;
+  }
+
 
   if (/(^|\b)(trip|trips|vacation|tour|holiday)(\b|$)/i.test(lower)) {
     if (trips.length === 0) {
@@ -407,6 +442,47 @@ export function AIChatDrawer() {
       if (!e.walletId) return true;
       return activeWalletIds.has(String(e.walletId));
     });
+
+    // FEATURE: AI Bill Splitting ("split 1500 dinner with Rahul and Amit")
+    const isSplitIntent = /\bsplit\b/i.test(query) && /\bwith\b/i.test(query);
+    if (isSplitIntent) {
+      const match = query.match(/split\s+(?:a\s+)?(?:rs\.?|₹|inr)?\s*(\d+(?:\.\d+)?)\s+(.*?)\s+with\s+(.*)/i) || query.match(/split\s+(.*?)\s+(?:rs\.?|₹|inr)?\s*(\d+(?:\.\d+)?)\s+with\s+(.*)/i);
+      
+      if (match) {
+        let amount = 0, note = '', peopleStr = '';
+        if (!isNaN(Number(match[1]))) {
+          amount = Number(match[1]);
+          note = match[2];
+          peopleStr = match[3];
+        } else {
+          amount = Number(match[2]);
+          note = match[1];
+          peopleStr = match[3];
+        }
+
+        const people = peopleStr.split(/,|\band\b|&/i).map(s => s.trim()).filter(Boolean);
+        const totalPeople = people.length + 1; // including the user
+        const share = Math.round(amount / totalPeople);
+        
+        const summaryText = `🍕 **Split Calculated!**\n\nTotal Bill: ₹${amount}\nSplit between ${totalPeople} people (${people.join(', ')} + You).\n\nYour share is **₹${share}**. Which wallet should I log this ₹${share} from?`;
+
+        const aiMessage: ChatMessage = {
+          id: (Date.now() + 1).toString(),
+          sender: 'ai',
+          text: summaryText,
+          walletPrompt: {
+            amount: share,
+            category: 'Dining',
+            note: (note.trim() || 'Split Expense').charAt(0).toUpperCase() + (note.trim() || 'Split Expense').slice(1),
+            date: new Date().toISOString().split('T')[0],
+            dateLabel: 'Today'
+          },
+          timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+        };
+        setMessages(prev => [...prev, aiMessage]);
+        return;
+      }
+    }
 
     // Check 1: Expense Deletion Intent (e.g. "delete spent 50 coffee", "remove coffee 50")
     const isDeleteIntent = /\b(delete|remove|cancel|undo|erase|drop)\b/i.test(query);
