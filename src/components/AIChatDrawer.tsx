@@ -623,18 +623,74 @@ export function AIChatDrawer() {
           } catch (e) { console.error(e); }
         }
       }
-      const numMatch = query.match(/(\d+)/);
-      const amount = numMatch ? Number(numMatch[1]) : null;
-      let cleanNote = query.replace(/(\d+)/g, '').replace(/\b(delete|remove|cancel|undo|erase|drop|clear|trash|wipe|spent|add|log|bought|paid|on|for|rupees|rs|₹|expense|expenses|spending|spendings|transactions|bills|records|data|last|latest|item)\b/gi, '').trim();
+      
+      // FEATURE: Single Deletion ("delete 500 rent", "cancel saloon on sep 20")
+      let cleanQuery = query;
+      let targetDate: string | null = null;
+      
+      // 1. Extract Date if present
+      const dateRegex = /\b(?:on|from|for)?\s*(?:(\d{1,2})(?:st|nd|rd|th)?\s+([a-z]+)|([a-z]+)\s+(\d{1,2})(?:st|nd|rd|th)?)\b/i;
+      const dMatch = cleanQuery.match(dateRegex);
+      if (dMatch) {
+        let dayStr = dMatch[1], monthStr = dMatch[2];
+        if (!dayStr) { dayStr = dMatch[4]; monthStr = dMatch[3]; }
+        const day = parseInt(dayStr);
+        const months = ["jan", "feb", "mar", "apr", "may", "jun", "jul", "aug", "sep", "oct", "nov", "dec"];
+        const monthIdx = months.findIndex(x => monthStr.toLowerCase().startsWith(x));
+        if (monthIdx !== -1 && day >= 1 && day <= 31) {
+          const d = new Date(new Date().getFullYear(), monthIdx, day);
+          targetDate = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+          cleanQuery = cleanQuery.replace(dMatch[0], ' ');
+        }
+      }
 
-      let target = validExpenses.find(e => {
+      // 2. Extract Amount if present
+      const numMatch = cleanQuery.match(/(?:rs\.?|₹|inr)?\s*(\d+(?:\.\d+)?)/i);
+      const amount = numMatch ? Number(numMatch[1]) : null;
+      if (numMatch) {
+        cleanQuery = cleanQuery.replace(numMatch[0], ' ');
+      }
+
+      // 3. Extract Note
+      const cleanNote = cleanQuery.replace(/\b(delete|remove|cancel|undo|erase|drop|clear|trash|wipe|spent|add|log|bought|paid|on|for|rupees|rs|₹|inr|expense|expenses|spending|spendings|transactions|bills|records|data|last|latest|item)\b/gi, '').trim().replace(/\s+/g, ' ');
+
+      // Find targets that match criteria
+      const matchedTargets = validExpenses.filter(e => {
+        const matchDate = targetDate ? (e.date && e.date.startsWith(targetDate)) : true;
         const matchAmount = amount ? e.amount === amount : true;
-        const matchNote = cleanNote ? (e.note || '').toLowerCase().includes(cleanNote.toLowerCase()) : true;
-        return matchAmount && matchNote;
+        const matchNote = cleanNote ? ((e.note || '').toLowerCase().includes(cleanNote.toLowerCase()) || (e.category || '').toLowerCase().includes(cleanNote.toLowerCase())) : true;
+        
+        // We only require what was explicitly found. If they only provided a note, we match by note. 
+        // If they provided note + date, we match both.
+        return matchDate && matchAmount && matchNote;
       });
 
-      if (!target && amount) {
-        target = validExpenses.find(e => e.amount === amount);
+      let target = null;
+      if (matchedTargets.length === 1) {
+        target = matchedTargets[0]; // Exactly one perfect match!
+      } else if (matchedTargets.length > 1) {
+        // Tie-breaker: If amount wasn't provided, see if one is exactly the note
+        const exactNoteMatch = matchedTargets.filter(e => (e.note || '').toLowerCase() === cleanNote.toLowerCase());
+        if (exactNoteMatch.length === 1) target = exactNoteMatch[0];
+        else {
+           // Too ambiguous!
+           const aiMessage: ChatMessage = {
+            id: (Date.now() + 1).toString(), sender: 'ai',
+            text: `⚠️ **Multiple Matches Found**\n\nI found ${matchedTargets.length} expenses matching that description. Please be more specific (e.g., provide the exact amount).`,
+            timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+          };
+          setMessages(prev => [...prev, aiMessage]);
+          return;
+        }
+      } else {
+        // Zero matches
+        const aiMessage: ChatMessage = {
+          id: (Date.now() + 1).toString(), sender: 'ai',
+          text: `⚠️ **Couldn't find expense to delete**\n\nI searched for: ${cleanNote ? `"${cleanNote}"` : ''} ${amount ? `₹${amount}` : ''} ${targetDate ? `on ${targetDate}` : ''}`,
+          timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+        };
+        setMessages(prev => [...prev, aiMessage]);
+        return;
       }
 
       if (target) {
@@ -646,7 +702,7 @@ export function AIChatDrawer() {
           const aiMessage: ChatMessage = {
             id: (Date.now() + 1).toString(),
             sender: 'ai',
-            text: `✅ Successfully Deleted Expense!\n- Item: ${target.note || 'Expense'}\n- Amount: ₹${target.amount}\n- Category: ${target.category}`,
+            text: `✅ **Successfully Deleted Expense!**\n- Item: ${target.note || 'Expense'}\n- Amount: ₹${target.amount}\n- Category: ${target.category}`,
             timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
           };
           setMessages(prev => [...prev, aiMessage]);
@@ -654,15 +710,6 @@ export function AIChatDrawer() {
         } catch (err: any) {
           alert(err.message || 'Failed to delete expense');
         }
-      } else {
-        const aiMessage: ChatMessage = {
-          id: (Date.now() + 1).toString(),
-          sender: 'ai',
-          text: `⚠️ Couldn't find an expense to delete.\nSearched for: ${cleanNote ? `"${cleanNote}"` : ''} ${amount ? `₹${amount}` : ''}\n\nTip: Check your Audit Trail for full item details or exact amounts.`,
-          timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-        };
-        setMessages(prev => [...prev, aiMessage]);
-        return;
       }
     }
 
