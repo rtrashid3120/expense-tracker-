@@ -259,8 +259,9 @@ export function Reports() {
         </div>
       </div>
 
-      {/* Monthly Summary Glass Banner */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-6">
+      <div className="flex flex-col">
+        {/* Monthly Summary Glass Banner */}
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-6 order-2 md:order-1">
         <div className="glass-card p-4 flex flex-col">
           <span className="text-[11px] font-bold text-gray-400 dark:text-white/50 uppercase tracking-wider">Total Spend</span>
           <span className="text-xl sm:text-2xl font-black text-gray-900 dark:text-white mt-1">
@@ -287,7 +288,7 @@ export function Reports() {
       </div>
 
       {/* Spend Heatmap Grid */}
-      <div className="glass-card mb-8">
+      <div className="glass-card mb-8 order-1 md:order-2">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-6">
           <div>
             <h2 className="text-lg font-bold text-gray-900 dark:text-white flex items-center gap-2">
@@ -334,6 +335,7 @@ export function Reports() {
             </motion.div>
           ))}
         </div>
+      </div>
       </div>
 
       {/* Selected Day Expenses Breakdown */}
