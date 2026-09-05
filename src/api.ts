@@ -284,7 +284,7 @@ export const api = {
     }
   },
 
-  askAIChat: async (message: string, history: any[], contextData?: any): Promise<{ answer: string; expenseAdded?: boolean; walletPrompt?: { amount: number; category: string; note: string } }> => {
+  askAIChat: async (message: string, history: any[], contextData?: any): Promise<{ answer: string; expenseAdded?: boolean; walletPrompt?: { amount: number; category: string; note: string }; themeChange?: string }> => {
     try {
       const res = await fetch(`${API_BASE_URL}/ai/chat`, {
         method: 'POST',
@@ -318,6 +318,14 @@ REAL EXPENSE LOGGING INSTRUCTIONS:
   "amount": 40,
   "category": "Dining",
   "note": "cake"
+}
+\`\`\`
+
+- If the user asks to change the theme, switch to dark mode, bright mode, or similar (even with typos like "brigh" or "drk"), MUST return:
+\`\`\`json
+{
+  "ACTION": "CHANGE_THEME",
+  "theme": "dark" // or "light"
 }
 \`\`\`
 
@@ -429,6 +437,12 @@ Instructions:
                 } else {
                   replyText += `\n\n✅ *Record saved to MongoDB Audit Trail!*`;
                 }
+              }
+
+              if (actionData && actionData.ACTION === 'CHANGE_THEME') {
+                replyText = replyText.replace(/```json[\s\S]*?```/g, '').replace(/\{[\s\S]*?"ACTION"\s*:\s*"CHANGE_THEME"[\s\S]*?\}/g, '').trim();
+                if (!replyText) replyText = `I've switched the theme to ${actionData.theme} mode for you!`;
+                return { answer: replyText, themeChange: actionData.theme };
               }
             } catch (err) {
               console.error('Failed fallback AI action parse:', err);

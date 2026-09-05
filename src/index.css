@@ -1,6 +1,8 @@
 @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap');
 @import "tailwindcss";
 
+@custom-variant dark (&:where(.dark, .dark *));
+
 @theme {
   /* Neo-Glass UI Palette */
   --color-glass-50: rgba(255, 255, 255, 0.05);
@@ -31,14 +33,12 @@
     -webkit-tap-highlight-color: transparent;
   }
   
-  @media (prefers-color-scheme: dark) {
-    body {
-      background-image: 
-        radial-gradient(circle at 10% 20%, rgba(138, 43, 226, 0.22), transparent 50%),
-        radial-gradient(circle at 90% 15%, rgba(0, 240, 255, 0.2), transparent 50%),
-        radial-gradient(circle at 50% 85%, rgba(236, 72, 153, 0.15), transparent 50%);
-      background-color: #07090e;
-    }
+  .dark body {
+    background-image: 
+      radial-gradient(circle at 10% 20%, rgba(138, 43, 226, 0.22), transparent 50%),
+      radial-gradient(circle at 90% 15%, rgba(0, 240, 255, 0.2), transparent 50%),
+      radial-gradient(circle at 50% 85%, rgba(236, 72, 153, 0.15), transparent 50%);
+    background-color: #07090e;
   }
 }
 
@@ -84,8 +84,6 @@
   scrollbar-color: rgba(0,0,0,0.2) transparent;
 }
 
-@media (prefers-color-scheme: dark) {
-  * {
-    scrollbar-color: rgba(255,255,255,0.2) transparent;
-  }
+.dark * {
+  scrollbar-color: rgba(255,255,255,0.2) transparent;
 }

@@ -790,17 +790,17 @@ export function AIChatDrawer() {
     }
 
     // Check 1.17: Theme Toggle — understands 1000+ ways of saying dark/light mode
-    const DARK_WORDS = /\b(dark|night|black|dim|dimmed|midnight|nightmode|darkmode|dark mode|night mode|black mode|dim mode)\b/i;
-    const LIGHT_WORDS = /\b(light|bright|white|day|sunny|clean|clear|daytime|brightmode|lightmode|bright mode|light mode|white mode|day mode|sunny mode|normal mode)\b/i;
-    const THEME_VERBS = /\b(switch|toggle|enable|turn on|set|go|make|change|use|apply|activate|put|switch to|change to|go to|set to|turn into|use|give me|i want|i need|show)\b/i;
+    const DARK_WORDS = /\b(dark|drk|night|black|dim|dimmed|midnight|nightmode|darkmode|dark mode|night mode|black mode|dim mode)\b/i;
+    const LIGHT_WORDS = /\b(light|ligh|bright|brigh|white|day|sunny|clean|clear|daytime|brightmode|lightmode|bright mode|light mode|white mode|day mode|sunny mode|normal mode)\b/i;
+    const THEME_VERBS = /\b(switch|toggle|toggl|enable|turn on|set|go|make|change|use|apply|activate|put|switch to|change to|go to|set to|turn into|use|give me|i want|i need|show)\b/i;
 
     const wantsDark = DARK_WORDS.test(query);
     const wantsLight = LIGHT_WORDS.test(query);
     const hasThemeVerb = THEME_VERBS.test(query);
 
     // Also detect lazy short commands like "dark" or "bright" alone
-    const isLazyDark = /^(dark|night|dark mode|night mode|darkmode)$/i.test(query.trim());
-    const isLazyLight = /^(light|bright|white|day|light mode|bright mode|white mode|day mode)$/i.test(query.trim());
+    const isLazyDark = /^(dark|drk|night|dark mode|night mode|darkmode)$/i.test(query.trim());
+    const isLazyLight = /^(light|ligh|bright|brigh|white|day|light mode|bright mode|white mode|day mode)$/i.test(query.trim());
 
     if ((wantsDark || wantsLight) && (hasThemeVerb || isLazyDark || isLazyLight)) {
       const isDark = wantsDark && !wantsLight; // dark wins unless only light words found
@@ -1829,6 +1829,16 @@ export function AIChatDrawer() {
 
       if (res.expenseAdded) {
         await fetchData(true);
+      }
+      
+      if (res.themeChange) {
+        if (res.themeChange.toLowerCase() === 'dark') {
+          document.documentElement.classList.add('dark');
+          localStorage.setItem('theme', 'dark');
+        } else {
+          document.documentElement.classList.remove('dark');
+          localStorage.setItem('theme', 'light');
+        }
       }
 
       const aiMessage: ChatMessage = {
