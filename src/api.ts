@@ -429,7 +429,6 @@ Instructions:
 4. When asked how much was spent on a specific item or category (e.g. "how much spent on grocery"), provide a breakdown comparing This Week, This Month, and All-Time totals, and ask the user which period option they want to explore.`;
 
     const contents = [
-      { parts: [{ text: systemPrompt }] },
       ...(history || []).map(h => ({
         role: h.sender === 'user' ? 'user' : 'model',
         parts: [{ text: h.text }]
@@ -445,7 +444,10 @@ Instructions:
         const directRes = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${m}:generateContent?key=${apiKey}`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ contents })
+          body: JSON.stringify({ 
+            system_instruction: { parts: { text: systemPrompt } },
+            contents 
+          })
         });
         const data = await directRes.json();
         if (data.candidates && data.candidates[0]?.content?.parts[0]?.text) {
