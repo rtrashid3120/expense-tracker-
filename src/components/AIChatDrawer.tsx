@@ -708,7 +708,7 @@ export function AIChatDrawer() {
     const isAmountModifyIntent = query.match(/\b(?:change|move|shift|transfer|update|switch|alter|modify|migrate|swap|convert|reassign|relocate|push|revert|transition|transform|reallocate|edit|fix|adjust|correct|set|make)\b.*?\b(?:the|my|this|that|those|these)?\s*(?:rs\.?|₹|inr|rupees|bucks)?\s*(\d+(?:\.\d+)?)\s+(.*?)(?:\s+(?:spending|spendings|expense|expenses|transaction|transactions|item|items|bill|bills|record|records|data|entry|entries|history|log|logs|purchases|payments|exp|txn|txns|amt))?\s+\bto\b\s+(?:rs\.?|₹|inr|rupees|bucks)?\s*(\d+(?:\.\d+)?)/i);
     if (isAmountModifyIntent) {
       const oldAmount = Number(isAmountModifyIntent[1]);
-      const cleanNote = isAmountModifyIntent[2].trim().toLowerCase();
+      const cleanNote = isAmountModifyIntent[2].replace(/[^\w\s-]/gi, '').trim().toLowerCase();
       const newAmount = Number(isAmountModifyIntent[3]);
       
       let target = validExpenses.find(e => e.amount === oldAmount && ((e.note || '').toLowerCase().includes(cleanNote) || (e.category || '').toLowerCase().includes(cleanNote)));
@@ -734,7 +734,7 @@ export function AIChatDrawer() {
     if (isDeleteIntent) {
       // FEATURE: Bulk Deletion ("delete all swiggy expenses", "remove everything apple")
       if (/\b(all|every|evry|everything|evrything|the|those|my|these|entire|whole)\b/i.test(query)) {
-        let cleanNote = query.replace(/\b(delete|remove|cancel|undo|erase|drop|clear|trash|wipe|destroy|discard|eliminate|nuke|kill|void|scrap|chuck|dump|bin|del|rm|all|every|evry|everything|evrything|the|those|my|these|entire|whole|spent|add|log|bought|paid|on|for|rupees|rs|₹|inr|bucks|spending|spendings|expense|expenses|transaction|transactions|item|items|bill|bills|record|records|data|entry|entries|history|log|logs|purchases|payments|exp|txn|txns|amt|last|latest)\b/gi, '').trim();
+        let cleanNote = query.replace(/\b(delete|remove|cancel|undo|erase|drop|clear|trash|wipe|destroy|discard|eliminate|nuke|kill|void|scrap|chuck|dump|bin|del|rm|all|every|evry|everything|evrything|the|those|my|these|entire|whole|spent|add|log|bought|paid|on|for|rupees|rs|₹|inr|bucks|spending|spendings|expense|expenses|transaction|transactions|item|items|bill|bills|record|records|data|entry|entries|history|log|logs|purchases|payments|exp|txn|txns|amt|last|latest)\b/gi, '').replace(/[^\w\s-]/gi, '').trim();
         const targets = validExpenses.filter(e => (e.note || '').toLowerCase().includes(cleanNote.toLowerCase()) || (e.category || '').toLowerCase().includes(cleanNote.toLowerCase()));
         
         if (targets.length > 0 && cleanNote.length >= 2) {
@@ -799,7 +799,7 @@ export function AIChatDrawer() {
       }
 
       // 3. Extract Note
-      const cleanNote = cleanQuery.replace(/\b(delete|remove|cancel|undo|erase|drop|clear|trash|wipe|destroy|discard|eliminate|nuke|kill|void|scrap|chuck|dump|bin|del|rm|spent|add|log|bought|paid|on|for|from|in|at|the|rupees|rs|₹|inr|bucks|spending|spendings|expense|expenses|transaction|transactions|item|items|bill|bills|record|records|data|entry|entries|history|log|logs|purchases|payments|exp|txn|txns|amt|last|latest)\b/gi, '').trim().replace(/\s+/g, ' ');
+      const cleanNote = cleanQuery.replace(/\b(delete|remove|cancel|undo|erase|drop|clear|trash|wipe|destroy|discard|eliminate|nuke|kill|void|scrap|chuck|dump|bin|del|rm|spent|add|log|bought|paid|on|for|from|in|at|the|rupees|rs|₹|inr|bucks|spending|spendings|expense|expenses|transaction|transactions|item|items|bill|bills|record|records|data|entry|entries|history|log|logs|purchases|payments|exp|txn|txns|amt|last|latest)\b/gi, '').replace(/[^\w\s-]/gi, '').trim().replace(/\s+/g, ' ');
 
       // Find targets that match criteria
       const matchedTargets = validExpenses.filter(e => {
