@@ -112,11 +112,14 @@ const parseMultiExpenses = (query: string) => {
       cleanedQuery = cleanedQuery.replace(/(\d+)\s+days?\s+ago/gi, '');
     }
   } else {
-    const months = ["jan", "feb", "mar", "apr", "may", "jun", "jul", "aug", "sep", "oct", "nov", "dec"];
-    // Also matching missing spaces like 'sep20' and typos
-    const dayMonthMatch = cleanedQuery.match(/\b(?:on\s+)?(\d{1,2})(?:st|nd|rd|th)?\s*([a-z]+)(?:\s+(\d{4}))?\b/i);
-    const monthDayMatch = cleanedQuery.match(/\b(?:on\s+)?([a-z]+)\s*(\d{1,2})(?:st|nd|rd|th)?(?:\s+(\d{4}))?\b/i);
+    const mRegex = "(jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|may|jun(?:e)?|jul(?:y)?|aug(?:ust)?|sep(?:tember)?|oct(?:ober)?|nov(?:ember)?|dec(?:ember)?|spe|augu|jne|jlu)";
+    const dayMonthRegex = new RegExp(`\\b(?:on\\s+)?(\\d{1,2})(?:st|nd|rd|th)?\\s*${mRegex}(?:\\s+(\\d{4}))?\\b`, 'gi');
+    const monthDayRegex = new RegExp(`\\b(?:on\\s+)?${mRegex}\\s*(\\d{1,2})(?:st|nd|rd|th)?(?:\\s+(\\d{4}))?\\b`, 'gi');
 
+    const dayMonthMatches = [...cleanedQuery.matchAll(dayMonthRegex)];
+    const monthDayMatches = [...cleanedQuery.matchAll(monthDayRegex)];
+
+    const months = ["jan", "feb", "mar", "apr", "may", "jun", "jul", "aug", "sep", "oct", "nov", "dec"];
     let matchedMonth = -1;
     let day = -1;
     let year = now.getFullYear();
@@ -130,21 +133,27 @@ const parseMultiExpenses = (query: string) => {
       return months.findIndex(m => str.startsWith(m));
     };
 
-    if (dayMonthMatch) {
-      day = parseInt(dayMonthMatch[1]);
-      matchedMonth = parseMonth(dayMonthMatch[2]);
-      if (matchedMonth !== -1) {
-        if (dayMonthMatch[3]) year = parseInt(dayMonthMatch[3]);
-        cleanedQuery = cleanedQuery.replace(dayMonthMatch[0], '');
+    for (const m of dayMonthMatches) {
+      const mIdx = parseMonth(m[2]);
+      if (mIdx !== -1) {
+        matchedMonth = mIdx;
+        day = parseInt(m[1]);
+        if (m[3]) year = parseInt(m[3]);
+        cleanedQuery = cleanedQuery.replace(m[0], '');
+        break;
       }
     } 
     
-    if (matchedMonth === -1 && monthDayMatch) {
-      matchedMonth = parseMonth(monthDayMatch[1]);
-      if (matchedMonth !== -1) {
-        day = parseInt(monthDayMatch[2]);
-        if (monthDayMatch[3]) year = parseInt(monthDayMatch[3]);
-        cleanedQuery = cleanedQuery.replace(monthDayMatch[0], '');
+    if (matchedMonth === -1) {
+      for (const m of monthDayMatches) {
+        const mIdx = parseMonth(m[1]);
+        if (mIdx !== -1) {
+          matchedMonth = mIdx;
+          day = parseInt(m[2]);
+          if (m[3]) year = parseInt(m[3]);
+          cleanedQuery = cleanedQuery.replace(m[0], '');
+          break;
+        }
       }
     }
 
@@ -669,10 +678,18 @@ export function AIChatDrawer() {
       let targetDate: string | null = null;
       
       // 1. Extract Date if present (now allows missing spaces like 'sep20' and typos like 'spe20')
-      const dateRegex = /\b(?:on\s+|from\s+|for\s+)?(\d{1,2})(?:st|nd|rd|th)?\s*([a-z]+)\b|\b(?:on\s+|from\s+|for\s+)?([a-z]+)\s*(\d{1,2})(?:st|nd|rd|th)?\b/i;
-      const dMatch = cleanQuery.match(dateRegex);
+      const mRegex = "(jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|may|jun(?:e)?|jul(?:y)?|aug(?:ust)?|sep(?:tember)?|oct(?:ober)?|nov(?:ember)?|dec(?:ember)?|spe|augu|jne|jlu)";
+      const dayMonthRegex = new RegExp(`\\b(?:on\\s+|from\\s+|for\\s+)?(\\d{1,2})(?:st|nd|rd|th)?\\s*${mRegex}\\b`, 'i');
+      const monthDayRegex = new RegExp(`\\b(?:on\\s+|from\\s+|for\\s+)?${mRegex}\\s*(\\d{1,2})(?:st|nd|rd|th)?\\b`, 'i');
+      
+      const dMatch = cleanQuery.match(dayMonthRegex) || cleanQuery.match(monthDayRegex);
       if (dMatch) {
-        let dayStr = dMatch[1] || dMatch[4], monthStr = dMatch[2] || dMatch[3];
+        // If dayMonthRegex matched, day is index 1, month is index 2.
+        // If monthDayRegex matched, month is index 1, day is index 2.
+        const isDayFirst = !isNaN(parseInt(dMatch[1]));
+        let dayStr = isDayFirst ? dMatch[1] : dMatch[2];
+        let monthStr = isDayFirst ? dMatch[2] : dMatch[1];
+        
         const day = parseInt(dayStr);
         const months = ["jan", "feb", "mar", "apr", "may", "jun", "jul", "aug", "sep", "oct", "nov", "dec"];
         // Typo forgiveness for months
