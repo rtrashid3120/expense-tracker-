@@ -645,7 +645,7 @@ export function AIChatDrawer() {
       for (const match of dm) {
         const monthIdx = parseMonth(match[2]);
         if (monthIdx !== -1) {
-          allDates.push({ matchStr: match[0], index: match.index, day: parseInt(match[1]), month: monthIdx, year: match[3] ? parseInt(match[3]) : new Date().getFullYear() });
+          allDates.push({ matchStr: match[0], index: match.index, day: parseInt(match?.[1] || "0"), month: monthIdx, year: match[3] ? parseInt(match[3]) : new Date().getFullYear() });
         }
       }
       for (const match of md) {
@@ -762,32 +762,51 @@ export function AIChatDrawer() {
       let cleanQuery = query;
       let targetDate: string | null = null;
       
-      // 1. Extract Date if present (now allows missing spaces like 'sep20' and typos like 'spe20')
-      const mRegex = "(jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|may|jun(?:e)?|jul(?:y)?|aug(?:ust)?|sep(?:tember)?|oct(?:ober)?|nov(?:ember)?|dec(?:ember)?|spe|augu|jne|jlu)";
-      const dayMonthRegex = new RegExp(`\\b(?:on\\s+|from\\s+|for\\s+|in\\s+)?(\\d{1,2})(?:st|nd|rd|th)?\\s*${mRegex}\\b`, 'i');
-      const monthDayRegex = new RegExp(`\\b(?:on\\s+|from\\s+|for\\s+|in\\s+)?${mRegex}\\s*(\\d{1,2})(?:st|nd|rd|th)?\\b`, 'i');
-      
-      const dMatch = cleanQuery.match(dayMonthRegex) || cleanQuery.match(monthDayRegex);
-      if (dMatch) {
-        // If dayMonthRegex matched, day is index 1, month is index 2.
-        // If monthDayRegex matched, month is index 1, day is index 2.
-        const isDayFirst = !isNaN(parseInt(dMatch[1]));
-        let dayStr = isDayFirst ? dMatch[1] : dMatch[2];
-        let monthStr = isDayFirst ? dMatch[2] : dMatch[1];
+      // 1. Extract Date if present (Relative or Explicit)
+      const now = new Date();
+      if (/\b(?:today)\b/i.test(cleanQuery)) {
+        targetDate = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-${String(now.getDate()).padStart(2,'0')}`;
+        cleanQuery = cleanQuery.replace(/\b(?:on\s+|from\s+|for\s+|in\s+)?(?:today)\b/gi, ' ');
+      } else if (/\b(?:yesterday)\b/i.test(cleanQuery)) {
+        const d = new Date(now);
+        d.setDate(d.getDate() - 1);
+        targetDate = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+        cleanQuery = cleanQuery.replace(/\b(?:on\s+|from\s+|for\s+|in\s+)?(?:yesterday)\b/gi, ' ');
+      } else if (/\b(?:day before yesterday)\b/i.test(cleanQuery)) {
+        const d = new Date(now);
+        d.setDate(d.getDate() - 2);
+        targetDate = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+        cleanQuery = cleanQuery.replace(/\b(?:on\s+|from\s+|for\s+|in\s+)?(?:day before yesterday)\b/gi, ' ');
+      } else if (/(\d+)\s+days?\s+ago/i.test(cleanQuery)) {
+        const match = cleanQuery.match(/(\d+)\s+days?\s+ago/i);
+        const d = new Date(now);
+        d.setDate(d.getDate() - parseInt(match?.[1] || "0"));
+        targetDate = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+        cleanQuery = cleanQuery.replace(/(\d+)\s+days?\s+ago/gi, ' ');
+      } else {
+        const mRegex = "(jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|may|jun(?:e)?|jul(?:y)?|aug(?:ust)?|sep(?:tember)?|oct(?:ober)?|nov(?:ember)?|dec(?:ember)?|spe|augu|jne|jlu)";
+        const dayMonthRegex = new RegExp(`\\b(?:on\\s+|from\\s+|for\\s+|in\\s+)?(\\d{1,2})(?:st|nd|rd|th)?\\s*${mRegex}\\b`, 'i');
+        const monthDayRegex = new RegExp(`\\b(?:on\\s+|from\\s+|for\\s+|in\\s+)?${mRegex}\\s*(\\d{1,2})(?:st|nd|rd|th)?\\b`, 'i');
         
-        const day = parseInt(dayStr);
-        const months = ["jan", "feb", "mar", "apr", "may", "jun", "jul", "aug", "sep", "oct", "nov", "dec"];
-        // Typo forgiveness for months
-        if (monthStr.toLowerCase().startsWith('spe')) monthStr = 'sep';
-        if (monthStr.toLowerCase().startsWith('augu')) monthStr = 'aug';
-        if (monthStr.toLowerCase().startsWith('jne')) monthStr = 'jun';
-        if (monthStr.toLowerCase().startsWith('jlu')) monthStr = 'jul';
-        
-        const monthIdx = months.findIndex(x => monthStr.toLowerCase().startsWith(x));
-        if (monthIdx !== -1 && day >= 1 && day <= 31) {
-          const d = new Date(new Date().getFullYear(), monthIdx, day);
-          targetDate = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
-          cleanQuery = cleanQuery.replace(dMatch[0], ' ');
+        const dMatch = cleanQuery.match(dayMonthRegex) || cleanQuery.match(monthDayRegex);
+        if (dMatch) {
+          const isDayFirst = !isNaN(parseInt(dMatch[1]));
+          let dayStr = isDayFirst ? dMatch[1] : dMatch[2];
+          let monthStr = isDayFirst ? dMatch[2] : dMatch[1];
+          
+          const day = parseInt(dayStr);
+          const months = ["jan", "feb", "mar", "apr", "may", "jun", "jul", "aug", "sep", "oct", "nov", "dec"];
+          if (monthStr.toLowerCase().startsWith('spe')) monthStr = 'sep';
+          if (monthStr.toLowerCase().startsWith('augu')) monthStr = 'aug';
+          if (monthStr.toLowerCase().startsWith('jne')) monthStr = 'jun';
+          if (monthStr.toLowerCase().startsWith('jlu')) monthStr = 'jul';
+          
+          const monthIdx = months.findIndex(x => monthStr.toLowerCase().startsWith(x));
+          if (monthIdx !== -1 && day >= 1 && day <= 31) {
+            const d = new Date(new Date().getFullYear(), monthIdx, day);
+            targetDate = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+            cleanQuery = cleanQuery.replace(dMatch[0], ' ');
+          }
         }
       }
 
