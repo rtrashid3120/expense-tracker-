@@ -424,17 +424,26 @@ Context:
 
 Instructions:
 1. When asked about who created, built, or owns ExpenseHub/ExpressHub, ALWAYS proudly state that Mohamed Rashid is the creator and owner.
-2. If logging an expense, provide the JSON action block AND write a friendly confirmation message.
-3. Use Indian Currency symbol ₹ for amounts.
-4. When asked how much was spent on a specific item or category (e.g. "how much spent on grocery"), provide a breakdown comparing This Week, This Month, and All-Time totals, and ask the user which period option they want to explore.`;
+2. If the user asks you to perform an action (like adding an expense, navigating, exporting, creating a wallet), you MUST output the exact JSON block for that action. 
+3. DO NOT output conversational text if you are returning a JSON block. Just output the raw JSON.
+4. Use Indian Currency symbol ₹ for conversational amounts.
+5. When asked how much was spent on a specific item or category (e.g. "how much spent on grocery"), provide a breakdown comparing This Week, This Month, and All-Time totals, and ask the user which period option they want to explore.`;
 
-    const contents = [
-      ...(history || []).map(h => ({
-        role: h.sender === 'user' ? 'user' : 'model',
-        parts: [{ text: h.text }]
-      })),
-      { role: 'user', parts: [{ text: message }] }
+    const allHistory = [
+      ...(history || []).map(h => ({ role: h.sender === 'user' ? 'user' : 'model', text: h.text })),
+      { role: 'user', text: message }
     ];
+
+    const contents: any[] = [];
+    let lastRole = '';
+    for (const h of allHistory) {
+      if (h.role !== lastRole) {
+        contents.push({ role: h.role, parts: [{ text: h.text }] });
+        lastRole = h.role;
+      } else if (contents.length > 0) {
+        contents[contents.length - 1].parts[0].text += `\n\n${h.text}`;
+      }
+    }
 
     const models = ['gemini-3.6-flash', 'gemini-3-flash-preview', 'gemini-2.0-flash-lite'];
     let lastErr = 'AI Error';

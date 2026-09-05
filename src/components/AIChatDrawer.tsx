@@ -769,18 +769,20 @@ export function AIChatDrawer() {
     }
 
     // Check 1.16: Navigation & UI Shortcuts (e.g. "go to reports", "take me to trips", "open dashboard")
-    const navMatch = query.match(/^(?:go to|take me to|open|show|navigate to)\s+(dashboard|reports|trips|family|audit trail|profile|settings)$/i);
+    const navMatch = query.match(/^(?:go to|take me to|open|show|navigate to)\s+(?:the\s+)?(dashboard|reports|heatmaps|heatmap|trips|family|audit trail|audit|expenses|profile|settings)$/i);
     if (navMatch) {
       const target = navMatch[1].toLowerCase();
-      let path = '#/';
+      let path = '/';
       let pageName = 'Dashboard';
-      if (target.includes('report')) { path = '#/reports'; pageName = 'Reports & Analytics'; }
-      else if (target.includes('trip')) { path = '#/trips'; pageName = 'Trips & Vacations'; }
-      else if (target.includes('family')) { path = '#/family'; pageName = 'Family Pool'; }
-      else if (target.includes('audit')) { path = '#/audit-trail'; pageName = 'Audit Trail'; }
-      else if (target.includes('profile') || target.includes('setting')) { path = '#/profile'; pageName = 'Profile & Settings'; }
+      if (target.includes('report') || target.includes('heatmap')) { path = '/heatmaps'; pageName = 'Reports & Analytics'; }
+      else if (target.includes('trip')) { path = '/trips'; pageName = 'Trips & Vacations'; }
+      else if (target.includes('family')) { path = '/family'; pageName = 'Family Pool'; }
+      else if (target.includes('audit') || target.includes('expense')) { path = '/expenses'; pageName = 'Audit Trail'; }
+      else if (target.includes('profile') || target.includes('setting')) { path = '/profile'; pageName = 'Profile & Settings'; }
 
-      window.location.hash = path;
+      navigate(path);
+      setIsOpen(false);
+      window.dispatchEvent(new Event('close-ai-chat'));
       const aiMsg: ChatMessage = {
         id: (Date.now() + 1).toString(),
         sender: 'ai',
@@ -1827,7 +1829,10 @@ export function AIChatDrawer() {
         user: profile
       };
 
-      const res = await api.askAIChat(query.trim(), historyForApi, contextData);
+      // Temporarily disabled Gemini API as requested. Falling back immediately to local NLP.
+      console.log("Local NLP Fallback context:", { historyForApi, contextData });
+      const res: any = { expenseAdded: false, actionData: null, answer: "" };
+      throw new Error("Gemini AI Disabled per user request. Running exclusively on local offline NLP.");
 
       if (res.expenseAdded) {
         await fetchData(true);
@@ -1859,7 +1864,7 @@ export function AIChatDrawer() {
             const exp = validExpenses.find(x => x.id === res.actionData.expenseId || (x as any)._id === res.actionData.expenseId);
             if (exp) {
               await api.updateExpense(res.actionData.expenseId, res.actionData.updates);
-              aiUndoPayload = { action: 'REVERT_UPDATE', updates: [{ id: exp.id || (exp as any)._id, oldData: exp }] };
+              aiUndoPayload = { action: 'REVERT_UPDATE', updates: [{ id: exp!.id || (exp as any)._id, oldData: exp }] };
               changed = true;
             }
           } else if (res.actionData.ACTION === 'BULK_UPDATE_CATEGORY' && res.actionData.oldCategory) {
@@ -1942,7 +1947,7 @@ export function AIChatDrawer() {
         trips,
         monthlyBudget,
         profile
-      );
+      ) + `\n\n*(Debug Error: ${err.message})*`;
 
       const aiMessage: ChatMessage = {
         id: (Date.now() + 1).toString(),
