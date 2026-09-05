@@ -33,6 +33,7 @@ interface ChatMessage {
   optionGroups?: OptionGroup[];
   undoPayload?: UndoPayload;
   isUndone?: boolean;
+  pendingContext?: { originalQuery: string };
 }
 
 const STORAGE_KEY = 'expensehub_ai_chat_messages';
@@ -458,7 +459,7 @@ export function AIChatDrawer() {
   };
 
   const handleSend = async (textToSend?: string) => {
-    const query = textToSend || inputMsg;
+    let query = textToSend || inputMsg;
     if (!query.trim() || isLoading) return;
 
     const userMessage: ChatMessage = {
@@ -467,6 +468,15 @@ export function AIChatDrawer() {
       text: query.trim(),
       timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
     };
+
+    // Inject conversational context
+    const lastAiMsg = messages.length > 0 ? messages[messages.length - 1] : null;
+    if (lastAiMsg?.sender === 'ai' && lastAiMsg.pendingContext) {
+      const hasStrongVerb = /\b(delete|deleted|remove|removed|cancel|canceled|cancelled|undo|erase|erased|drop|dropped|clear|cleared|trash|trashed|wipe|wiped|destroy|destroyed|discard|eliminate|nuke|kill|void|scrap|chuck|dump|bin|del|rm|change|move|shift|update|alter|modify|edit|fix|adjust|correct|set|spend|spent|spending|add|log|bought|paid|pay|bill|purchase|purchased|entry|record|deduct|cost|charge|transfer)\b/i.test(query);
+      if (!hasStrongVerb) {
+        query = lastAiMsg.pendingContext.originalQuery + " " + query;
+      }
+    }
 
     setMessages(prev => [...prev, userMessage]);
     if (!textToSend) setInputMsg('');
@@ -773,12 +783,38 @@ export function AIChatDrawer() {
         cleanQuery = cleanQuery.replace(amountsMatch[1], ' ').replace(amountsMatch[2], ' ');
         const cleanNote = cleanQuery.replace(/\b(change|move|shift|update|alter|modify|edit|fix|adjust|correct|set|to|from|on|for|in|at|the|my|this|that|those|these|rupees|rs|₹|inr|bucks|spending|spendings|expense|expenses|transaction|transactions|item|items|bill|bills|record|records|data|entry|entries|history|log|logs|purchases|payments|exp|txn|txns|amt)\b/gi, '').replace(/[^\w\s-]/gi, '').trim().replace(/\s+/g, ' ');
 
-        let target = validExpenses.find(e => {
+        let matchedTargets = validExpenses.filter(e => {
           const matchDate = targetDate ? (e.date && e.date.startsWith(targetDate)) : true;
           const matchAmount = e.amount === oldAmount;
           const matchNote = cleanNote ? ((e.note || '').toLowerCase().includes(cleanNote) || (e.category || '').toLowerCase().includes(cleanNote)) : true;
           return matchDate && matchAmount && matchNote;
         });
+
+        let target = null;
+        if (matchedTargets.length === 1) {
+          target = matchedTargets[0];
+        } else if (matchedTargets.length > 1) {
+          const exactNoteMatch = matchedTargets.filter(e => (e.note || '').toLowerCase() === cleanNote.toLowerCase());
+          if (exactNoteMatch.length === 1) target = exactNoteMatch[0];
+          else {
+            const aiMessage: ChatMessage = {
+              id: (Date.now() + 1).toString(), sender: 'ai',
+              pendingContext: { originalQuery: query },
+              text: `⚠️ **Multiple Matches Found**\n\nI found ${matchedTargets.length} expenses matching that description. Please be more specific (e.g., provide the exact date like "yesterday").`,
+              timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+            };
+            setMessages(prev => [...prev, aiMessage]);
+            return;
+          }
+        } else {
+           const aiMessage: ChatMessage = {
+              id: (Date.now() + 1).toString(), sender: 'ai',
+              text: `⚠️ **Couldn't find expense to update**\n\nI searched for: ${cleanNote ? `"${cleanNote}"` : ''} ₹${oldAmount} ${targetDate ? `on ${targetDate}` : ''}`,
+              timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+            };
+            setMessages(prev => [...prev, aiMessage]);
+            return;
+        }
 
         if (target) {
           try {
@@ -911,6 +947,7 @@ export function AIChatDrawer() {
            // Too ambiguous!
            const aiMessage: ChatMessage = {
             id: (Date.now() + 1).toString(), sender: 'ai',
+            pendingContext: { originalQuery: query },
             text: `⚠️ **Multiple Matches Found**\n\nI found ${matchedTargets.length} expenses matching that description. Please be more specific (e.g., provide the exact amount).`,
             timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
           };
