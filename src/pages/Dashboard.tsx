@@ -231,10 +231,6 @@ export function Dashboard() {
           <h1 className="text-2xl sm:text-3xl font-black tracking-tight text-gray-900 dark:text-white">
             Dashboard
           </h1>
-          <span className="relative flex h-2.5 w-2.5 mt-1">
-            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
-            <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-green-500"></span>
-          </span>
         </div>
         <p className="text-xs text-gray-400 dark:text-white/40 font-medium mt-0.5">
           Welcome back, <span className="font-semibold text-gray-600 dark:text-white/70">{userName}</span>
