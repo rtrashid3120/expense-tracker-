@@ -546,19 +546,10 @@ export function AddExpenseModal({
                               className="w-full bg-white dark:bg-black/30 border border-gray-200 dark:border-white/10 rounded-xl pl-6 pr-2 py-2 text-sm font-black text-blue-600 dark:text-brand-neon outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-brand-neon"
                             />
                           </div>
-                          {multiItems.length > 1 && (
-                            <button 
-                              type="button" 
-                              onClick={() => handleRemoveMultiRow(item.id)}
-                              className="p-2 text-gray-400 hover:text-red-500 dark:hover:text-red-400 transition-colors shrink-0"
-                              title="Delete row"
-                            >
-                              <FiTrash2 size={16} />
-                            </button>
-                          )}
                         </div>
 
-                        <div className="flex items-center gap-2 pt-1 relative">
+                        <div className="flex items-center justify-between gap-2 pt-1 relative">
+                          <div className="flex items-center gap-2">
                           <span className="text-[10px] font-bold text-gray-400 dark:text-white/40 uppercase">Category:</span>
                           
                           <div className="relative">
@@ -624,6 +615,20 @@ export function AddExpenseModal({
                           >
                             <FiPlus size={14} />
                           </button>
+                          </div>{/* end left group */}
+
+                          {/* ✅ Always-visible Delete Row button — right side */}
+                          {multiItems.length > 1 && (
+                            <button
+                              type="button"
+                              onClick={() => handleRemoveMultiRow(item.id)}
+                              className="flex items-center gap-1.5 px-3 py-1.5 bg-red-50 dark:bg-red-500/15 hover:bg-red-100 dark:hover:bg-red-500/25 border border-red-200 dark:border-red-500/30 text-red-600 dark:text-red-400 rounded-lg text-[11px] font-bold transition-colors shrink-0"
+                              title="Delete this item"
+                            >
+                              <FiTrash2 size={13} />
+                              Delete
+                            </button>
+                          )}
                         </div>
                       </div>
                     ))}

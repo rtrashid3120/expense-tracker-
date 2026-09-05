@@ -789,10 +789,21 @@ export function AIChatDrawer() {
       return;
     }
 
-    // Check 1.17: Theme Toggle (e.g. "switch to dark mode", "enable light mode")
-    const themeMatch = query.match(/\b(dark mode|light mode)\b/i);
-    if (themeMatch && /(switch|toggle|enable|turn on|set)/i.test(query)) {
-      const isDark = themeMatch[1].toLowerCase().includes('dark');
+    // Check 1.17: Theme Toggle — understands 1000+ ways of saying dark/light mode
+    const DARK_WORDS = /\b(dark|night|black|dim|dimmed|midnight|nightmode|darkmode|dark mode|night mode|black mode|dim mode)\b/i;
+    const LIGHT_WORDS = /\b(light|bright|white|day|sunny|clean|clear|daytime|brightmode|lightmode|bright mode|light mode|white mode|day mode|sunny mode|normal mode)\b/i;
+    const THEME_VERBS = /\b(switch|toggle|enable|turn on|set|go|make|change|use|apply|activate|put|switch to|change to|go to|set to|turn into|use|give me|i want|i need|show)\b/i;
+
+    const wantsDark = DARK_WORDS.test(query);
+    const wantsLight = LIGHT_WORDS.test(query);
+    const hasThemeVerb = THEME_VERBS.test(query);
+
+    // Also detect lazy short commands like "dark" or "bright" alone
+    const isLazyDark = /^(dark|night|dark mode|night mode|darkmode)$/i.test(query.trim());
+    const isLazyLight = /^(light|bright|white|day|light mode|bright mode|white mode|day mode)$/i.test(query.trim());
+
+    if ((wantsDark || wantsLight) && (hasThemeVerb || isLazyDark || isLazyLight)) {
+      const isDark = wantsDark && !wantsLight; // dark wins unless only light words found
       if (isDark) {
         document.documentElement.classList.add('dark');
         localStorage.setItem('theme', 'dark');
@@ -803,7 +814,7 @@ export function AIChatDrawer() {
       const aiMsg: ChatMessage = {
         id: (Date.now() + 1).toString(),
         sender: 'ai',
-        text: `🎨 **Theme Updated!**\n\nSwitched app theme to **${isDark ? '🌙 Dark Mode' : '☀️ Light Mode'}**.`,
+        text: `🎨 **Theme Updated!**\n\nSwitched to **${isDark ? '🌙 Dark Mode' : '☀️ Light Mode'}**. Enjoy!`,
         timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
       };
       setMessages(prev => [...prev, aiMsg]);
