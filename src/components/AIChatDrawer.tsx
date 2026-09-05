@@ -1829,11 +1829,7 @@ export function AIChatDrawer() {
         user: profile
       };
 
-      // Temporarily disabled Gemini API as requested. Falling back immediately to local NLP.
-      console.log("Local NLP Fallback context:", { historyForApi, contextData });
-      const res: any = { expenseAdded: false, actionData: null, answer: "" };
-      throw new Error("Gemini AI Disabled per user request. Running exclusively on local offline NLP.");
-
+      const res = await api.askAIChat(query.trim(), historyForApi, contextData);
       if (res.expenseAdded) {
         await fetchData(true);
       }
@@ -1947,7 +1943,7 @@ export function AIChatDrawer() {
         trips,
         monthlyBudget,
         profile
-      ) + `\n\n*(Debug Error: ${err.message})*`;
+      );
 
       const aiMessage: ChatMessage = {
         id: (Date.now() + 1).toString(),
