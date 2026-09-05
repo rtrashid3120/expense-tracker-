@@ -1344,7 +1344,7 @@ export function AIChatDrawer() {
       /\b(50\s*30\s*20|50\/30\/20|rule 50|safe to spend|can i spend|budget advice|save money|financial tips|how to save|can i save|split \d+)\b/i.test(query) ||
       query.includes('?');
 
-    const hasAddActionKeyword = /\b(spent|add|log|bought|paid|pay|bill|purchase|entry|record|deduct)\b/i.test(query);
+    const hasAddActionKeyword = /\b(spent|spend|spending|add|log|bought|paid|pay|bill|purchase|purchased|entry|record|deduct|cost|charge)\b/i.test(query);
     const hasCurrencySymbol = /(?:₹|rs\.?|inr)\s*\d+|\d+\s*(?:₹|rs\.?|inr|rupees)/i.test(query);
     const isDirectAddPattern = /^[a-zA-Z\s]+\s+\d+$/i.test(query.trim()) || /^\d+\s+[a-zA-Z\s]+$/i.test(query.trim());
 
