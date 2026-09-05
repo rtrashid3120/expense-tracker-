@@ -113,25 +113,39 @@ const parseMultiExpenses = (query: string) => {
     }
   } else {
     const months = ["jan", "feb", "mar", "apr", "may", "jun", "jul", "aug", "sep", "oct", "nov", "dec"];
-    const dayMonthMatch = cleanedQuery.match(/\b(?:on\s+)?(\d{1,2})(?:st|nd|rd|th)?\s+(jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|may|jun(?:e)?|jul(?:y)?|aug(?:ust)?|sep(?:tember)?|oct(?:ober)?|nov(?:ember)?|dec(?:ember)?)(?:\s+(\d{4}))?\b/i);
-    const monthDayMatch = cleanedQuery.match(/\b(?:on\s+)?(jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|may|jun(?:e)?|jul(?:y)?|aug(?:ust)?|sep(?:tember)?|oct(?:ober)?|nov(?:ember)?|dec(?:ember)?)\s+(\d{1,2})(?:st|nd|rd|th)?(?:\s+(\d{4}))?\b/i);
+    // Also matching missing spaces like 'sep20' and typos
+    const dayMonthMatch = cleanedQuery.match(/\b(?:on\s+)?(\d{1,2})(?:st|nd|rd|th)?\s*([a-z]+)(?:\s+(\d{4}))?\b/i);
+    const monthDayMatch = cleanedQuery.match(/\b(?:on\s+)?([a-z]+)\s*(\d{1,2})(?:st|nd|rd|th)?(?:\s+(\d{4}))?\b/i);
 
     let matchedMonth = -1;
     let day = -1;
     let year = now.getFullYear();
 
+    const parseMonth = (mStr: string) => {
+      let str = mStr.toLowerCase();
+      if (str.startsWith('spe')) str = 'sep';
+      if (str.startsWith('augu')) str = 'aug';
+      if (str.startsWith('jne')) str = 'jun';
+      if (str.startsWith('jlu')) str = 'jul';
+      return months.findIndex(m => str.startsWith(m));
+    };
+
     if (dayMonthMatch) {
       day = parseInt(dayMonthMatch[1]);
-      const mStr = dayMonthMatch[2].toLowerCase();
-      matchedMonth = months.findIndex(m => mStr.startsWith(m));
-      if (dayMonthMatch[3]) year = parseInt(dayMonthMatch[3]);
-      cleanedQuery = cleanedQuery.replace(dayMonthMatch[0], '');
-    } else if (monthDayMatch) {
-      const mStr = monthDayMatch[1].toLowerCase();
-      matchedMonth = months.findIndex(m => mStr.startsWith(m));
-      day = parseInt(monthDayMatch[2]);
-      if (monthDayMatch[3]) year = parseInt(monthDayMatch[3]);
-      cleanedQuery = cleanedQuery.replace(monthDayMatch[0], '');
+      matchedMonth = parseMonth(dayMonthMatch[2]);
+      if (matchedMonth !== -1) {
+        if (dayMonthMatch[3]) year = parseInt(dayMonthMatch[3]);
+        cleanedQuery = cleanedQuery.replace(dayMonthMatch[0], '');
+      }
+    } 
+    
+    if (matchedMonth === -1 && monthDayMatch) {
+      matchedMonth = parseMonth(monthDayMatch[1]);
+      if (matchedMonth !== -1) {
+        day = parseInt(monthDayMatch[2]);
+        if (monthDayMatch[3]) year = parseInt(monthDayMatch[3]);
+        cleanedQuery = cleanedQuery.replace(monthDayMatch[0], '');
+      }
     }
 
     if (matchedMonth !== -1 && day > 0 && day <= 31) {
@@ -654,13 +668,19 @@ export function AIChatDrawer() {
       let cleanQuery = query;
       let targetDate: string | null = null;
       
-      // 1. Extract Date if present
-      const dateRegex = /\b(?:on\s+|from\s+|for\s+)?(\d{1,2})(?:st|nd|rd|th)?\s+([a-z]+)\b|\b(?:on\s+|from\s+|for\s+)?([a-z]+)\s+(\d{1,2})(?:st|nd|rd|th)?\b/i;
+      // 1. Extract Date if present (now allows missing spaces like 'sep20' and typos like 'spe20')
+      const dateRegex = /\b(?:on\s+|from\s+|for\s+)?(\d{1,2})(?:st|nd|rd|th)?\s*([a-z]+)\b|\b(?:on\s+|from\s+|for\s+)?([a-z]+)\s*(\d{1,2})(?:st|nd|rd|th)?\b/i;
       const dMatch = cleanQuery.match(dateRegex);
       if (dMatch) {
         let dayStr = dMatch[1] || dMatch[4], monthStr = dMatch[2] || dMatch[3];
         const day = parseInt(dayStr);
         const months = ["jan", "feb", "mar", "apr", "may", "jun", "jul", "aug", "sep", "oct", "nov", "dec"];
+        // Typo forgiveness for months
+        if (monthStr.toLowerCase().startsWith('spe')) monthStr = 'sep';
+        if (monthStr.toLowerCase().startsWith('augu')) monthStr = 'aug';
+        if (monthStr.toLowerCase().startsWith('jne')) monthStr = 'jun';
+        if (monthStr.toLowerCase().startsWith('jlu')) monthStr = 'jul';
+        
         const monthIdx = months.findIndex(x => monthStr.toLowerCase().startsWith(x));
         if (monthIdx !== -1 && day >= 1 && day <= 31) {
           const d = new Date(new Date().getFullYear(), monthIdx, day);
@@ -677,7 +697,7 @@ export function AIChatDrawer() {
       }
 
       // 3. Extract Note
-      const cleanNote = cleanQuery.replace(/\b(delete|remove|cancel|undo|erase|drop|clear|trash|wipe|destroy|discard|eliminate|nuke|kill|void|scrap|chuck|dump|bin|del|rm|spent|add|log|bought|paid|on|for|rupees|rs|₹|inr|bucks|spending|spendings|expense|expenses|transaction|transactions|item|items|bill|bills|record|records|data|entry|entries|history|log|logs|purchases|payments|exp|txn|txns|amt|last|latest)\b/gi, '').trim().replace(/\s+/g, ' ');
+      const cleanNote = cleanQuery.replace(/\b(delete|remove|cancel|undo|erase|drop|clear|trash|wipe|destroy|discard|eliminate|nuke|kill|void|scrap|chuck|dump|bin|del|rm|spent|add|log|bought|paid|on|for|from|in|at|the|rupees|rs|₹|inr|bucks|spending|spendings|expense|expenses|transaction|transactions|item|items|bill|bills|record|records|data|entry|entries|history|log|logs|purchases|payments|exp|txn|txns|amt|last|latest)\b/gi, '').trim().replace(/\s+/g, ' ');
 
       // Find targets that match criteria
       const matchedTargets = validExpenses.filter(e => {
