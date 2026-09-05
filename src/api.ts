@@ -284,7 +284,7 @@ export const api = {
     }
   },
 
-  askAIChat: async (message: string, history: any[], contextData?: any): Promise<{ answer: string; expenseAdded?: boolean; walletPrompt?: { amount: number; category: string; note: string }; themeChange?: string; actionData?: any }> => {
+  askAIChat: async (message: string, history: any[], contextData?: any): Promise<{ answer: string; expenseAdded?: boolean; walletPrompt?: { amount: number; category: string; note: string } }> => {
     try {
       const res = await fetch(`${API_BASE_URL}/ai/chat`, {
         method: 'POST',
@@ -299,7 +299,6 @@ export const api = {
       console.warn('Backend AI endpoint unreachable, falling back to direct API call:', e);
     }
 
-    // Direct client-side Gemini API fallback
     const getFallbackKey = () => 'g_BsNea1-rx-TxYTrowLrH-qx2p4wTL_euT0NSpRrSNL6NR8bA.QA'.split('').reverse().join('');
     const apiKey = import.meta.env.VITE_GEMINI_API_KEY || getFallbackKey();
 
@@ -321,14 +320,6 @@ REAL EXPENSE LOGGING INSTRUCTIONS:
 }
 \`\`\`
 
-- If the user asks to change the theme, switch to dark mode, bright mode, or similar (even with typos like "brigh" or "drk"), MUST return:
-\`\`\`json
-{
-  "ACTION": "CHANGE_THEME",
-  "theme": "dark" // or "light"
-}
-\`\`\`
-
 - If the user specified a wallet OR has only 1 wallet, return standard ADD_EXPENSE:
 \`\`\`json
 {
@@ -336,83 +327,6 @@ REAL EXPENSE LOGGING INSTRUCTIONS:
   "amount": 40,
   "category": "Dining",
   "note": "cake"
-}
-\`\`\`
-
-- To DELETE an expense (find the ID in the Recent Expenses context):
-\`\`\`json
-{
-  "ACTION": "DELETE_EXPENSE",
-  "expenseId": "the-exact-id"
-}
-\`\`\`
-
-- To UPDATE an expense amount/category/note:
-\`\`\`json
-{
-  "ACTION": "UPDATE_EXPENSE",
-  "expenseId": "the-exact-id",
-  "updates": { "amount": 500, "category": "New Category" }
-}
-\`\`\`
-
-- To BULK MOVE all expenses from one category to another:
-\`\`\`json
-{
-  "ACTION": "BULK_UPDATE_CATEGORY",
-  "oldCategory": "Swiggy",
-  "newCategory": "Dining"
-}
-\`\`\`
-
-- To BULK MOVE expenses from one date to another:
-\`\`\`json
-{
-  "ACTION": "BULK_UPDATE_DATE",
-  "oldDate": "2026-09-20",
-  "newDate": "2026-09-21"
-}
-\`\`\`
-
-- To NAVIGATE to a specific page. Valid paths are only: "/", "/heatmaps", "/expenses", "/trips", "/family", "/profile":
-\`\`\`json
-{
-  "ACTION": "NAVIGATE",
-  "page": "/heatmaps"
-}
-\`\`\`
-
-- To EXPORT data as CSV/Excel:
-\`\`\`json
-{
-  "ACTION": "EXPORT_CSV"
-}
-\`\`\`
-
-- To CREATE a new wallet:
-\`\`\`json
-{
-  "ACTION": "CREATE_WALLET",
-  "name": "Business",
-  "initialBudget": 5000
-}
-\`\`\`
-
-- To DELETE a wallet (find the ID in the User Wallets context):
-\`\`\`json
-{
-  "ACTION": "DELETE_WALLET",
-  "walletId": "the-exact-id"
-}
-\`\`\`
-
-- To TRANSFER money between wallets:
-\`\`\`json
-{
-  "ACTION": "TRANSFER_FUNDS",
-  "fromWalletId": "id-1",
-  "toWalletId": "id-2",
-  "amount": 1000
 }
 \`\`\`
 
@@ -424,26 +338,18 @@ Context:
 
 Instructions:
 1. When asked about who created, built, or owns ExpenseHub/ExpressHub, ALWAYS proudly state that Mohamed Rashid is the creator and owner.
-2. If the user asks you to perform an action (like adding an expense, navigating, exporting, creating a wallet), you MUST output the exact JSON block for that action. 
-3. DO NOT output conversational text if you are returning a JSON block. Just output the raw JSON.
-4. Use Indian Currency symbol ₹ for conversational amounts.
-5. When asked how much was spent on a specific item or category (e.g. "how much spent on grocery"), provide a breakdown comparing This Week, This Month, and All-Time totals, and ask the user which period option they want to explore.`;
+2. If logging an expense, provide the JSON action block AND write a friendly confirmation message.
+3. Use Indian Currency symbol ₹ for amounts.
+4. When asked how much was spent on a specific item or category (e.g. "how much spent on grocery"), provide a breakdown comparing This Week, This Month, and All-Time totals, and ask the user which period option they want to explore.`;
 
-    const allHistory = [
-      ...(history || []).map(h => ({ role: h.sender === 'user' ? 'user' : 'model', text: h.text })),
-      { role: 'user', text: message }
+    const contents = [
+      { parts: [{ text: systemPrompt }] },
+      ...(history || []).map(h => ({
+        role: h.sender === 'user' ? 'user' : 'model',
+        parts: [{ text: h.text }]
+      })),
+      { role: 'user', parts: [{ text: message }] }
     ];
-
-    const contents: any[] = [];
-    let lastRole = '';
-    for (const h of allHistory) {
-      if (h.role !== lastRole) {
-        contents.push({ role: h.role, parts: [{ text: h.text }] });
-        lastRole = h.role;
-      } else if (contents.length > 0) {
-        contents[contents.length - 1].parts[0].text += `\n\n${h.text}`;
-      }
-    }
 
     const models = ['gemini-3.6-flash', 'gemini-3-flash-preview', 'gemini-2.0-flash-lite'];
     let lastErr = 'AI Error';
@@ -453,10 +359,7 @@ Instructions:
         const directRes = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${m}:generateContent?key=${apiKey}`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ 
-            system_instruction: { parts: { text: systemPrompt } },
-            contents 
-          })
+          body: JSON.stringify({ contents })
         });
         const data = await directRes.json();
         if (data.candidates && data.candidates[0]?.content?.parts[0]?.text) {
@@ -464,7 +367,7 @@ Instructions:
           let expenseAdded = false;
           let actionData: any = null;
 
-          const jsonMatch = replyText.match(/```json\s*([\s\S]*?)\s*```/) || replyText.match(/(\{[\s\S]*?"ACTION"\s*:\s*".*?"[\s\S]*?\})/);
+          const jsonMatch = replyText.match(/\`\`\`json\s*([\s\S]*?)\s*\`\`\`/) || replyText.match(/(\{[\s\S]*?"ACTION"\s*:\s*".*?"[\s\S]*?\})/);
           if (jsonMatch) {
             try {
               actionData = JSON.parse(jsonMatch[1] || jsonMatch[0]);
@@ -499,7 +402,7 @@ Instructions:
             try {
               const walletCount = contextData?.wallets?.length || 0;
               if (actionData.ACTION === 'SELECT_WALLET_FOR_EXPENSE' && walletCount >= 2) {
-                replyText = replyText.replace(/```json[\s\S]*?```/g, '').replace(/\{[\s\S]*?"ACTION"\s*:\s*".*?"[\s\S]*?\}/g, '').trim();
+                replyText = replyText.replace(/\`\`\`json[\s\S]*?\`\`\`/g, '').replace(/\{[\s\S]*?"ACTION"\s*:\s*".*?"[\s\S]*?\}/g, '').trim();
                 return {
                   answer: replyText || `Which wallet should I add **${actionData.note || 'Expense'} (₹${actionData.amount})** to?`,
                   walletPrompt: {
@@ -519,40 +422,26 @@ Instructions:
                   walletId: defaultWallet
                 });
                 expenseAdded = true;
-                replyText = replyText.replace(/```json[\s\S]*?```/g, '').replace(/\{[\s\S]*?"ACTION"\s*:\s*"ADD_EXPENSE"[\s\S]*?\}/g, '').trim();
+                replyText = replyText.replace(/\`\`\`json[\s\S]*?\`\`\`/g, '').replace(/\{[\s\S]*?"ACTION"\s*:\s*"ADD_EXPENSE"[\s\S]*?\}/g, '').trim();
                 if (!replyText) {
-                  replyText = `✅ **Expense Successfully Added to Audit Trail!**\n- **Amount:** ₹${actionData.amount}\n- **Category:** ${actionData.category || 'Personal'}\n- **Note:** ${actionData.note || 'Logged via AI'}`;
-                } else {
+                  replyText = `✅ **Successfully Added ${actionData.note || 'Expense'}!**\n💰 Amount: ₹${actionData.amount}`;
+                } else if (!replyText.includes('✅')) {
                   replyText += `\n\n✅ *Record saved to MongoDB Audit Trail!*`;
                 }
-              }
-
-              if (actionData && actionData.ACTION === 'CHANGE_THEME') {
-                replyText = replyText.replace(/```json[\s\S]*?```/g, '').replace(/\{[\s\S]*?"ACTION"\s*:\s*"CHANGE_THEME"[\s\S]*?\}/g, '').trim();
-                if (!replyText) replyText = `I've switched the theme to ${actionData.theme} mode for you!`;
-                return { answer: replyText, themeChange: actionData.theme, actionData };
-              }
-              
-              // Return action data for any other actions (DELETE, UPDATE, BULK, NAVIGATE, EXPORT, WALLETS)
-              if (actionData && ['DELETE_EXPENSE', 'UPDATE_EXPENSE', 'BULK_UPDATE_CATEGORY', 'BULK_UPDATE_DATE', 'NAVIGATE', 'EXPORT_CSV', 'CREATE_WALLET', 'DELETE_WALLET', 'TRANSFER_FUNDS'].includes(actionData.ACTION)) {
-                replyText = replyText.replace(/```json[\s\S]*?```/g, '').replace(/\{[\s\S]*?"ACTION"\s*:\s*".*?"[\s\S]*?\}/g, '').trim();
-                if (!replyText) replyText = `I've processed that action for you!`;
-                return { answer: replyText, actionData };
               }
             } catch (err) {
               console.error('Failed fallback AI action parse:', err);
             }
           }
 
-          return { answer: replyText, expenseAdded, actionData };
+          return { answer: replyText, expenseAdded };
         } else if (data.error) {
           lastErr = data.error.message;
         }
       } catch (err: any) {
-        lastErr = err.message;
+        lastErr = err.message || 'Network error';
       }
     }
-
-    throw new Error(lastErr || 'AI Response failed');
+    throw new Error(lastErr);
   }
 };
