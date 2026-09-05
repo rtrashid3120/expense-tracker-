@@ -1,6 +1,6 @@
 import React, { useState, useEffect, Component } from 'react';
 import type { ErrorInfo } from 'react';
-import { HashRouter, Routes, Route, Navigate, Link } from 'react-router-dom';
+import { HashRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AnimatePresence, motion } from 'framer-motion';
 import { Dashboard } from './pages/Dashboard';
 import { Trips } from './pages/Trips';
@@ -16,7 +16,7 @@ import { AddExpenseModal } from './components/AddExpenseModal';
 import { AIChatDrawer } from './components/AIChatDrawer';
 import { AppLogo } from './components/AppLogo';
 import { useAppStore } from './store';
-import { FiLogOut, FiZap, FiFileText } from 'react-icons/fi';
+import { FiLogOut, FiSun, FiMoon } from 'react-icons/fi';
 
 class ErrorBoundary extends Component<{children: React.ReactNode}, {hasError: boolean, error: Error | null}> {
   constructor(props: {children: React.ReactNode}) {
@@ -46,6 +46,26 @@ class ErrorBoundary extends Component<{children: React.ReactNode}, {hasError: bo
 
 function Layout({ children, onAddClick, isOverlayOpen }: { children: React.ReactNode; onAddClick: () => void; isOverlayOpen: boolean }) {
   const { signOut } = useAppStore();
+  const [isDark, setIsDark] = useState(() => document.documentElement.classList.contains('dark'));
+
+  // Sync state with HTML class whenever it changes manually or via AI
+  useEffect(() => {
+    const observer = new MutationObserver(() => {
+      setIsDark(document.documentElement.classList.contains('dark'));
+    });
+    observer.observe(document.documentElement, { attributes: true, attributeFilter: ['class'] });
+    return () => observer.disconnect();
+  }, []);
+
+  const toggleTheme = () => {
+    if (isDark) {
+      document.documentElement.classList.remove('dark');
+      localStorage.setItem('theme', 'light');
+    } else {
+      document.documentElement.classList.add('dark');
+      localStorage.setItem('theme', 'dark');
+    }
+  };
   
   return (
     <div className="flex h-screen w-full bg-transparent overflow-hidden">
@@ -57,19 +77,12 @@ function Layout({ children, onAddClick, isOverlayOpen }: { children: React.React
 
           <div className="flex items-center gap-2">
             <button 
-              onClick={() => window.dispatchEvent(new Event('open-ai-chat'))}
-              className="w-8 h-8 rounded-full bg-brand-neon/10 border border-brand-neon/30 flex items-center justify-center text-brand-neon shadow-[0_0_10px_rgba(0,240,255,0.4)]"
-              title="ExpenseHub AI"
+              onClick={toggleTheme}
+              className="w-8 h-8 rounded-full bg-gray-100 dark:bg-white/5 border border-gray-200 dark:border-white/10 flex items-center justify-center text-gray-600 dark:text-white/60 hover:text-gray-900 dark:hover:text-white transition-colors"
+              title="Toggle Theme"
             >
-              <FiZap size={14} className="animate-pulse" />
+              {isDark ? <FiSun size={15} /> : <FiMoon size={15} />}
             </button>
-            <Link 
-              to="/expenses"
-              className="w-8 h-8 rounded-full bg-gray-100 dark:bg-white/5 border border-gray-200 dark:border-white/10 flex items-center justify-center text-gray-600 dark:text-white/60"
-              title="Audit Trail"
-            >
-              <FiFileText size={14} />
-            </Link>
             <button 
               onClick={signOut}
               title="Log Out"
@@ -86,6 +99,13 @@ function Layout({ children, onAddClick, isOverlayOpen }: { children: React.React
             <input type="text" placeholder="Search keyword..." className="w-full bg-white/20 dark:bg-white/5 border border-white/20 dark:border-white/10 rounded-full py-2.5 px-5 text-sm text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-white/40 focus:outline-none focus:ring-2 focus:ring-brand-neon backdrop-blur-md transition-all shadow-inner" />
           </div>
           <div className="flex items-center gap-4">
+            <button 
+              onClick={toggleTheme}
+              className="w-10 h-10 rounded-full bg-gray-100 dark:bg-white/5 border border-gray-200 dark:border-white/10 flex items-center justify-center text-gray-600 dark:text-white/60 hover:text-gray-900 dark:hover:text-white transition-colors shadow-sm"
+              title="Toggle Theme"
+            >
+              {isDark ? <FiSun size={18} /> : <FiMoon size={18} />}
+            </button>
             <button 
               onClick={signOut}
               title="Log Out"
