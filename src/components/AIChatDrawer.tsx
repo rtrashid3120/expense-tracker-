@@ -367,7 +367,7 @@ export function AIChatDrawer() {
   const [isLoading, setIsLoading] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
-  const { expenses, wallets, trips, monthlyBudget, balance, profile, fetchData } = useAppStore();
+  const { expenses, wallets, trips, monthlyBudget, profile, fetchData } = useAppStore();
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -1939,126 +1939,8 @@ export function AIChatDrawer() {
     setIsLoading(true);
 
     try {
-      const historyForApi = messages
-        .filter(m => m.id !== 'welcome')
-        .map(m => ({ sender: m.sender, text: m.text }));
-
-      const contextData = {
-        budget: { monthlyBudget, balance },
-        wallets,
-        expenses,
-        trips,
-        user: profile
-      };
-
-      const res = await api.askAIChat(query.trim(), historyForApi, contextData);
-
-      if (res.expenseAdded) {
-        await fetchData(true);
-      }
       
-      if (res.themeChange) {
-        if (res.themeChange.toLowerCase() === 'dark') {
-          document.documentElement.classList.add('dark');
-          localStorage.setItem('theme', 'dark');
-        } else {
-          document.documentElement.classList.remove('dark');
-          localStorage.setItem('theme', 'light');
-        }
-      }
 
-      let aiUndoPayload: UndoPayload | undefined = undefined;
-
-      if (res.actionData) {
-        let changed = false;
-        try {
-          if (res.actionData.ACTION === 'DELETE_EXPENSE' && res.actionData.expenseId) {
-            const exp = validExpenses.find(x => x.id === res.actionData.expenseId || (x as any)._id === res.actionData.expenseId);
-            if (exp) {
-              await api.deleteExpense(res.actionData.expenseId);
-              aiUndoPayload = { action: 'RESTORE_EXPENSES', expenses: [exp] };
-              changed = true;
-            }
-          } else if (res.actionData.ACTION === 'UPDATE_EXPENSE' && res.actionData.expenseId && res.actionData.updates) {
-            const exp = validExpenses.find(x => x.id === res.actionData.expenseId || (x as any)._id === res.actionData.expenseId);
-            if (exp) {
-              await api.updateExpense(res.actionData.expenseId, res.actionData.updates);
-              aiUndoPayload = { action: 'REVERT_UPDATE', updates: [{ id: exp!.id || (exp as any)._id, oldData: exp }] };
-              changed = true;
-            }
-          } else if (res.actionData.ACTION === 'BULK_UPDATE_CATEGORY' && res.actionData.oldCategory) {
-            const matches = validExpenses.filter(e => e.category.toLowerCase() === res.actionData.oldCategory.toLowerCase());
-            if (matches.length > 0) {
-              const updates: any[] = [];
-              for (const e of matches) {
-                updates.push({ id: e.id || (e as any)._id, oldData: { ...e } });
-                await api.updateExpense(e.id || (e as any)._id, { category: res.actionData.newCategory });
-              }
-              aiUndoPayload = { action: 'REVERT_UPDATE', updates };
-              changed = true;
-            }
-          } else if (res.actionData.ACTION === 'BULK_UPDATE_DATE' && res.actionData.oldDate) {
-            const matches = validExpenses.filter(e => (e as any).dateStr === res.actionData.oldDate || (e as any).date_str === res.actionData.oldDate || e.date.includes(res.actionData.oldDate));
-            if (matches.length > 0) {
-              const updates: any[] = [];
-              for (const e of matches) {
-                updates.push({ id: e.id || (e as any)._id, oldData: { ...e } });
-                await api.updateExpense(e.id || (e as any)._id, { date: res.actionData.newDate });
-              }
-              aiUndoPayload = { action: 'REVERT_UPDATE', updates };
-              changed = true;
-            }
-          } else if (res.actionData.ACTION === 'NAVIGATE' && res.actionData.page) {
-            navigate(res.actionData.page);
-            setIsOpen(false);
-            window.dispatchEvent(new Event('close-ai-chat'));
-          } else if (res.actionData.ACTION === 'EXPORT_CSV') {
-            const csvData = [
-              ['Date', 'Amount', 'Category', 'Note'],
-              ...validExpenses.map(e => [
-                (e as any).dateStr || (e as any).date_str || e.date || '',
-                e.amount,
-                e.category,
-                e.note || ''
-              ])
-            ].map(row => row.join(',')).join('\n');
-            const blob = new Blob([csvData], { type: 'text/csv' });
-            const url = window.URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = `expensehub_export_${new Date().toISOString().split('T')[0]}.csv`;
-            a.click();
-            window.URL.revokeObjectURL(url);
-          } else if (res.actionData.ACTION === 'CREATE_WALLET' && res.actionData.name) {
-            await api.createWallet(res.actionData.name, res.actionData.initialBudget || 0);
-            changed = true;
-          } else if (res.actionData.ACTION === 'DELETE_WALLET' && res.actionData.walletId) {
-            await api.deleteWallet(res.actionData.walletId);
-            changed = true;
-          } else if (res.actionData.ACTION === 'TRANSFER_FUNDS' && res.actionData.fromWalletId && res.actionData.toWalletId) {
-            await api.transferWallets(res.actionData.fromWalletId, res.actionData.toWalletId, res.actionData.amount || 0);
-            changed = true;
-          }
-        } catch (err) {
-          console.error("Failed to execute AI action locally", err);
-        }
-        if (changed) {
-          await fetchData(true);
-        }
-      }
-
-      const aiMessage: ChatMessage = {
-        id: (Date.now() + 1).toString(),
-        sender: 'ai',
-        text: res.answer,
-        walletPrompt: res.walletPrompt,
-        undoPayload: aiUndoPayload,
-        timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-      };
-
-      setMessages(prev => [...prev, aiMessage]);
-    } catch (err: any) {
-      console.warn('Backend AI unavailable, using intelligent financial assistant fallback:', err);
       const fallbackText = generateLocalFinancialAnswer(
         query.trim(),
         currentWallets,
@@ -2066,7 +1948,7 @@ export function AIChatDrawer() {
         trips,
         monthlyBudget,
         profile
-      ) ;
+      );
 
       const aiMessage: ChatMessage = {
         id: (Date.now() + 1).toString(),
@@ -2075,6 +1957,7 @@ export function AIChatDrawer() {
         timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
       };
       setMessages(prev => [...prev, aiMessage]);
+
     } finally {
       setIsLoading(false);
     }
