@@ -44,15 +44,15 @@ class ErrorBoundary extends Component<{children: React.ReactNode}, {hasError: bo
   }
 }
 
-function Layout({ children, onAddClick }: { children: React.ReactNode; onAddClick: () => void }) {
+function Layout({ children, onAddClick, isOverlayOpen }: { children: React.ReactNode; onAddClick: () => void; isOverlayOpen: boolean }) {
   const { signOut } = useAppStore();
   
   return (
     <div className="flex h-screen w-full bg-transparent overflow-hidden">
       <Sidebar />
       <div className="flex-1 flex flex-col h-full relative overflow-hidden">
-        {/* Mobile Header Bar */}
-        <header className="md:hidden flex justify-between items-center px-4 py-3 bg-white/80 dark:bg-dark-surface/90 backdrop-blur-2xl border-b border-gray-200/60 dark:border-white/10 sticky top-0 z-40">
+        {/* Mobile Header Bar — hides when Add Expense or AI Chat is open */}
+        <header className={`md:hidden flex justify-between items-center px-4 py-3 bg-white/80 dark:bg-dark-surface/90 backdrop-blur-2xl border-b border-gray-200/60 dark:border-white/10 sticky top-0 z-40 transition-all duration-200 ${isOverlayOpen ? 'opacity-0 pointer-events-none -translate-y-full' : 'opacity-100 translate-y-0'}`}>
           <AppLogo size={28} showText={true} />
 
           <div className="flex items-center gap-2">
@@ -109,6 +109,7 @@ function Layout({ children, onAddClick }: { children: React.ReactNode; onAddClic
   );
 }
 
+
 const PageTransition = ({ children }: { children: React.ReactNode }) => (
   <motion.div
     initial={{ opacity: 0, y: 18, scale: 0.98 }}
@@ -126,10 +127,23 @@ const PageTransition = ({ children }: { children: React.ReactNode }) => (
 
 export default function App() {
   const [isAddOpen, setIsAddOpen] = useState(false);
+  const [isAIChatOpen, setIsAIChatOpen] = useState(false);
   const { initAuth, user, isAuthLoading, isLoading, profile, joinTripViaLink } = useAppStore();
   const [pendingJoinTripId, setPendingJoinTripId] = useState<string | null>(null);
   const [isJoining, setIsJoining] = useState(false);
   const [joinError, setJoinError] = useState('');
+
+  // Track AI chat open/close to hide mobile top bar
+  useEffect(() => {
+    const onOpen = () => setIsAIChatOpen(true);
+    const onClose = () => setIsAIChatOpen(false);
+    window.addEventListener('open-ai-chat', onOpen);
+    window.addEventListener('close-ai-chat', onClose);
+    return () => {
+      window.removeEventListener('open-ai-chat', onOpen);
+      window.removeEventListener('close-ai-chat', onClose);
+    };
+  }, []);
 
   useEffect(() => {
     initAuth();
@@ -201,7 +215,7 @@ export default function App() {
     <ErrorBoundary>
       <HashRouter>
         <AnimatePresence>
-          <Layout onAddClick={() => setIsAddOpen(true)}>
+          <Layout onAddClick={() => setIsAddOpen(true)} isOverlayOpen={isAddOpen || isAIChatOpen}>
             <AnimatePresence mode="wait">
               <Routes>
                 <Route path="/" element={<PageTransition><Dashboard /></PageTransition>} />

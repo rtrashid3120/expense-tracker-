@@ -24,38 +24,37 @@ export function BottomNav({ onAddClick }: { onAddClick: () => void }) {
                 onClick={onAddClick}
                 title="Add Expense"
                 whileTap={{ scale: 0.88 }}
-                className="relative flex items-center justify-center w-14 h-14 flex-shrink-0 -mt-5"
+                className="relative flex items-center justify-center w-13 h-10 flex-shrink-0"
               >
-                {/* Organic radial glow — NOT a square blur box */}
+                {/* Organic radial glow behind button — fully contained, circular */}
                 <motion.span
                   className="absolute rounded-full pointer-events-none"
                   style={{
-                    inset: '-8px',
-                    background: 'radial-gradient(circle, rgba(139,92,246,0.6) 0%, rgba(59,130,246,0.35) 45%, transparent 72%)',
-                    filter: 'blur(8px)',
+                    inset: '-6px',
+                    background: 'radial-gradient(circle, rgba(139,92,246,0.55) 0%, rgba(59,130,246,0.3) 50%, transparent 75%)',
+                    filter: 'blur(7px)',
                   }}
-                  animate={{ scale: [1, 1.2, 1], opacity: [0.65, 1, 0.65] }}
+                  animate={{ scale: [1, 1.18, 1], opacity: [0.7, 1, 0.7] }}
                   transition={{ duration: 2.6, repeat: Infinity, ease: 'easeInOut' }}
                 />
-                {/* Second wider ambient ring */}
                 <motion.span
                   className="absolute rounded-full pointer-events-none"
                   style={{
-                    inset: '-16px',
-                    background: 'radial-gradient(circle, rgba(99,102,241,0.28) 0%, transparent 65%)',
-                    filter: 'blur(14px)',
+                    inset: '-12px',
+                    background: 'radial-gradient(circle, rgba(99,102,241,0.28) 0%, transparent 68%)',
+                    filter: 'blur(12px)',
                   }}
-                  animate={{ scale: [1, 1.3, 1], opacity: [0.35, 0.65, 0.35] }}
-                  transition={{ duration: 2.6, repeat: Infinity, ease: 'easeInOut', delay: 0.5 }}
+                  animate={{ scale: [1, 1.28, 1], opacity: [0.35, 0.6, 0.35] }}
+                  transition={{ duration: 2.6, repeat: Infinity, ease: 'easeInOut', delay: 0.45 }}
                 />
-                {/* Main button circle */}
-                <span className="relative z-10 w-12 h-12 rounded-full bg-gradient-to-br from-blue-500 via-indigo-500 to-purple-600 dark:from-cyan-400 dark:via-blue-500 dark:to-purple-600 shadow-[0_6px_24px_rgba(99,102,241,0.65)] dark:shadow-[0_6px_28px_rgba(0,210,255,0.6)] flex items-center justify-center">
+                {/* Main button — sized to fit inside the bar */}
+                <span className="relative z-10 w-11 h-9 rounded-full bg-gradient-to-br from-blue-500 via-indigo-500 to-purple-600 dark:from-cyan-400 dark:via-blue-500 dark:to-purple-600 shadow-[0_4px_18px_rgba(99,102,241,0.65)] dark:shadow-[0_4px_20px_rgba(0,210,255,0.55)] flex items-center justify-center">
                   <motion.span
                     whileTap={{ rotate: 90 }}
                     transition={{ type: 'spring', stiffness: 320, damping: 14 }}
                     className="flex items-center justify-center"
                   >
-                    <FiPlus size={23} className="text-white dark:text-black" strokeWidth={2.8} />
+                    <FiPlus size={21} className="text-white dark:text-black" strokeWidth={2.8} />
                   </motion.span>
                 </span>
               </motion.button>

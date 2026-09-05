@@ -368,6 +368,13 @@ export function AIChatDrawer() {
     return () => window.removeEventListener('open-ai-chat', handleOpen);
   }, []);
 
+  // Notify App when AI chat closes so mobile header can reappear
+  useEffect(() => {
+    if (!isOpen) {
+      window.dispatchEvent(new Event('close-ai-chat'));
+    }
+  }, [isOpen]);
+
   const handleSelectWallet = async (
     msgId: string, 
     wallet: any, 
