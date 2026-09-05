@@ -628,10 +628,18 @@ export function AIChatDrawer() {
         } catch(e) { console.error(e); }
       }
     }
-    // INTENT 2.5: Bulk Date Transfer ("transfer evrything from sep 20 to sep 21", "move all my spendings from yesterday to today")
-    let isBulkDateTransfer = /\b(transfer|move|shift|change)\b.*\b(all|every|evry|everything|evrything|spendings|expenses|records|transactions)\b.*\b(from|form)?\b.*\b(to)\b/i.test(query);
+    // INTENT 2.5: Bulk Date Transfer & Copy ("transfer evrything from sep 20 to sep 21", "copy sep 4 to sep 7 except coffee")
+    const isCopyAction = /\b(copy|duplicate|clone|replicate|repeat)\b/i.test(query);
+    const isTransferAction = /\b(transfer|move|shift|change)\b/i.test(query);
     
-    if (!isBulkDateTransfer && /\b(transfer|move|shift|change)\b.*\bto\b/i.test(query)) {
+    let isBulkDateAction = false;
+    let isCopyMode = false;
+    
+    if (/\b(transfer|move|shift|change|copy|duplicate|clone|replicate|repeat)\b.*\b(all|every|evry|everything|evrything|spendings|expenses|records|transactions)\b.*\b(from|form)?\b.*\b(to)\b/i.test(query)) {
+       isBulkDateAction = true;
+    }
+    
+    if (!isBulkDateAction && /\b(transfer|move|shift|change|copy|duplicate|clone|replicate|repeat)\b.*\bto\b/i.test(query)) {
       const mRegex = "(jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|may|jun(?:e)?|jul(?:y)?|aug(?:ust)?|sep(?:tember)?|oct(?:ober)?|nov(?:ember)?|dec(?:ember)?|spe|augu|jne|jlu)";
       const d1 = new RegExp(`\\b(?:on\\s+|from\\s+|for\\s+|in\\s+)?(\\d{1,2})(?:st|nd|rd|th)?\\s*${mRegex}\\b`, 'gi');
       const d2 = new RegExp(`\\b(?:on\\s+|from\\s+|for\\s+|in\\s+)?${mRegex}\\s*(\\d{1,2})(?:st|nd|rd|th)?\\b`, 'gi');
@@ -639,15 +647,18 @@ export function AIChatDrawer() {
       
       const count = [...query.matchAll(d1)].length + [...query.matchAll(d2)].length + [...query.matchAll(d3)].length;
       if (count >= 2) {
-        isBulkDateTransfer = true;
+        isBulkDateAction = true;
       }
     }
-    if (isBulkDateTransfer) {
+    
+    if (isBulkDateAction) {
+      isCopyMode = isCopyAction && !isTransferAction; // default to transfer if ambiguous
+      
       let cleanQuery = query.toLowerCase().replace(/form\b/gi, 'from');
       const mRegex = "(jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|may|jun(?:e)?|jul(?:y)?|aug(?:ust)?|sep(?:tember)?|oct(?:ober)?|nov(?:ember)?|dec(?:ember)?|spe|augu|jne|jlu)";
       const dayMonthRegex = new RegExp(`(?:on\\s+|from\\s+|for\\s+|in\\s+)?(\\d{1,2})(?:st|nd|rd|th)?\\s*${mRegex}(?:\\s+(\\d{4}))?\\b`, 'gi');
       const monthDayRegex = new RegExp(`(?:on\\s+|from\\s+|for\\s+|in\\s+)?${mRegex}\\s*(\\d{1,2})(?:st|nd|rd|th)?(?:\\s+(\\d{4}))?\\b`, 'gi');
-      const relativeRegex = /\b(?:from\s+|to\s+|on\s+)?(yesterday|today|tomorrow)\b/gi;
+      const relativeRegex = /\b(?:from\\s+|to\\s+|on\\s+)?(yesterday|today|tomorrow)\b/gi;
       
       const dm = [...cleanQuery.matchAll(dayMonthRegex)];
       const md = [...cleanQuery.matchAll(monthDayRegex)];
@@ -687,38 +698,79 @@ export function AIChatDrawer() {
       allDates.sort((a, b) => (a.index || 0) - (b.index || 0));
 
       if (allDates.length >= 2) {
-        const fromD = allDates[0];
-        const toD = allDates[allDates.length - 1]; // Use last in case of "from x to y"
-
-        const fromDateStr = `${fromD.year}-${String(fromD.month+1).padStart(2,'0')}-${String(fromD.day).padStart(2,'0')}`;
-        const toDateStr = `${toD.year}-${String(toD.month+1).padStart(2,'0')}-${String(toD.day).padStart(2,'0')}`;
-
-        const targets = validExpenses.filter(e => (e as any).dateStr === fromDateStr || (e as any).date_str === fromDateStr || e.date.includes(fromDateStr));
+        const fromDateObj = allDates[0];
+        const toDateObj = allDates[1];
         
+        const fromDateStr = `${fromDateObj.year}-${String(fromDateObj.month+1).padStart(2,'0')}-${String(fromDateObj.day).padStart(2,'0')}`;
+        const toDateStr = `${toDateObj.year}-${String(toDateObj.month+1).padStart(2,'0')}-${String(toDateObj.day).padStart(2,'0')}`;
+
+        // Check for exclusions ("except coffee", "excluding swiggy")
+        let exclusionKeywords: string[] = [];
+        const exceptMatch = query.match(/\b(?:except|excluding|without|but not|other than|excepting)\b\s+(.+)/i);
+        if (exceptMatch) {
+            exclusionKeywords = exceptMatch[1].toLowerCase().replace(/[^\w\s-]/gi, '').split(' ').filter(w => w.trim().length > 2);
+        }
+
+        const targets = validExpenses.filter(e => {
+            if (!e.date || !e.date.startsWith(fromDateStr)) return false;
+            
+            // Check exclusion keywords
+            if (exclusionKeywords.length > 0) {
+                const note = (e.note || '').toLowerCase();
+                const cat = (e.category || '').toLowerCase();
+                if (exclusionKeywords.some(kw => note.includes(kw) || cat.includes(kw))) {
+                    return false; // Skip this one!
+                }
+            }
+            return true;
+        });
+
         if (targets.length > 0) {
           try {
-            const updates: any[] = [];
-            for (const t of targets) {
-              const tId = t.id || (t as any)._id;
-              updates.push({ id: tId, oldData: { ...t } });
-              await api.updateExpense(tId, { date: toDateStr });
+            if (isCopyMode) {
+               const copiedExpensesList = [];
+               for (const t of targets) {
+                 const newExp = {
+                   amount: t.amount,
+                   category: t.category,
+                   note: t.note,
+                   date: toDateStr + 'T12:00:00Z',
+                   walletId: t.walletId
+                 };
+                 await api.addExpense(newExp);
+                 copiedExpensesList.push(newExp);
+               }
+               await fetchData(true);
+               const aiMessage: ChatMessage = {
+                 id: (Date.now() + 1).toString(), sender: 'ai',
+                 text: `📋 **Bulk Date Copy Complete!**\n\nI successfully copied **${targets.length} records** from **${fromDateStr}** to **${toDateStr}**.${exclusionKeywords.length > 0 ? `\n\n*(Excluded items matching: ${exclusionKeywords.join(', ')})*` : ''}`,
+                 timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+               };
+               setMessages(prev => [...prev, aiMessage]);
+               return;
+            } else {
+              const undoUpdatesDate = [];
+              for (const t of targets) {
+                const tId = t.id || (t as any)._id;
+                undoUpdatesDate.push({ id: tId, oldData: { date: t.date } });
+                await api.updateExpense(tId, { date: toDateStr + 'T12:00:00Z' });
+              }
+              await fetchData(true);
+              const aiMessage: ChatMessage = {
+                id: (Date.now() + 1).toString(), sender: 'ai',
+                text: `📅 **Bulk Date Transfer Complete!**\n\nI successfully moved **${targets.length} records** from **${fromDateStr}** to **${toDateStr}**.${exclusionKeywords.length > 0 ? `\n\n*(Excluded items matching: ${exclusionKeywords.join(', ')})*` : ''}`,
+                timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+                undoPayload: { action: 'REVERT_UPDATE', updates: undoUpdatesDate }
+              };
+              setMessages(prev => [...prev, aiMessage]);
+              return;
             }
-            await fetchData(true);
-            const aiMessage: ChatMessage = {
-              id: (Date.now() + 1).toString(),
-              sender: 'ai',
-              text: `📅 **Bulk Date Transfer Complete!**\n\nI successfully moved **${targets.length} expenses** from **${fromDateStr}** to **${toDateStr}**.`,
-              timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-              undoPayload: { action: 'REVERT_UPDATE', updates }
-            };
-            setMessages(prev => [...prev, aiMessage]);
-            return;
-          } catch (e) { console.error(e); }
+          } catch(e) { console.error(e); }
         } else {
             const aiMessage: ChatMessage = {
               id: (Date.now() + 1).toString(),
               sender: 'ai',
-              text: `📅 **No Expenses Found**\n\nI couldn't find any expenses on **${fromDateStr}** to transfer.`,
+              text: `📅 **No Expenses Found**\n\nI couldn't find any expenses on **${fromDateStr}** to ${isCopyMode ? 'copy' : 'transfer'}.`,
               timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
             };
             setMessages(prev => [...prev, aiMessage]);
@@ -726,9 +778,10 @@ export function AIChatDrawer() {
         }
       }
     }
+
     // INTENT 3: Single Expense Amount Modification ("change the 500 on cofee to 600 on aug 20", "update 1200 groceries to 1500")
     const isAmountModifyAction = /\b(?:change|move|shift|update|alter|modify|edit|fix|adjust|correct|set)\b/i.test(query) && /\bto\b/i.test(query);
-    if (isAmountModifyAction && !isBulkDateTransfer) {
+    if (isAmountModifyAction && !isBulkDateAction) {
       let cleanQuery = query.toLowerCase();
       let targetDate: string | null = null;
       
@@ -2076,6 +2129,80 @@ export function AIChatDrawer() {
     }
 
     setIsLoading(true);
+
+
+    // INTENT 6: Spending Analytics ("total spendings for sep", "How much spent this month?", "spending of this mnth")
+    const isAnalyticsAction = /\b(how much|total|sum|amount|spending|spendings|expense|expenses|spent|cost)\b/i.test(query);
+    const hasTimePeriod = /\b(this month|this mnth|current month|last month|today|yesterday|this week|last week|jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|may|jun(?:e)?|jul(?:y)?|aug(?:ust)?|sep(?:tember)?|oct(?:ober)?|nov(?:ember)?|dec(?:ember)?|spe)\b/i.test(query);
+    
+    if (isAnalyticsAction && hasTimePeriod && !isDeleteIntent && !isBulkDateAction && !isAmountModifyAction && !isAddExpenseIntent) {
+       const cleanQ = query.toLowerCase();
+       let startDate = new Date();
+       let endDate = new Date();
+       let periodLabel = "this period";
+       
+       const now = new Date();
+       
+       if (/\btoday\b/.test(cleanQ)) {
+           startDate.setHours(0,0,0,0);
+           endDate.setHours(23,59,59,999);
+           periodLabel = "Today";
+       } else if (/\byesterday\b/.test(cleanQ)) {
+           startDate.setDate(now.getDate() - 1);
+           startDate.setHours(0,0,0,0);
+           endDate = new Date(startDate);
+           endDate.setHours(23,59,59,999);
+           periodLabel = "Yesterday";
+       } else if (/\b(this week)\b/.test(cleanQ)) {
+           const day = now.getDay();
+           const diff = now.getDate() - day + (day == 0 ? -6:1); // Monday start
+           startDate = new Date(now.setDate(diff));
+           startDate.setHours(0,0,0,0);
+           endDate = new Date();
+           periodLabel = "This Week";
+       } else if (/\b(this month|this mnth|current month)\b/.test(cleanQ)) {
+           startDate = new Date(now.getFullYear(), now.getMonth(), 1);
+           endDate = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59);
+           periodLabel = "This Month";
+       } else if (/\b(last month)\b/.test(cleanQ)) {
+           startDate = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+           endDate = new Date(now.getFullYear(), now.getMonth(), 0, 23, 59, 59);
+           periodLabel = "Last Month";
+       } else {
+           // Explicit month
+           const months = ["jan", "feb", "mar", "apr", "may", "jun", "jul", "aug", "sep", "oct", "nov", "dec"];
+           let monthIdx = -1;
+           let monthName = "";
+           for (let i = 0; i < months.length; i++) {
+               if (new RegExp(`\\b${months[i]}`).test(cleanQ) || (months[i]==='sep' && /\bspe\b/.test(cleanQ))) {
+                   monthIdx = i;
+                   monthName = months[i].charAt(0).toUpperCase() + months[i].slice(1);
+                   break;
+               }
+           }
+           if (monthIdx !== -1) {
+               startDate = new Date(now.getFullYear(), monthIdx, 1);
+               endDate = new Date(now.getFullYear(), monthIdx + 1, 0, 23, 59, 59);
+               periodLabel = monthName;
+           }
+       }
+
+       const filtered = validExpenses.filter(e => {
+           if (!e.date) return false;
+           const d = new Date(e.date);
+           return d >= startDate && d <= endDate;
+       });
+
+       const total = filtered.reduce((sum, e) => sum + e.amount, 0);
+       
+       const aiMessage: ChatMessage = {
+         id: (Date.now() + 1).toString(), sender: 'ai',
+         text: `📊 **Spending Analytics: ${periodLabel}**\n\nYou have spent a total of **₹${total.toLocaleString('en-IN')}** during this period across ${filtered.length} transactions.`,
+         timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+       };
+       setMessages(prev => [...prev, aiMessage]);
+       return;
+    }
 
     try {
       const historyForApi = messages
