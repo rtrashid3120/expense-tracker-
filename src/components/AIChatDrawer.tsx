@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { FiX, FiSend, FiZap, FiTrash2 } from 'react-icons/fi';
 import { useAppStore } from '../store';
 import { api } from '../api';
+import { useNavigate } from 'react-router-dom';
 
 interface OptionGroup {
   title: string;
@@ -316,6 +317,7 @@ const generateLocalFinancialAnswer = (
 };
 
 export function AIChatDrawer() {
+  const navigate = useNavigate();
   const [isOpen, setIsOpen] = useState(false);
   const [inputMsg, setInputMsg] = useState('');
   const [messages, setMessages] = useState<ChatMessage[]>(() => {
@@ -1882,6 +1884,36 @@ export function AIChatDrawer() {
               aiUndoPayload = { action: 'REVERT_UPDATE', updates };
               changed = true;
             }
+          } else if (res.actionData.ACTION === 'NAVIGATE' && res.actionData.page) {
+            navigate(res.actionData.page);
+            setIsOpen(false);
+            window.dispatchEvent(new Event('close-ai-chat'));
+          } else if (res.actionData.ACTION === 'EXPORT_CSV') {
+            const csvData = [
+              ['Date', 'Amount', 'Category', 'Note'],
+              ...validExpenses.map(e => [
+                (e as any).dateStr || (e as any).date_str || e.date || '',
+                e.amount,
+                e.category,
+                e.note || ''
+              ])
+            ].map(row => row.join(',')).join('\n');
+            const blob = new Blob([csvData], { type: 'text/csv' });
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `expensehub_export_${new Date().toISOString().split('T')[0]}.csv`;
+            a.click();
+            window.URL.revokeObjectURL(url);
+          } else if (res.actionData.ACTION === 'CREATE_WALLET' && res.actionData.name) {
+            await api.createWallet(res.actionData.name, res.actionData.initialBudget || 0);
+            changed = true;
+          } else if (res.actionData.ACTION === 'DELETE_WALLET' && res.actionData.walletId) {
+            await api.deleteWallet(res.actionData.walletId);
+            changed = true;
+          } else if (res.actionData.ACTION === 'TRANSFER_FUNDS' && res.actionData.fromWalletId && res.actionData.toWalletId) {
+            await api.transferWallets(res.actionData.fromWalletId, res.actionData.toWalletId, res.actionData.amount || 0);
+            changed = true;
           }
         } catch (err) {
           console.error("Failed to execute AI action locally", err);

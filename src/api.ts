@@ -374,6 +374,48 @@ REAL EXPENSE LOGGING INSTRUCTIONS:
 }
 \`\`\`
 
+- To NAVIGATE to a specific page (dashboard, reports/heatmaps, trips, profile, expenses/audit):
+\`\`\`json
+{
+  "ACTION": "NAVIGATE",
+  "page": "/reports"
+}
+\`\`\`
+
+- To EXPORT data as CSV/Excel:
+\`\`\`json
+{
+  "ACTION": "EXPORT_CSV"
+}
+\`\`\`
+
+- To CREATE a new wallet:
+\`\`\`json
+{
+  "ACTION": "CREATE_WALLET",
+  "name": "Business",
+  "initialBudget": 5000
+}
+\`\`\`
+
+- To DELETE a wallet (find the ID in the User Wallets context):
+\`\`\`json
+{
+  "ACTION": "DELETE_WALLET",
+  "walletId": "the-exact-id"
+}
+\`\`\`
+
+- To TRANSFER money between wallets:
+\`\`\`json
+{
+  "ACTION": "TRANSFER_FUNDS",
+  "fromWalletId": "id-1",
+  "toWalletId": "id-2",
+  "amount": 1000
+}
+\`\`\`
+
 Context:
 - User Balance/Budget Context: ${JSON.stringify(contextData?.budget || {})}
 - User Wallets: ${JSON.stringify(contextData?.wallets || [])}
@@ -480,8 +522,8 @@ Instructions:
                 return { answer: replyText, themeChange: actionData.theme, actionData };
               }
               
-              // Return action data for any other actions (DELETE, UPDATE, BULK)
-              if (actionData && ['DELETE_EXPENSE', 'UPDATE_EXPENSE', 'BULK_UPDATE_CATEGORY', 'BULK_UPDATE_DATE'].includes(actionData.ACTION)) {
+              // Return action data for any other actions (DELETE, UPDATE, BULK, NAVIGATE, EXPORT, WALLETS)
+              if (actionData && ['DELETE_EXPENSE', 'UPDATE_EXPENSE', 'BULK_UPDATE_CATEGORY', 'BULK_UPDATE_DATE', 'NAVIGATE', 'EXPORT_CSV', 'CREATE_WALLET', 'DELETE_WALLET', 'TRANSFER_FUNDS'].includes(actionData.ACTION)) {
                 replyText = replyText.replace(/```json[\s\S]*?```/g, '').replace(/\{[\s\S]*?"ACTION"\s*:\s*".*?"[\s\S]*?\}/g, '').trim();
                 if (!replyText) replyText = `I've processed that action for you!`;
                 return { answer: replyText, actionData };
