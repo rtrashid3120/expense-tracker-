@@ -221,7 +221,7 @@ export function Dashboard() {
   const filteredTotal = filteredExpenses.reduce((sum, e) => sum + e.amount, 0);
 
   return (
-    <div className="max-w-7xl mx-auto space-y-6 pb-20 relative">
+    <div className="max-w-7xl mx-auto space-y-6 pb-20 relative overflow-x-hidden w-full">
       {/* Background Glow */}
       <div className="absolute top-0 left-1/4 w-96 h-96 bg-brand-neon/10 rounded-full blur-[120px] pointer-events-none -z-10" />
 
@@ -495,28 +495,28 @@ export function Dashboard() {
 
             {/* Table / Transactions Card */}
             <div className="glass-card lg:col-span-3">
-               <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4 mb-6">
-                <div className="flex items-center gap-4">
-                  <h3 className="font-bold text-gray-900 dark:text-white text-lg">Audit Trail (Recent)</h3>
+               <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 mb-6">
+                <div className="flex items-center gap-4 min-w-0">
+                  <h3 className="font-bold text-gray-900 dark:text-white text-lg truncate">Audit Trail (Recent)</h3>
                   {searchQuery && (
-                    <span className="bg-blue-50 dark:bg-brand-neon/20 text-blue-700 dark:text-brand-neon text-xs font-bold px-3 py-1 rounded-full border border-blue-100 dark:border-brand-neon/30 shadow-none dark:shadow-[0_0_10px_rgba(0,240,255,0.2)]">
+                    <span className="bg-blue-50 dark:bg-brand-neon/20 text-blue-700 dark:text-brand-neon text-xs font-bold px-3 py-1 rounded-full border border-blue-100 dark:border-brand-neon/30 shadow-none dark:shadow-[0_0_10px_rgba(0,240,255,0.2)] whitespace-nowrap shrink-0">
                       Total: {new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 }).format(filteredTotal)}
                     </span>
                   )}
                 </div>
-                <div className="flex items-center gap-3">
-                  <div className="relative">
+                <div className="flex items-center gap-2 w-full sm:w-auto">
+                  <div className="relative flex-1 sm:flex-none">
                     <input
                       type="text"
-                      placeholder="Search categories..."
+                      placeholder="Search..."
                       value={searchQuery}
                       onChange={(e) => setSearchQuery(e.target.value)}
-                      className="bg-white/60 dark:bg-white/5 border border-gray-200 dark:border-white/10 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-white/30 text-sm rounded-xl py-2 pl-9 pr-4 w-full sm:w-64 focus:ring-2 focus:ring-blue-500 dark:focus:ring-brand-neon outline-none transition-all"
+                      className="bg-white/60 dark:bg-white/5 border border-gray-200 dark:border-white/10 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-white/30 text-sm rounded-xl py-2 pl-9 pr-4 w-full sm:w-52 focus:ring-2 focus:ring-blue-500 dark:focus:ring-brand-neon outline-none transition-all"
                     />
                     <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 dark:text-white/40" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
                   </div>
-                  <button onClick={handleExportCSV} className="text-xs font-bold text-gray-600 dark:text-white/80 bg-gray-100 dark:bg-white/10 hover:bg-gray-200 dark:hover:bg-white/20 px-4 py-2.5 rounded-xl transition-colors active:scale-95 whitespace-nowrap border border-gray-200 dark:border-white/10 hover:border-gray-300 dark:hover:border-white/30">
-                    Export CSV
+                  <button onClick={handleExportCSV} className="text-xs font-bold text-gray-600 dark:text-white/80 bg-gray-100 dark:bg-white/10 hover:bg-gray-200 dark:hover:bg-white/20 px-3 py-2.5 rounded-xl transition-colors active:scale-95 whitespace-nowrap border border-gray-200 dark:border-white/10 hover:border-gray-300 dark:hover:border-white/30 shrink-0">
+                    Export
                   </button>
                 </div>
               </div>

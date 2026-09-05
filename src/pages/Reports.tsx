@@ -16,10 +16,6 @@ const MONTH_NAMES = [
   'July', 'August', 'September', 'October', 'November', 'December'
 ];
 
-const MONTH_SHORT = [
-  'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
-  'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'
-];
 
 export function Reports() {
   const { expenses, wallets, deleteExpense } = useAppStore();
@@ -136,22 +132,6 @@ export function Reports() {
     return days;
   }, [expenses, selectedYear, selectedMonth]);
 
-  // Monthly Overview Metrics
-  const monthStats = useMemo(() => {
-    let totalSpend = 0;
-    let totalTransactions = 0;
-    let activeDays = 0;
-
-    calendarData.forEach(d => {
-      if (d.total > 0) {
-        totalSpend += d.total;
-        totalTransactions += d.expenses.length;
-        activeDays += 1;
-      }
-    });
-
-    return { totalSpend, totalTransactions, activeDays };
-  }, [calendarData]);
 
   const selectedDayData = calendarData.find(d => d.dateStr === selectedDate);
 
@@ -247,31 +227,7 @@ export function Reports() {
 
       <div className="flex flex-col">
         {/* Monthly Summary Glass Banner */}
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-6 order-2 md:order-1">
-        <div className="glass-card p-4 flex flex-col">
-          <span className="text-[11px] font-bold text-gray-400 dark:text-white/50 uppercase tracking-wider">Total Spend</span>
-          <span className="text-xl sm:text-2xl font-black text-gray-900 dark:text-white mt-1">
-            ₹{monthStats.totalSpend.toLocaleString('en-IN')}
-          </span>
-          <span className="text-[10px] text-gray-500 dark:text-white/40 mt-1 font-medium">in {MONTH_SHORT[selectedMonth]} {selectedYear}</span>
-        </div>
 
-        <div className="glass-card p-4 flex flex-col">
-          <span className="text-[11px] font-bold text-gray-400 dark:text-white/50 uppercase tracking-wider">Transactions</span>
-          <span className="text-xl sm:text-2xl font-black text-gray-900 dark:text-white mt-1">
-            {monthStats.totalTransactions}
-          </span>
-          <span className="text-[10px] text-gray-500 dark:text-white/40 mt-1 font-medium">expenses logged</span>
-        </div>
-
-        <div className="glass-card p-4 flex flex-col">
-          <span className="text-[11px] font-bold text-gray-400 dark:text-white/50 uppercase tracking-wider">Active Days</span>
-          <span className="text-xl sm:text-2xl font-black text-blue-600 dark:text-brand-neon mt-1">
-            {monthStats.activeDays} <span className="text-sm font-normal text-gray-400 dark:text-white/40">/ {calendarData.length}</span>
-          </span>
-          <span className="text-[10px] text-gray-500 dark:text-white/40 mt-1 font-medium">days with spend</span>
-        </div>
-      </div>
 
       {/* Spend Heatmap Grid */}
       <div className="glass-card mb-8 order-1 md:order-2">
