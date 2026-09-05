@@ -342,14 +342,21 @@ Instructions:
 3. Use Indian Currency symbol ₹ for amounts.
 4. When asked how much was spent on a specific item or category (e.g. "how much spent on grocery"), provide a breakdown comparing This Week, This Month, and All-Time totals, and ask the user which period option they want to explore.`;
 
-    const contents = [
-      { parts: [{ text: systemPrompt }] },
-      ...(history || []).map(h => ({
-        role: h.sender === 'user' ? 'user' : 'model',
-        parts: [{ text: h.text }]
-      })),
-      { role: 'user', parts: [{ text: message }] }
+    const allHistory = [
+      ...(history || []).map(h => ({ role: h.sender === 'user' ? 'user' : 'model', text: h.text })),
+      { role: 'user', text: message }
     ];
+
+    const contents = [];
+    let lastRole = '';
+    for (const h of allHistory) {
+      if (h.role !== lastRole) {
+        contents.push({ role: h.role, parts: [{ text: h.text }] });
+        lastRole = h.role;
+      } else if (contents.length > 0) {
+        contents[contents.length - 1].parts[0].text += `\n\n${h.text}`;
+      }
+    }
 
     const models = ['gemini-3.6-flash', 'gemini-3-flash-preview', 'gemini-2.0-flash-lite'];
     let lastErr = 'AI Error';
@@ -359,7 +366,10 @@ Instructions:
         const directRes = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${m}:generateContent?key=${apiKey}`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ contents })
+          body: JSON.stringify({ 
+            system_instruction: { parts: { text: systemPrompt } },
+            contents 
+          })
         });
         const data = await directRes.json();
         if (data.candidates && data.candidates[0]?.content?.parts[0]?.text) {
