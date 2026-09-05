@@ -800,7 +800,8 @@ export function AIChatDrawer() {
             const aiMessage: ChatMessage = {
               id: (Date.now() + 1).toString(), sender: 'ai',
               pendingContext: { originalQuery: query },
-              text: `⚠️ **Multiple Matches Found**\n\nI found ${matchedTargets.length} expenses matching that description. Please be more specific (e.g., provide the exact date like "yesterday").`,
+              text: `⚠️ **Multiple Matches Found**\n\nI found ${matchedTargets.length} expenses matching that description. Please reply with more details to help me find it, such as:\n• The exact old amount (e.g., "500")\n• The date (e.g., "yesterday", "today", "on sep 20")`,
+
               timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
             };
             setMessages(prev => [...prev, aiMessage]);
@@ -948,7 +949,8 @@ export function AIChatDrawer() {
            const aiMessage: ChatMessage = {
             id: (Date.now() + 1).toString(), sender: 'ai',
             pendingContext: { originalQuery: query },
-            text: `⚠️ **Multiple Matches Found**\n\nI found ${matchedTargets.length} expenses matching that description. Please be more specific (e.g., provide the exact amount).`,
+            text: `⚠️ **Multiple Matches Found**\n\nI found ${matchedTargets.length} expenses matching that description. Please reply with more details to help me find it, such as:\n• The exact amount (e.g., "1000")\n• The date (e.g., "yesterday", "today", "on sep 20")`,
+
             timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
           };
           setMessages(prev => [...prev, aiMessage]);
