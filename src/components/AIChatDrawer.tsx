@@ -113,8 +113,8 @@ const parseMultiExpenses = (query: string) => {
     }
   } else {
     const mRegex = "(jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|may|jun(?:e)?|jul(?:y)?|aug(?:ust)?|sep(?:tember)?|oct(?:ober)?|nov(?:ember)?|dec(?:ember)?|spe|augu|jne|jlu)";
-    const dayMonthRegex = new RegExp(`\\b(?:on\\s+)?(\\d{1,2})(?:st|nd|rd|th)?\\s*${mRegex}(?:\\s+(\\d{4}))?\\b`, 'gi');
-    const monthDayRegex = new RegExp(`\\b(?:on\\s+)?${mRegex}\\s*(\\d{1,2})(?:st|nd|rd|th)?(?:\\s+(\\d{4}))?\\b`, 'gi');
+    const dayMonthRegex = new RegExp(`\\b(?:on\\s+|from\\s+|for\\s+|in\\s+)?(\\d{1,2})(?:st|nd|rd|th)?\\s*${mRegex}(?:\\s+(\\d{4}))?\\b`, 'gi');
+    const monthDayRegex = new RegExp(`\\b(?:on\\s+|from\\s+|for\\s+|in\\s+)?${mRegex}\\s*(\\d{1,2})(?:st|nd|rd|th)?(?:\\s+(\\d{4}))?\\b`, 'gi');
 
     const dayMonthMatches = [...cleanedQuery.matchAll(dayMonthRegex)];
     const monthDayMatches = [...cleanedQuery.matchAll(monthDayRegex)];
@@ -618,7 +618,92 @@ export function AIChatDrawer() {
         } catch(e) { console.error(e); }
       }
     }
+    // INTENT 2.5: Bulk Date Transfer ("transfer evrything from sep 20 to sep 21", "move all my spendings from yesterday to today")
+    const isBulkDateTransfer = /\b(transfer|move|shift|change)\b.*\b(all|every|evry|everything|evrything|spendings|expenses|records|transactions)\b.*\b(from|form)\b.*\b(to)\b/i.test(query);
+    if (isBulkDateTransfer) {
+      let cleanQuery = query.toLowerCase().replace(/form\b/gi, 'from');
+      const mRegex = "(jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|may|jun(?:e)?|jul(?:y)?|aug(?:ust)?|sep(?:tember)?|oct(?:ober)?|nov(?:ember)?|dec(?:ember)?|spe|augu|jne|jlu)";
+      const dayMonthRegex = new RegExp(`(?:on\\s+|from\\s+|for\\s+|in\\s+)?(\\d{1,2})(?:st|nd|rd|th)?\\s*${mRegex}(?:\\s+(\\d{4}))?\\b`, 'gi');
+      const monthDayRegex = new RegExp(`(?:on\\s+|from\\s+|for\\s+|in\\s+)?${mRegex}\\s*(\\d{1,2})(?:st|nd|rd|th)?(?:\\s+(\\d{4}))?\\b`, 'gi');
+      const relativeRegex = /\b(?:from\s+|to\s+|on\s+)?(yesterday|today|tomorrow)\b/gi;
+      
+      const dm = [...cleanQuery.matchAll(dayMonthRegex)];
+      const md = [...cleanQuery.matchAll(monthDayRegex)];
+      const rel = [...cleanQuery.matchAll(relativeRegex)];
+      
+      const allDates: any[] = [];
+      const months = ["jan", "feb", "mar", "apr", "may", "jun", "jul", "aug", "sep", "oct", "nov", "dec"];
+      const parseMonth = (mStr: string) => {
+        let str = mStr.toLowerCase();
+        if (str.startsWith('spe')) str = 'sep';
+        if (str.startsWith('augu')) str = 'aug';
+        if (str.startsWith('jne')) str = 'jun';
+        if (str.startsWith('jlu')) str = 'jul';
+        return months.findIndex(m => str.startsWith(m));
+      };
 
+      for (const match of dm) {
+        const monthIdx = parseMonth(match[2]);
+        if (monthIdx !== -1) {
+          allDates.push({ matchStr: match[0], index: match.index, day: parseInt(match[1]), month: monthIdx, year: match[3] ? parseInt(match[3]) : new Date().getFullYear() });
+        }
+      }
+      for (const match of md) {
+        const monthIdx = parseMonth(match[1]);
+        if (monthIdx !== -1) {
+          allDates.push({ matchStr: match[0], index: match.index, day: parseInt(match[2]), month: monthIdx, year: match[3] ? parseInt(match[3]) : new Date().getFullYear() });
+        }
+      }
+      for (const match of rel) {
+        const word = match[1].toLowerCase();
+        const d = new Date();
+        if (word === 'yesterday') d.setDate(d.getDate() - 1);
+        if (word === 'tomorrow') d.setDate(d.getDate() + 1);
+        allDates.push({ matchStr: match[0], index: match.index, day: d.getDate(), month: d.getMonth(), year: d.getFullYear() });
+      }
+
+      allDates.sort((a, b) => (a.index || 0) - (b.index || 0));
+
+      if (allDates.length >= 2) {
+        const fromD = allDates[0];
+        const toD = allDates[allDates.length - 1]; // Use last in case of "from x to y"
+
+        const fromDateStr = `${fromD.year}-${String(fromD.month+1).padStart(2,'0')}-${String(fromD.day).padStart(2,'0')}`;
+        const toDateStr = `${toD.year}-${String(toD.month+1).padStart(2,'0')}-${String(toD.day).padStart(2,'0')}`;
+
+        const targets = validExpenses.filter(e => (e as any).dateStr === fromDateStr || (e as any).date_str === fromDateStr || e.date.includes(fromDateStr));
+        
+        if (targets.length > 0) {
+          try {
+            const updates: any[] = [];
+            for (const t of targets) {
+              const tId = t.id || (t as any)._id;
+              updates.push({ id: tId, oldData: { ...t } });
+              await api.updateExpense(tId, { date: toDateStr });
+            }
+            await fetchData(true);
+            const aiMessage: ChatMessage = {
+              id: (Date.now() + 1).toString(),
+              sender: 'ai',
+              text: `📅 **Bulk Date Transfer Complete!**\n\nI successfully moved **${targets.length} expenses** from **${fromDateStr}** to **${toDateStr}**.`,
+              timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+              undoPayload: { action: 'REVERT_UPDATE', updates }
+            };
+            setMessages(prev => [...prev, aiMessage]);
+            return;
+          } catch (e) { console.error(e); }
+        } else {
+            const aiMessage: ChatMessage = {
+              id: (Date.now() + 1).toString(),
+              sender: 'ai',
+              text: `📅 **No Expenses Found**\n\nI couldn't find any expenses on **${fromDateStr}** to transfer.`,
+              timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+            };
+            setMessages(prev => [...prev, aiMessage]);
+            return;
+        }
+      }
+    }
     // INTENT 3: Single Expense Amount Modification ("change the 500 rent to 600", "update 1200 groceries to 1500")
     const isAmountModifyIntent = query.match(/\b(?:change|move|shift|transfer|update|switch|alter|modify|migrate|swap|convert|reassign|relocate|push|revert|transition|transform|reallocate|edit|fix|adjust|correct|set|make)\b.*?\b(?:the|my|this|that|those|these)?\s*(?:rs\.?|₹|inr|rupees|bucks)?\s*(\d+(?:\.\d+)?)\s+(.*?)(?:\s+(?:spending|spendings|expense|expenses|transaction|transactions|item|items|bill|bills|record|records|data|entry|entries|history|log|logs|purchases|payments|exp|txn|txns|amt))?\s+\bto\b\s+(?:rs\.?|₹|inr|rupees|bucks)?\s*(\d+(?:\.\d+)?)/i);
     if (isAmountModifyIntent) {
@@ -679,8 +764,8 @@ export function AIChatDrawer() {
       
       // 1. Extract Date if present (now allows missing spaces like 'sep20' and typos like 'spe20')
       const mRegex = "(jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|may|jun(?:e)?|jul(?:y)?|aug(?:ust)?|sep(?:tember)?|oct(?:ober)?|nov(?:ember)?|dec(?:ember)?|spe|augu|jne|jlu)";
-      const dayMonthRegex = new RegExp(`\\b(?:on\\s+|from\\s+|for\\s+)?(\\d{1,2})(?:st|nd|rd|th)?\\s*${mRegex}\\b`, 'i');
-      const monthDayRegex = new RegExp(`\\b(?:on\\s+|from\\s+|for\\s+)?${mRegex}\\s*(\\d{1,2})(?:st|nd|rd|th)?\\b`, 'i');
+      const dayMonthRegex = new RegExp(`\\b(?:on\\s+|from\\s+|for\\s+|in\\s+)?(\\d{1,2})(?:st|nd|rd|th)?\\s*${mRegex}\\b`, 'i');
+      const monthDayRegex = new RegExp(`\\b(?:on\\s+|from\\s+|for\\s+|in\\s+)?${mRegex}\\s*(\\d{1,2})(?:st|nd|rd|th)?\\b`, 'i');
       
       const dMatch = cleanQuery.match(dayMonthRegex) || cleanQuery.match(monthDayRegex);
       if (dMatch) {
