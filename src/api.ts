@@ -284,7 +284,7 @@ export const api = {
     }
   },
 
-  askAIChat: async (message: string, history: any[], contextData?: any): Promise<{ answer: string; expenseAdded?: boolean; walletPrompt?: { amount: number; category: string; note: string }; themeChange?: string }> => {
+  askAIChat: async (message: string, history: any[], contextData?: any): Promise<{ answer: string; expenseAdded?: boolean; walletPrompt?: { amount: number; category: string; note: string }; themeChange?: string; actionData?: any }> => {
     try {
       const res = await fetch(`${API_BASE_URL}/ai/chat`, {
         method: 'POST',
@@ -336,6 +336,41 @@ REAL EXPENSE LOGGING INSTRUCTIONS:
   "amount": 40,
   "category": "Dining",
   "note": "cake"
+}
+\`\`\`
+
+- To DELETE an expense (find the ID in the Recent Expenses context):
+\`\`\`json
+{
+  "ACTION": "DELETE_EXPENSE",
+  "expenseId": "the-exact-id"
+}
+\`\`\`
+
+- To UPDATE an expense amount/category/note:
+\`\`\`json
+{
+  "ACTION": "UPDATE_EXPENSE",
+  "expenseId": "the-exact-id",
+  "updates": { "amount": 500, "category": "New Category" }
+}
+\`\`\`
+
+- To BULK MOVE all expenses from one category to another:
+\`\`\`json
+{
+  "ACTION": "BULK_UPDATE_CATEGORY",
+  "oldCategory": "Swiggy",
+  "newCategory": "Dining"
+}
+\`\`\`
+
+- To BULK MOVE expenses from one date to another:
+\`\`\`json
+{
+  "ACTION": "BULK_UPDATE_DATE",
+  "oldDate": "2026-09-20",
+  "newDate": "2026-09-21"
 }
 \`\`\`
 
@@ -442,14 +477,21 @@ Instructions:
               if (actionData && actionData.ACTION === 'CHANGE_THEME') {
                 replyText = replyText.replace(/```json[\s\S]*?```/g, '').replace(/\{[\s\S]*?"ACTION"\s*:\s*"CHANGE_THEME"[\s\S]*?\}/g, '').trim();
                 if (!replyText) replyText = `I've switched the theme to ${actionData.theme} mode for you!`;
-                return { answer: replyText, themeChange: actionData.theme };
+                return { answer: replyText, themeChange: actionData.theme, actionData };
+              }
+              
+              // Return action data for any other actions (DELETE, UPDATE, BULK)
+              if (actionData && ['DELETE_EXPENSE', 'UPDATE_EXPENSE', 'BULK_UPDATE_CATEGORY', 'BULK_UPDATE_DATE'].includes(actionData.ACTION)) {
+                replyText = replyText.replace(/```json[\s\S]*?```/g, '').replace(/\{[\s\S]*?"ACTION"\s*:\s*".*?"[\s\S]*?\}/g, '').trim();
+                if (!replyText) replyText = `I've processed that action for you!`;
+                return { answer: replyText, actionData };
               }
             } catch (err) {
               console.error('Failed fallback AI action parse:', err);
             }
           }
 
-          return { answer: replyText, expenseAdded };
+          return { answer: replyText, expenseAdded, actionData };
         } else if (data.error) {
           lastErr = data.error.message;
         }

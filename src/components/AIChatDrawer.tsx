@@ -1841,6 +1841,36 @@ export function AIChatDrawer() {
         }
       }
 
+      if (res.actionData) {
+        let changed = false;
+        try {
+          if (res.actionData.ACTION === 'DELETE_EXPENSE' && res.actionData.expenseId) {
+            await api.deleteExpense(res.actionData.expenseId);
+            changed = true;
+          } else if (res.actionData.ACTION === 'UPDATE_EXPENSE' && res.actionData.expenseId && res.actionData.updates) {
+            await api.updateExpense(res.actionData.expenseId, res.actionData.updates);
+            changed = true;
+          } else if (res.actionData.ACTION === 'BULK_UPDATE_CATEGORY' && res.actionData.oldCategory) {
+            const matches = validExpenses.filter(e => e.category.toLowerCase() === res.actionData.oldCategory.toLowerCase());
+            for (const e of matches) {
+              await api.updateExpense(e.id || (e as any)._id, { category: res.actionData.newCategory });
+            }
+            if (matches.length > 0) changed = true;
+          } else if (res.actionData.ACTION === 'BULK_UPDATE_DATE' && res.actionData.oldDate) {
+            const matches = validExpenses.filter(e => (e as any).dateStr === res.actionData.oldDate || (e as any).date_str === res.actionData.oldDate || e.date.includes(res.actionData.oldDate));
+            for (const e of matches) {
+              await api.updateExpense(e.id || (e as any)._id, { date: res.actionData.newDate });
+            }
+            if (matches.length > 0) changed = true;
+          }
+        } catch (err) {
+          console.error("Failed to execute AI action locally", err);
+        }
+        if (changed) {
+          await fetchData(true);
+        }
+      }
+
       const aiMessage: ChatMessage = {
         id: (Date.now() + 1).toString(),
         sender: 'ai',
