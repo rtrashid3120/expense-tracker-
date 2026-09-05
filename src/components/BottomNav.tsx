@@ -1,5 +1,5 @@
 import { Link, useLocation } from 'react-router-dom';
-import { FiMap, FiPlus, FiHome, FiGrid, FiUser } from 'react-icons/fi';
+import { FiMap, FiPlus, FiHome, FiGrid, FiUser, FiFileText, FiZap } from 'react-icons/fi';
 import { motion } from 'framer-motion';
 
 export function BottomNav({ onAddClick }: { onAddClick: () => void }) {
@@ -8,9 +8,11 @@ export function BottomNav({ onAddClick }: { onAddClick: () => void }) {
   const navItems = [
     { id: '/', icon: FiHome, label: 'Home', type: 'link' },
     { id: '/heatmaps', icon: FiGrid, label: 'Heatmaps', type: 'link' },
+    { id: '/expenses', icon: FiFileText, label: 'Audit Trail', type: 'link' }, // Next left to Add
     { id: 'add', isAdd: true, type: 'add' }, // Center + button
     { id: '/trips', icon: FiMap, label: 'Trips', type: 'link' },
-    { id: '/profile', icon: FiUser, label: 'Profile', type: 'link' }
+    { id: '/profile', icon: FiUser, label: 'Profile', type: 'link' },
+    { id: 'ai', icon: FiZap, label: 'AI Assistant', type: 'action' } // At the end
   ];
 
   return (
@@ -64,12 +66,25 @@ export function BottomNav({ onAddClick }: { onAddClick: () => void }) {
           const isActive = location.pathname === item.id;
           const Icon = item.icon!;
 
+          if (item.type === 'action') {
+            return (
+              <button
+                key={item.id}
+                onClick={() => window.dispatchEvent(new Event('open-ai-chat'))}
+                title={item.label}
+                className="flex flex-col items-center justify-center w-10 h-10 sm:w-11 sm:h-11 rounded-full transition-all relative text-brand-neon hover:text-brand-neon/80"
+              >
+                <Icon size={19} className="relative z-10 drop-shadow-[0_0_8px_rgba(0,240,255,0.6)] animate-pulse" />
+              </button>
+            );
+          }
+
           return (
             <Link
               key={item.id}
               to={item.id}
               title={item.label}
-              className={`flex flex-col items-center justify-center w-10 h-10 sm:w-11 sm:h-11 rounded-full transition-all relative ${
+              className={`flex flex-col items-center justify-center w-9 h-9 sm:w-11 sm:h-11 rounded-full transition-all relative ${
                 isActive ? 'text-blue-700 dark:text-white' : 'text-gray-500 dark:text-white/50 hover:text-gray-900 dark:hover:text-white/80'
               }`}
             >
