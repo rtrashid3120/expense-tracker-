@@ -374,11 +374,11 @@ REAL EXPENSE LOGGING INSTRUCTIONS:
 }
 \`\`\`
 
-- To NAVIGATE to a specific page (dashboard, reports/heatmaps, trips, profile, expenses/audit):
+- To NAVIGATE to a specific page. Valid paths are only: "/", "/heatmaps", "/expenses", "/trips", "/family", "/profile":
 \`\`\`json
 {
   "ACTION": "NAVIGATE",
-  "page": "/reports"
+  "page": "/heatmaps"
 }
 \`\`\`
 
