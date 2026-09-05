@@ -1830,6 +1830,7 @@ export function AIChatDrawer() {
       };
 
       const res = await api.askAIChat(query.trim(), historyForApi, contextData);
+
       if (res.expenseAdded) {
         await fetchData(true);
       }
@@ -1943,7 +1944,7 @@ export function AIChatDrawer() {
         trips,
         monthlyBudget,
         profile
-      );
+      ) ;
 
       const aiMessage: ChatMessage = {
         id: (Date.now() + 1).toString(),
