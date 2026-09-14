@@ -2229,8 +2229,8 @@ export function AIChatDrawer() {
     // Check 1.92: Recent Expenses & Today's Summary Intent
     const isRecentExpensesQuery = 
       (/\b(today's expenses|recent expenses|latest transactions|recent transactions|what did i spend today|latest expenses)\b/i.test(query) ||
-      (/^(today|yesterday)$/i.test(query.trim())) ||
-      (/\b(today|yesterday)\b/i.test(query) && /\b(spend|spent|spending|expense|expenses|total|sum|cost|money)\b/i.test(query))) && 
+      (/^(today)$/i.test(query.trim())) ||
+      (/\b(today)\b/i.test(query) && /\b(spend|spent|spending|expense|expenses|total|sum|cost|money)\b/i.test(query))) && 
       !isDeleteIntent && !isAddExpenseIntent;
     if (isRecentExpensesQuery) {
       const todayStr = new Date().toISOString().split('T')[0];
@@ -2267,10 +2267,15 @@ export function AIChatDrawer() {
     }
 
     // Check 1.925: Unified Spending & Filter Query Engine (e.g. "Show me the expenses", "show fuel expenses", "Show All Expenses in aug wallet this month")
+    const hasRelativeDate = /\b(yesterday|today|last week|month|year|jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)\b/i.test(query);
+    const isFollowUpQuery = /\b(what about|how about|and in|and on|and for)\b/i.test(query);
+
     const isSpendingOrFilterQuery = 
       (/\b(show|view|how much|how many|list|check|find|get|breakdown|ledger)\b/i.test(query) ||
        /\b(all expenses|total spent|total expenses|spending on|spent on)\b/i.test(query) ||
        (/\b(fuel|grocery|groceries|coffee|food|rent|dining|shopping|medical|travel)\b/i.test(query) && /\b(spent|cost|expense|expenses|how much|show|view)\b/i.test(query))) &&
+      !hasRelativeDate &&
+      !isFollowUpQuery &&
       !isDeleteIntent && 
       !isAddExpenseIntent;
 
