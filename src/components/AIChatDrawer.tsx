@@ -74,6 +74,9 @@ const getCategoryKeywords = (querySubject: string): string[] => {
 const parseMultiExpenses = (query: string) => {
   let cleanedQuery = query.toLowerCase();
 
+  // Strip commas inside numbers (e.g. 1,000 -> 1000)
+  cleanedQuery = cleanedQuery.replace(/(\d),(\d)/g, '$1$2');
+
   // FEATURE: Receipt Math (e.g., "3 coffees for 120 each")
   cleanedQuery = cleanedQuery.replace(/(\d+)\s+([a-z\s]+?)\s+(?:for|at)\s+(\d+)\s+each/gi, (_match, qty, item, price) => {
     return `${Number(qty) * Number(price)} for ${item.trim()}`;
@@ -1572,7 +1575,7 @@ export function AIChatDrawer() {
 
     // Check 1.2: Add Expense Intent (supports single and compound multi-item commands like "spent 100 on coffee , 100 on fuel on 26 aug")
     const numMatch = query.match(/(\d+)/);
-    const isExplicitViewQuery = /^(show|view|how much|how many|what is|check|list|find|get)\b/i.test(query.trim());
+    const isExplicitViewQuery = /^(show|view|h[ow]?w much|how many|what is|check|list|find|get)\b/i.test(query.trim());
 
     // Exploratory / advisory / question / calculation checks
     const hasOtherActionPrefix = /^(create|transfer|split|change|update|edit|go to|take me to|open|switch to|compare)/i.test(query.trim());
@@ -1581,21 +1584,26 @@ export function AIChatDrawer() {
       /\b(50\s*30\s*20|50\/30\/20|rule 50|safe to spend|can i spend|budget advice|save money|financial tips|how to save|can i save|split \d+)\b/i.test(query) ||
       query.includes('?');
 
+    const multiCheck = parseMultiExpenses(query);
+    const hasMultipleItems = multiCheck.items.length > 1;
+
     const hasAddActionKeyword = /\b(spent|spend|spending|add|log|bought|paid|pay|bill|purchase|purchased|entry|record|deduct|cost|charge)\b/i.test(query);
     const hasCurrencySymbol = /(?:₹|rs\.?|inr)\s*\d+|\d+\s*(?:₹|rs\.?|inr|rupees)/i.test(query);
-    const isDirectAddPattern = /^[a-zA-Z\s]+\s+\d+$/i.test(query.trim()) || /^\d+\s+[a-zA-Z\s]+$/i.test(query.trim());
+    const cleanWordStr = query.trim().replace(/\d|\s|\.|-|th|st|nd|rd/g, '').toLowerCase();
+    const isDateOnly = /^(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec|today|yesterday|monday|tuesday|wednesday|thursday|friday|saturday|sunday|january|february|march|april|june|july|august|september|october|november|december)$/i.test(cleanWordStr);
+    const isDirectAddPattern = (/^[a-zA-Z\s]+\s+\d+$/i.test(query.trim()) || /^\d+\s+[a-zA-Z\s]+$/i.test(query.trim())) && !isDateOnly;
 
     const isAddExpenseIntent = 
-      Boolean(numMatch) && 
+      (Boolean(numMatch) || hasMultipleItems) && 
       !isExplicitViewQuery && 
       !isDeleteIntent && 
       !isQuestionOrAdvice &&
       !isThresholdQuery &&
       !hasOtherActionPrefix &&
-      (hasAddActionKeyword || hasCurrencySymbol || isDirectAddPattern || query.includes(','));
+      (hasAddActionKeyword || hasCurrencySymbol || isDirectAddPattern || hasMultipleItems);
 
     if (isAddExpenseIntent) {
-      const { items, dateDisplayLabel } = parseMultiExpenses(query);
+      const { items, dateDisplayLabel } = multiCheck;
 
       if (items.length > 0) {
         if (currentWallets.length >= 2) {
@@ -2217,7 +2225,11 @@ export function AIChatDrawer() {
     }
 
     // Check 1.92: Recent Expenses & Today's Summary Intent
-    const isRecentExpensesQuery = /\b(today|today's expenses|recent expenses|latest transactions|recent transactions|what did i spend today|latest expenses)\b/i.test(query) && !isDeleteIntent && !isAddExpenseIntent;
+    const isRecentExpensesQuery = 
+      (/\b(today's expenses|recent expenses|latest transactions|recent transactions|what did i spend today|latest expenses)\b/i.test(query) ||
+      (/^(today|yesterday)$/i.test(query.trim())) ||
+      (/\b(today|yesterday)\b/i.test(query) && /\b(spend|spent|spending|expense|expenses|total|sum|cost|money)\b/i.test(query))) && 
+      !isDeleteIntent && !isAddExpenseIntent;
     if (isRecentExpensesQuery) {
       const todayStr = new Date().toISOString().split('T')[0];
       const todayExpenses = validExpenses.filter(e => e.date && e.date.startsWith(todayStr));
@@ -2429,7 +2441,7 @@ export function AIChatDrawer() {
 
 
     // INTENT 6: Spending Analytics ("total spendings for sep", "How much spent this month?", "spending of this mnth")
-    const isAnalyticsAction = /\b(how much|total|sum|amount|spending|spendings|expense|expenses|spent|cost)\b/i.test(query);
+    const isAnalyticsAction = /\b(h[ow]?w much|total|sum|amount|spending|spendings|expens?ce?s?|spent|cost)\b/i.test(query);
     const hasTimePeriod = /\b(this month|this mnth|current month|last month|today|yesterday|this week|last week|jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|may|jun(?:e)?|jul(?:y)?|aug(?:ust)?|sep(?:tember)?|oct(?:ober)?|nov(?:ember)?|dec(?:ember)?|spe)\b/i.test(query);
     
     if (isAnalyticsAction && hasTimePeriod && !isDeleteIntent && !isBulkDateAction && !isAmountModifyAction && !isAddExpenseIntent) {
