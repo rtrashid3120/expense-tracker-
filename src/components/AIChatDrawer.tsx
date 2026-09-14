@@ -79,6 +79,9 @@ const parseMultiExpenses = (query: string) => {
     return `${Number(qty) * Number(price)} for ${item.trim()}`;
   });
 
+  // FEATURE: Amount Multipliers (1k -> 1000, 2.5k -> 2500)
+  cleanedQuery = cleanedQuery.replace(/(\d+(?:\.\d+)?)\s*k\b/gi, (_m, val) => String(Math.round(Number(val) * 1000)));
+
   // FEATURE: Currency Conversion ($ -> INR, etc.)
   cleanedQuery = cleanedQuery.replace(/\$(\d+)|(\d+)\s*dollars?/gi, (_match, p1, p2) => `₹${Math.round(Number(p1 || p2) * 83)}`);
   cleanedQuery = cleanedQuery.replace(/€(\d+)|(\d+)\s*euros?/gi, (_match, p1, p2) => `₹${Math.round(Number(p1 || p2) * 90)}`);
@@ -480,6 +483,24 @@ export function AIChatDrawer() {
 
     setMessages(prev => [...prev, userMessage]);
     if (!textToSend) setInputMsg('');
+
+    // Check 0: Ambiguous Add Request (e.g. "Add 500", "log 1000", "spent 250") missing description
+    const isAmbiguousAdd = /^(?:add|log|spent|paid|record|put|use)\s+(?:₹|rs\.?|inr|rupees)?\s*(\d+(?:\.\d+)?\s*k?)\s*$/i.test(query.trim());
+    if (isAmbiguousAdd) {
+      const numMatch = query.match(/(\d+(?:\.\d+)?\s*k?)/i);
+      const rawAmt = numMatch ? numMatch[1] : 'amount';
+      const numVal = rawAmt.toLowerCase().endsWith('k') ? Math.round(Number(rawAmt.slice(0, -1)) * 1000) : Number(rawAmt);
+
+      const aiMsg: ChatMessage = {
+        id: (Date.now() + 1).toString(),
+        sender: 'ai',
+        text: `🤔 What did you spend the **₹${numVal.toLocaleString('en-IN')}** on? (e.g. *"food"*, *"shopping"*, *"petrol"*)\n\nReply with the description to add it!`,
+        pendingContext: { originalQuery: `spent ${numVal}` },
+        timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+      };
+      setMessages(prev => [...prev, aiMsg]);
+      return;
+    }
 
     // Re-fetch fresh store state
     const storeState = useAppStore.getState();
@@ -1667,8 +1688,8 @@ export function AIChatDrawer() {
       return;
     }
 
-    // Check 1.7: Highest / Largest Expense Query Intent
-    const isHighestExpenseQuery = /\b(highest expense|biggest spend|largest expense|max spend|top expense|biggest expense|highest item)\b/i.test(query);
+    // Check 1.7: Highest / Largest Expense Query Intent (Intent 14)
+    const isHighestExpenseQuery = /\b(highest expense|biggest spend|largest expense|max spend|top expense|biggest expense|highest item|largest transaction|most expensive thing|highest single expense|largest purchase)\b/i.test(query);
     if (isHighestExpenseQuery && !isDeleteIntent && !isAddExpenseIntent) {
       if (validExpenses.length === 0) {
         const aiMsg: ChatMessage = {
@@ -1699,6 +1720,258 @@ export function AIChatDrawer() {
       };
       setMessages(prev => [...prev, aiMsg]);
       return;
+    }
+
+    // Check 1.75: Lowest Single Expense Query Intent (Intent 15)
+    const isLowestExpenseQuery = /\b(lowest expense|smallest expense|cheapest transaction|lowest single expense|cheapest purchase|smallest purchase|min single expense|cheapest thing|lowest transaction|smallest spending)\b/i.test(query);
+    if (isLowestExpenseQuery && !isDeleteIntent && !isAddExpenseIntent) {
+      if (validExpenses.length === 0) {
+        const aiMsg: ChatMessage = {
+          id: (Date.now() + 1).toString(),
+          sender: 'ai',
+          text: `ℹ️ You haven't recorded any expenses yet!`,
+          timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+        };
+        setMessages(prev => [...prev, aiMsg]);
+        return;
+      }
+
+      const minExp = [...validExpenses].sort((a, b) => a.amount - b.amount)[0];
+      const walletName = currentWallets.find(w => String(w.id || (w as any)._id) === String(minExp.walletId))?.name || 'Wallet';
+
+      let replyText = `🔹 **Lowest Recorded Expense**:\n\n`;
+      replyText += `- **Amount**: ₹${minExp.amount.toLocaleString('en-IN')}\n`;
+      replyText += `- **Item**: ${minExp.note || minExp.category}\n`;
+      replyText += `- **Category**: ${minExp.category}\n`;
+      replyText += `- **Wallet**: ${walletName}\n`;
+      replyText += `- **Date**: ${new Date(minExp.date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}`;
+
+      const aiMsg: ChatMessage = {
+        id: (Date.now() + 1).toString(),
+        sender: 'ai',
+        text: replyText,
+        timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+      };
+      setMessages(prev => [...prev, aiMsg]);
+      return;
+    }
+
+    // Check 1.76: Highest Spending Day Intent (Intent 12) & Lowest Spending Day (Intent 13)
+    const isHighestDayQuery = /\b(highest spending day|biggest spending day|highest day|peak spending day|most expensive day|day did i spend the most|date did i spend the most|biggest spending day this month)\b/i.test(query);
+    const isLowestDayQuery = /\b(lowest spending day|cheapest day|smallest spending day|lowest day|day did i spend the least|date did i spend the least|cheapest spending day this month)\b/i.test(query);
+
+    if ((isHighestDayQuery || isLowestDayQuery) && !isDeleteIntent && !isAddExpenseIntent) {
+      if (validExpenses.length === 0) {
+        const aiMsg: ChatMessage = {
+          id: (Date.now() + 1).toString(),
+          sender: 'ai',
+          text: `ℹ️ No expenses recorded yet to analyze spending days!`,
+          timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+        };
+        setMessages(prev => [...prev, aiMsg]);
+        return;
+      }
+
+      const dayMap: Record<string, number> = {};
+      validExpenses.forEach(e => {
+        const dStr = e.date ? e.date.split('T')[0] : 'Unknown Date';
+        dayMap[dStr] = (dayMap[dStr] || 0) + e.amount;
+      });
+
+      const sortedDays = Object.entries(dayMap).sort((a, b) => isHighestDayQuery ? b[1] - a[1] : a[1] - b[1]);
+      const targetDay = sortedDays[0];
+
+      const formattedDate = targetDay[0] !== 'Unknown Date'
+        ? new Date(targetDay[0]).toLocaleDateString('en-IN', { weekday: 'long', day: 'numeric', month: 'short', year: 'numeric' })
+        : 'Unknown Date';
+
+      let replyText = isHighestDayQuery 
+        ? `🏆 **Highest Spending Day**:\n\n• **Date**: ${formattedDate}\n• **Total Spent on this day**: 💰 **₹${targetDay[1].toLocaleString('en-IN')}**`
+        : `🔹 **Lowest Spending Day**:\n\n• **Date**: ${formattedDate}\n• **Total Spent on this day**: 💰 **₹${targetDay[1].toLocaleString('en-IN')}**`;
+
+      const aiMsg: ChatMessage = {
+        id: (Date.now() + 1).toString(),
+        sender: 'ai',
+        text: replyText,
+        timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+      };
+      setMessages(prev => [...prev, aiMsg]);
+      return;
+    }
+
+    // Check 1.77: Lowest Spending Category Intent (Intent 11)
+    const isLowestCategoryQuery = /\b(lowest spending category|category did i spend the least|smallest spending category|lowest category|category has the lowest spending|spending category is lowest)\b/i.test(query);
+    if (isLowestCategoryQuery && !isDeleteIntent && !isAddExpenseIntent) {
+      if (validExpenses.length === 0) {
+        const aiMsg: ChatMessage = {
+          id: (Date.now() + 1).toString(),
+          sender: 'ai',
+          text: `ℹ️ No expenses recorded yet to analyze categories!`,
+          timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+        };
+        setMessages(prev => [...prev, aiMsg]);
+        return;
+      }
+
+      const catMap: Record<string, number> = {};
+      validExpenses.forEach(e => {
+        const cat = e.category || 'Other';
+        catMap[cat] = (catMap[cat] || 0) + e.amount;
+      });
+
+      const sortedCats = Object.entries(catMap).sort((a, b) => a[1] - b[1]);
+      const lowestCat = sortedCats[0];
+
+      let replyText = `🔹 **Lowest Spending Category**:\n\n• **Category**: **${lowestCat[0]}**\n• **Total Spent**: 💰 **₹${lowestCat[1].toLocaleString('en-IN')}**`;
+
+      const aiMsg: ChatMessage = {
+        id: (Date.now() + 1).toString(),
+        sender: 'ai',
+        text: replyText,
+        timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+      };
+      setMessages(prev => [...prev, aiMsg]);
+      return;
+    }
+
+    // Check 1.78: Category Comparison Intent (Intent 20)
+    const isCategoryComparisonQuery = /\b(compare (?:my )?([a-z\s]+?) (?:vs|and|with|to) ([a-z\s]+?)(?: spending| expenses)?|spend more on ([a-z\s]+?) or ([a-z\s]+?)|which costs (?:me )?more,? ([a-z\s]+?) or ([a-z\s]+?)|which is higher,? ([a-z\s]+?) or ([a-z\s]+?))\b/i.test(query);
+    if (isCategoryComparisonQuery && !isDeleteIntent && !isAddExpenseIntent) {
+      const match = query.match(/\b(?:compare\s+(?:my\s+)?([a-z\s]+?)\s+(?:vs|and|with|to)\s+([a-z\s]+?)|spend\s+more\s+on\s+([a-z\s]+?)\s+or\s+([a-z\s]+?)|which\s+costs\s+(?:me\s+)?more,?\s+([a-z\s]+?)\s+or\s+([a-z\s]+?)|which\s+is\s+higher,?\s+([a-z\s]+?)\s+or\s+([a-z\s]+?))\b/i);
+      
+      if (match) {
+        const cat1 = (match[1] || match[3] || match[5] || match[7] || '').trim();
+        const cat2 = (match[2] || match[4] || match[6] || match[8] || '').trim();
+
+        if (cat1 && cat2) {
+          const kw1 = getCategoryKeywords(cat1);
+          const kw2 = getCategoryKeywords(cat2);
+
+          const exps1 = validExpenses.filter(e => {
+            const note = (e.note || '').toLowerCase();
+            const cat = (e.category || '').toLowerCase();
+            return kw1.some(k => note.includes(k) || cat.includes(k));
+          });
+          const exps2 = validExpenses.filter(e => {
+            const note = (e.note || '').toLowerCase();
+            const cat = (e.category || '').toLowerCase();
+            return kw2.some(k => note.includes(k) || cat.includes(k));
+          });
+
+          const total1 = exps1.reduce((s, e) => s + e.amount, 0);
+          const total2 = exps2.reduce((s, e) => s + e.amount, 0);
+          const diff = Math.abs(total1 - total2);
+
+          const c1Formatted = cat1.charAt(0).toUpperCase() + cat1.slice(1);
+          const c2Formatted = cat2.charAt(0).toUpperCase() + cat2.slice(1);
+
+          let replyText = `📊 **Category Comparison: ${c1Formatted} vs ${c2Formatted}**\n\n`;
+          replyText += `• **${c1Formatted}**: ₹${total1.toLocaleString('en-IN')} (${exps1.length} transactions)\n`;
+          replyText += `• **${c2Formatted}**: ₹${total2.toLocaleString('en-IN')} (${exps2.length} transactions)\n\n`;
+
+          if (total1 > total2) {
+            replyText += `👑 **You spent ₹${diff.toLocaleString('en-IN')} MORE on ${c1Formatted} than on ${c2Formatted}.**`;
+          } else if (total2 > total1) {
+            replyText += `👑 **You spent ₹${diff.toLocaleString('en-IN')} MORE on ${c2Formatted} than on ${c1Formatted}.**`;
+          } else {
+            replyText += `⚖️ **Equal Spending!** You spent exactly ₹${total1.toLocaleString('en-IN')} on both categories.`;
+          }
+
+          const aiMsg: ChatMessage = {
+            id: (Date.now() + 1).toString(),
+            sender: 'ai',
+            text: replyText,
+            timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+          };
+          setMessages(prev => [...prev, aiMsg]);
+          return;
+        }
+      }
+    }
+
+    // Check 1.79: Transaction Count Intent (Intent 24)
+    const isTransactionCountQuery = /\b(how many expenses|how many transactions|how many times did i spend money|transaction count|count my expenses|how many spending entries|how many purchases|number of transactions)\b/i.test(query);
+    if (isTransactionCountQuery && !isDeleteIntent && !isAddExpenseIntent) {
+      const count = validExpenses.length;
+      const totalAmount = validExpenses.reduce((s, e) => s + e.amount, 0);
+
+      let replyText = `🔢 **Transaction Count Summary**:\n\n`;
+      replyText += `• **Total Recorded Transactions**: **${count} expenses**\n`;
+      replyText += `• **Combined Total Amount**: ₹${totalAmount.toLocaleString('en-IN')}`;
+
+      const aiMsg: ChatMessage = {
+        id: (Date.now() + 1).toString(),
+        sender: 'ai',
+        text: replyText,
+        timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+      };
+      setMessages(prev => [...prev, aiMsg]);
+      return;
+    }
+
+    // Check 1.80: Monthly Breakdown Intent (Intent 21) & Daily Breakdown Intent (Intent 22)
+    const isMonthlyBreakdownQuery = /\b(monthly spending|monthly breakdown|month-wise breakdown|month by month|expenses by month|each month|monthly totals)\b/i.test(query);
+    const isDailyBreakdownQuery = /\b(daily spending|daily breakdown|day-wise breakdown|day by day|expenses by date|each day|daily totals)\b/i.test(query);
+
+    if ((isMonthlyBreakdownQuery || isDailyBreakdownQuery) && !isDeleteIntent && !isAddExpenseIntent) {
+      if (validExpenses.length === 0) {
+        const aiMsg: ChatMessage = {
+          id: (Date.now() + 1).toString(),
+          sender: 'ai',
+          text: `ℹ️ No expenses recorded yet to generate breakdown!`,
+          timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+        };
+        setMessages(prev => [...prev, aiMsg]);
+        return;
+      }
+
+      if (isMonthlyBreakdownQuery) {
+        const monthMap: Record<string, { total: number, count: number }> = {};
+        validExpenses.forEach(e => {
+          const d = new Date(e.date);
+          const key = d.toLocaleDateString('en-IN', { month: 'long', year: 'numeric' });
+          if (!monthMap[key]) monthMap[key] = { total: 0, count: 0 };
+          monthMap[key].total += e.amount;
+          monthMap[key].count += 1;
+        });
+
+        let replyText = `📅 **Month-by-Month Spending Breakdown**:\n\n`;
+        Object.entries(monthMap).forEach(([monthLabel, data]) => {
+          replyText += `• **${monthLabel}**: ₹${data.total.toLocaleString('en-IN')} (${data.count} transactions)\n`;
+        });
+
+        const aiMsg: ChatMessage = {
+          id: (Date.now() + 1).toString(),
+          sender: 'ai',
+          text: replyText.trim(),
+          timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+        };
+        setMessages(prev => [...prev, aiMsg]);
+        return;
+      } else {
+        const dayMap: Record<string, { total: number, count: number }> = {};
+        validExpenses.forEach(e => {
+          const d = new Date(e.date);
+          const key = d.toLocaleDateString('en-IN', { day: 'numeric', month: 'short' });
+          if (!dayMap[key]) dayMap[key] = { total: 0, count: 0 };
+          dayMap[key].total += e.amount;
+          dayMap[key].count += 1;
+        });
+
+        let replyText = `📆 **Day-by-Day Spending Breakdown**:\n\n`;
+        Object.entries(dayMap).slice(0, 15).forEach(([dayLabel, data]) => {
+          replyText += `• **${dayLabel}**: ₹${data.total.toLocaleString('en-IN')} (${data.count} txns)\n`;
+        });
+
+        const aiMsg: ChatMessage = {
+          id: (Date.now() + 1).toString(),
+          sender: 'ai',
+          text: replyText.trim(),
+          timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+        };
+        setMessages(prev => [...prev, aiMsg]);
+        return;
+      }
     }
 
     // Check 1.8: Spending Velocity / Daily Average Intent

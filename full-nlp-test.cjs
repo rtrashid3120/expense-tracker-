@@ -46,7 +46,7 @@ const parseFlexibleDate = (dStr) => {
 };
 
 const parseFlexibleDateWithRaw = (query) => {
-  const dateRegex = /\b(?:on|from|for)?\s*(?:(\d{1,2})(?:st|nd|rd|th)?\s+([a-z]+)|([a-z]+)\s+(\d{1,2})(?:st|nd|rd|th)?)\b/i;
+  const dateRegex = /\b(?:on\s+|from\s+|for\s+|in\s+)?(?:(\d{1,2})(?:st|nd|rd|th)?\s+([a-z]{3,})|([a-z]{3,})\s+(\d{1,2})(?:st|nd|rd|th)?)\b/i;
   const m = query.match(dateRegex);
   if (m) {
     let dayStr = m[1], monthStr = m[2];
@@ -76,7 +76,8 @@ const simulateBotResponse = (query) => {
   }
 
   // ---- BULK CATEGORY SHIFT ----
-  const bulkCatMatch = q.match(new RegExp(`\\b(?:${VERBS_MODIFY}|assign|put)\\b.*?\\b(?:${NOUNS_WILDCARD})?\\b\\s*(.*?)(?:\\s+(?:${NOUNS_EXPENSE}))?\\s+\\bto\\b\\s+(.*)`, 'i'));
+  const normalizedQuery = q.replace(/\binto\b/gi, 'to').replace(/\binside\b/gi, 'to').replace(/\bunder\b/gi, 'to').replace(/\bwithin\b/gi, 'to');
+  const bulkCatMatch = normalizedQuery.match(new RegExp(`\\b(?:${VERBS_MODIFY}|assign|put)\\b.*?\\b(?:${NOUNS_WILDCARD})?\\b\\s*(.*?)(?:\\s+(?:${NOUNS_EXPENSE}))?\\s+\\bto\\b\\s+(.*)`, 'i'));
   if (bulkCatMatch && bulkCatMatch[1].trim()) {
     const itemSearch = bulkCatMatch[1].toLowerCase().trim().replace(new RegExp(`\\b(?:${NOUNS_EXPENSE}|${NOUNS_WILDCARD})\\b`, 'gi'), '').trim();
     const targetCategory = bulkCatMatch[2].toLowerCase().trim().replace(/category/i, '').trim();

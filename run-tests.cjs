@@ -50,7 +50,16 @@ for (const t of testCases) {
     if (fromDate && toDate) detected = "BULK_DATE";
   }
 
-  // 2. Bulk Category Shift
+  // 2. Amount Modification
+  if (detected === "NONE") {
+    const isAmountModifyAction = new RegExp(`\\b(?:${VERBS_MODIFY})\\b`, 'i').test(t.q) && /\bto\b/i.test(t.q);
+    const amountsMatch = t.q.match(/(?:rs\.?|₹|inr|rupees)?\s*(\d+(?:\.\d+)?)\b.*?\bto\b.*?(?:rs\.?|₹|inr|rupees)?\s*(\d+(?:\.\d+)?)\b/i);
+    if (isAmountModifyAction && amountsMatch) {
+      detected = "AMOUNT_MODIFY";
+    }
+  }
+
+  // 3. Bulk Category Shift
   if (detected === "NONE") {
     const bulkCatMatch = t.q.match(new RegExp(`\\b(?:${VERBS_MODIFY}|assign|put)\\b.*?\\b(?:${NOUNS_WILDCARD})?\\b\\s*(.*?)(?:\\s+(?:${NOUNS_EXPENSE}))?\\s+\\bto\\b\\s+(.*)`, 'i'));
     if (bulkCatMatch && bulkCatMatch[1].trim()) {
