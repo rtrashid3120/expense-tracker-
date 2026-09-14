@@ -4,6 +4,7 @@ import { FiX, FiSend, FiZap, FiTrash2 } from 'react-icons/fi';
 import { useAppStore } from '../store';
 import { api } from '../api';
 import { useNavigate } from 'react-router-dom';
+import { parseNlpQuery, type NlpContext } from '../utils/nlpEngine';
 
 interface OptionGroup {
   title: string;
@@ -34,6 +35,7 @@ interface ChatMessage {
   undoPayload?: UndoPayload;
   isUndone?: boolean;
   pendingContext?: { originalQuery: string };
+  nlpContext?: NlpContext;
 }
 
 const STORAGE_KEY = 'expensehub_ai_chat_messages';
@@ -2440,77 +2442,75 @@ export function AIChatDrawer() {
     setIsLoading(true);
 
 
-    // INTENT 6: Spending Analytics ("total spendings for sep", "How much spent this month?", "spending of this mnth")
-    const isAnalyticsAction = /\b(h[ow]?w much|total|sum|amount|spending|spendings|expens?ce?s?|spent|cost)\b/i.test(query);
-    const hasTimePeriod = /\b(this month|this mnth|current month|last month|today|yesterday|this week|last week|jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|may|jun(?:e)?|jul(?:y)?|aug(?:ust)?|sep(?:tember)?|oct(?:ober)?|nov(?:ember)?|dec(?:ember)?|spe)\b/i.test(query);
-    
-    if (isAnalyticsAction && hasTimePeriod && !isDeleteIntent && !isBulkDateAction && !isAmountModifyAction && !isAddExpenseIntent) {
-       const cleanQ = query.toLowerCase();
-       let startDate = new Date();
-       let endDate = new Date();
-       let periodLabel = "this period";
-       
-       const now = new Date();
-       
-       if (/\btoday\b/.test(cleanQ)) {
-           startDate.setHours(0,0,0,0);
-           endDate.setHours(23,59,59,999);
-           periodLabel = "Today";
-       } else if (/\byesterday\b/.test(cleanQ)) {
-           startDate.setDate(now.getDate() - 1);
-           startDate.setHours(0,0,0,0);
-           endDate = new Date(startDate);
-           endDate.setHours(23,59,59,999);
-           periodLabel = "Yesterday";
-       } else if (/\b(this week)\b/.test(cleanQ)) {
-           const day = now.getDay();
-           const diff = now.getDate() - day + (day == 0 ? -6:1); // Monday start
-           startDate = new Date(now.setDate(diff));
-           startDate.setHours(0,0,0,0);
-           endDate = new Date();
-           periodLabel = "This Week";
-       } else if (/\b(this month|this mnth|current month)\b/.test(cleanQ)) {
-           startDate = new Date(now.getFullYear(), now.getMonth(), 1);
-           endDate = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59);
-           periodLabel = "This Month";
-       } else if (/\b(last month)\b/.test(cleanQ)) {
-           startDate = new Date(now.getFullYear(), now.getMonth() - 1, 1);
-           endDate = new Date(now.getFullYear(), now.getMonth(), 0, 23, 59, 59);
-           periodLabel = "Last Month";
-       } else {
-           // Explicit month
-           const months = ["jan", "feb", "mar", "apr", "may", "jun", "jul", "aug", "sep", "oct", "nov", "dec"];
-           let monthIdx = -1;
-           let monthName = "";
-           for (let i = 0; i < months.length; i++) {
-               if (new RegExp(`\\b${months[i]}`).test(cleanQ) || (months[i]==='sep' && /\bspe\b/.test(cleanQ))) {
-                   monthIdx = i;
-                   monthName = months[i].charAt(0).toUpperCase() + months[i].slice(1);
-                   break;
-               }
-           }
-           if (monthIdx !== -1) {
-               startDate = new Date(now.getFullYear(), monthIdx, 1);
-               endDate = new Date(now.getFullYear(), monthIdx + 1, 0, 23, 59, 59);
-               periodLabel = monthName;
-           }
-       }
+    // INTENT 6: Stateful Sequential NLP Pipeline for Analytics (Replaces legacy INTENT 6)
+    const isAnalyticsCandidate = /\b(h[ow]?w much|total|sum|amount|spending|spendings|expens?ce?s?|spent|cost|compare|average|avg|highest|lowest|biggest|smallest|count|find|what about|how about)\b/i.test(query) ||
+                                 /\b(today|yesterday|this week|month|year|jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)\b/i.test(query) ||
+                                 /\b(food|dining|grocery|fuel|rent|shopping|medical|travel|personal)\b/i.test(query);
 
-       const filtered = validExpenses.filter(e => {
-           if (!e.date) return false;
-           const d = new Date(e.date);
-           return d >= startDate && d <= endDate;
-       });
+    if (isAnalyticsCandidate && !isDeleteIntent && !isBulkDateAction && !isAmountModifyAction && !isAddExpenseIntent) {
+      const lastAiMsg = messages.length > 0 ? messages[messages.length - 1] : undefined;
+      const previousContext = lastAiMsg?.nlpContext;
+      
+      const ctx = parseNlpQuery(query, previousContext);
+      
+      if (ctx.action) {
+        let filtered = validExpenses;
+        let filtersApplied = [];
 
-       const total = filtered.reduce((sum, e) => sum + e.amount, 0);
-       
-       const aiMessage: ChatMessage = {
-         id: (Date.now() + 1).toString(), sender: 'ai',
-         text: `📊 **Spending Analytics: ${periodLabel}**\n\nYou have spent a total of **₹${total.toLocaleString('en-IN')}** during this period across ${filtered.length} transactions.`,
-         timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-       };
-       setMessages(prev => [...prev, aiMessage]);
-       return;
+        if (ctx.dateRange) {
+           filtered = filtered.filter(e => {
+             if (!e.date) return false;
+             return e.date >= ctx.dateRange!.start && e.date <= ctx.dateRange!.end;
+           });
+           filtersApplied.push(ctx.dateRange.label);
+        }
+
+        if (ctx.category) {
+           filtered = filtered.filter(e => e.category === ctx.category);
+           filtersApplied.push(ctx.category);
+        }
+
+        let replyText = "";
+        
+        if (ctx.action === 'TOTAL') {
+           const total = filtered.reduce((s, e) => s + e.amount, 0);
+           replyText = `📊 **Total Spending**\n\nFor **${filtersApplied.join(' • ') || 'All Time'}**, you spent **₹${total.toLocaleString('en-IN')}** across ${filtered.length} transactions.`;
+        } else if (ctx.action === 'AVERAGE') {
+           const total = filtered.reduce((s, e) => s + e.amount, 0);
+           const avg = filtered.length > 0 ? Math.round(total / filtered.length) : 0;
+           replyText = `📈 **Average Spending**\n\nFor **${filtersApplied.join(' • ') || 'All Time'}**, your average transaction is **₹${avg.toLocaleString('en-IN')}** (Total: ₹${total} / ${filtered.length} txns).`;
+        } else if (ctx.action === 'HIGHEST_DAY') {
+           const dayMap: Record<string, number> = {};
+           filtered.forEach(e => { if(e.date) dayMap[e.date] = (dayMap[e.date] || 0) + e.amount; });
+           const highest = Object.entries(dayMap).sort((a,b)=>b[1]-a[1])[0];
+           if (highest) {
+              replyText = `🔥 **Highest Spending Day**\n\nFor **${filtersApplied.join(' • ') || 'All Time'}**, your highest day was **${highest[0]}** with **₹${highest[1].toLocaleString('en-IN')}**.`;
+           } else {
+              replyText = `No data found for ${filtersApplied.join(' • ')}.`;
+           }
+        } else if (ctx.action === 'HIGHEST_CATEGORY') {
+           const catMap: Record<string, number> = {};
+           filtered.forEach(e => { if(e.category) catMap[e.category] = (catMap[e.category] || 0) + e.amount; });
+           const highest = Object.entries(catMap).sort((a,b)=>b[1]-a[1])[0];
+           if (highest) {
+              replyText = `🔥 **Highest Spending Category**\n\nFor **${filtersApplied.join(' • ') || 'All Time'}**, you spent the most on **${highest[0]}** (₹${highest[1].toLocaleString('en-IN')}).`;
+           } else {
+              replyText = `No data found for ${filtersApplied.join(' • ')}.`;
+           }
+        } else {
+           const total = filtered.reduce((s, e) => s + e.amount, 0);
+           replyText = `📊 **Analytics Result**\n\nFor **${filtersApplied.join(' • ') || 'All Time'}**, you have ${filtered.length} transactions totaling **₹${total.toLocaleString('en-IN')}**.`;
+        }
+
+        const aiMessage: ChatMessage = {
+          id: (Date.now() + 1).toString(), sender: 'ai',
+          text: replyText,
+          nlpContext: ctx,
+          timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+        };
+        setMessages(prev => [...prev, aiMessage]);
+        return;
+      }
     }
 
     try {
