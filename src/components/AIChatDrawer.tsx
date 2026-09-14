@@ -586,7 +586,7 @@ export function AIChatDrawer() {
     };
 
     // INTENT 1: Bulk Date Shift ("transfer evrything from sep 20 to sep 21", "move all spending from 20 sep to 21 sep")
-    const bulkDateMatch = query.match(/\b(?:change|move|shift|transfer|update|switch|alter|modify|migrate|swap|convert|reassign|relocate|push|revert|transition|transform|reallocate|edit|fix|adjust|correct|set|make)\b.*?\b(?:from|on|of|for)\b\s+([^]+?)\s+\bto\b\s+([^]+)/i);
+    const bulkDateMatch = query.match(/\b(?:change|move|shift|transfer|update|switch|alter|modify|migrate|swap|convert|reassign|relocate|push|revert|transition|transform|reallocate|edit|fix|adjust|correct|set|make)\b.*?\b(?:from|on|of|for)\b\s+([^]+?)\s+\b(?:to|two|2)\b\s+([^]+)/i);
     if (bulkDateMatch) {
       const fromDate = parseFlexibleDate(bulkDateMatch[1]);
       const toDate = parseFlexibleDate(bulkDateMatch[2]);
@@ -661,11 +661,11 @@ export function AIChatDrawer() {
     let isBulkDateAction = false;
     let isCopyMode = false;
     
-    if (/\b(transfer|move|shift|change|copy|duplicate|clone|replicate|repeat)\b.*\b(all|every|evry|everything|evrything|spendings|expenses|records|transactions)\b.*\b(from|form)?\b.*\b(to)\b/i.test(query)) {
+    if (/\b(transfer|move|shift|change|copy|duplicate|clone|replicate|repeat)\b.*\b(all|every|evry|everything|evrything|spendings|expenses|records|transactions)\b.*\b(from|form)?\b.*\b(?:to|two|2)\b/i.test(query)) {
        isBulkDateAction = true;
     }
     
-    if (!isBulkDateAction && /\b(transfer|move|shift|change|copy|duplicate|clone|replicate|repeat)\b.*\bto\b/i.test(query)) {
+    if (!isBulkDateAction && /\b(transfer|move|shift|change|copy|duplicate|clone|replicate|repeat)\b.*\b(?:to|two|2)\b/i.test(query)) {
       const mRegex = "(jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|may|jun(?:e)?|jul(?:y)?|aug(?:ust)?|sep(?:tember)?|oct(?:ober)?|nov(?:ember)?|dec(?:ember)?|spe|augu|jne|jlu)";
       const d1 = new RegExp(`\\b(?:on\\s+|from\\s+|for\\s+|in\\s+)?(\\d{1,2})(?:st|nd|rd|th)?\\s*${mRegex}\\b`, 'gi');
       const d2 = new RegExp(`\\b(?:on\\s+|from\\s+|for\\s+|in\\s+)?${mRegex}\\s*(\\d{1,2})(?:st|nd|rd|th)?\\b`, 'gi');
